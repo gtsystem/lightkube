@@ -11,26 +11,22 @@ from .config import KubeConfig
 
 def Client(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.Client:
     kwargs = {}
-    if timeout:
-        kwargs['timeout'] = timeout
-    _setup(config, kwargs)
-    _setup_request_auth(config, kwargs)
-    _setup_request_certificates(config, kwargs)
+    _setup(config, kwargs, timeout=timeout)
     return httpx.Client(**kwargs)
 
 
 def AsyncClient(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.AsyncClient:
     kwargs = {}
-    if timeout:
-        kwargs['timeout'] = timeout
-    _setup(config, kwargs)
-    _setup_request_auth(config, kwargs)
-    _setup_request_certificates(config, kwargs)
+    _setup(config, kwargs, timeout=timeout)
     return httpx.AsyncClient(**kwargs)
 
 
-def _setup(config, kwargs):
+def _setup(config, kwargs, timeout: httpx.Timeout = None):
+    if timeout:
+        kwargs['timeout'] = timeout
     kwargs["base_url"] = config.cluster['server']
+    _setup_request_auth(config, kwargs)
+    _setup_request_certificates(config, kwargs)
 
 
 def _setup_request_auth(config, kwargs):
