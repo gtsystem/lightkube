@@ -33,7 +33,7 @@ class BasicRequest:
 
 
 class GenericClient:
-    def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None):
+    def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None, lazy=True):
         if config is None:
             try:
                 config = KubeConfig.from_service_account()
@@ -43,6 +43,7 @@ class GenericClient:
             timeout = httpx.Timeout()
         self._config = config
         self._timeout = timeout
+        self._lazy = lazy
         self._client = client_adapter.Client(config, timeout)
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False) -> BasicRequest:
@@ -103,7 +104,7 @@ class GenericClient:
                     tp = l['type']
                     obj = l['object']
                     version = obj['metadata']['resourceVersion']
-                    yield tp, res.from_dict(obj)
+                    yield tp, res.from_dict(obj, lazy=self._lazy)
             except httpx.HTTPError:     # TODO: see if there is any better exception to catch here
                 continue
 
@@ -115,6 +116,6 @@ class GenericClient:
         resp = self._client.send(req).json()
         res = br.response_type
         if method == 'list':
-            return (res.from_dict(obj) for obj in resp['items'])
+            return (res.from_dict(obj, lazy=self._lazy) for obj in resp['items'])
         else:
-            return res.from_dict(resp)
+            return res.from_dict(resp, lazy=self._lazy)

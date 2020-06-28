@@ -74,7 +74,8 @@ class DataclassDictMixIn:
             obj = cls(**d)
             d = obj.__dict__
             for k, convert in cls._late_init.items():
-                d[k] = convert(d[k], kwargs)
+                if d[k] is not None:
+                    d[k] = convert(d[k], kwargs)
         return obj
 
 

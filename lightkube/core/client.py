@@ -2,6 +2,8 @@ from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple
 import dataclasses
 from dataclasses import dataclass
 import json
+import httpx
+from ..config.config import KubeConfig
 
 from . import resource as r
 from .generic_client import GenericClient
@@ -15,10 +17,9 @@ AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r
 Resource = TypeVar('Resource', bound=r.Resource)
 
 
-
 class Client:
-    def __init__(self):
-        self._client = GenericClient()
+    def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None, lazy=True):
+        self._client = GenericClient(config, timeout=timeout, lazy=lazy)
 
     def delete(self, res: Type[GlobalResource], name: str) -> None:
         return self._client.request("delete", res=res, name=name)
