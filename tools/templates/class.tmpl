@@ -3,25 +3,23 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from ..core import resource as res
+{% for imp in imports %}
+from ..models import {{ imp }}
+{% endfor %}
 
-{%
-set map = {
-  "ns": "NamespacedResource",
-  "nsg": "NamespacedResourceG",
-  "global": "GlobalResource"
-}
-%}
-{% for name, properties, actions, class_ in objects %}
-@dataclass
-class {{ name }}(res.{{ map[class_] }}):
+{% for name, properties, actions, classes in objects %}
+
+class {{ name }}(res.{{ ', '.join(classes) }}):
     api_info = res.ApiInfo(
       {% for k, v in properties.items(): %}
         {{k}}={{v}},
       {% endfor %}
     )
+  {% if actions %}
 
   {% for k, v in actions.items(): %}
     {{k}}: ClassVar = {{v}}
   {% endfor %}
+  {% endif %}
 
 {% endfor %}

@@ -1,74 +1,140 @@
-from typing import Type, Iterator, TypeVar, Union, overload
-from .resource import NamespacedResourceG, GlobalResource, NamespacedResource
+from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple
+import dataclasses
+from dataclasses import dataclass
+import json
 
-NSR = TypeVar('NamespacedResource', bound=NamespacedResource)
-GR = TypeVar('GlobalResource', bound=GlobalResource)
-GLR = TypeVar('NamespacedResourceG', bound=NamespacedResourceG)
+from . import resource as r
+from .generic_client import GenericClient
+
+NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
+GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
+GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
+NamespacedResourceG = TypeVar('NamespacedResourceG', bound=r.NamespacedResourceG)
+NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
+AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
+Resource = TypeVar('Resource', bound=r.Resource)
+
 
 
 class Client:
     def __init__(self):
-        pass
+        self._client = GenericClient()
 
-    def delete(self, res: Type[GR], name: str) -> None:
-        pass
+    def delete(self, res: Type[GlobalResource], name: str) -> None:
+        return self._client.request("delete", res=res, name=name)
 
-    def deletecollection(self, res: Type[GR]) -> None:
-        pass
+    def deletecollection(self, res: Type[GlobalResource]) -> None:
+        return self._client.request("deletecollection", res=res)
 
-    def get(self, res: Type[GR], name: str) -> GR:
-        pass
-
-    @overload
-    def list(self, res: Type[GR], watch: bool=False) -> Iterator[GR]:
-        pass
+    def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
+        return self._client.request("get", res=res, name=name)
 
     @overload
-    def list(self, res: Type[GLR], watch: bool=False) -> Iterator[GLR]:
-        pass
+    def list(self, res: Type[GlobalResource], *, name: str = None) -> Iterator[GlobalResource]:
+        ...
 
-    def list(self, res, watch=False):
-        pass
+    @overload
+    def list(self, res: Type[NamespacedResourceG], *, name: str = None) -> Iterator[NamespacedResourceG]:
+        ...
 
-    def patch(self, res: Type[GR], patch: object) -> GR:
-        pass
+    def list(self, res, *, name=None):
+        return self._client.request("list", res=res, name=name)
 
-    def post(self, res: GR) -> GR:
-        pass
+    @overload
+    def watch(self, res: Type[GlobalResource], *, name: str = None) -> Iterator[Tuple[str, GlobalResource]]:
+        ...
 
-    def put(self, res: GR) -> GR:
-        pass
+    @overload
+    def watch(self, res: Type[NamespacedResourceG], *, name: str = None) -> Iterator[Tuple[str, NamespacedResourceG]]:
+        ...
 
-    def watch(self, res: Type[GR], name: str) -> Iterator[GR]:
-        pass
+    def watch(self, res, *, name=None, watch=False):
+        return self._client.request("list", res=res, name=name, watch=True)
+
+    @overload
+    def patch(self, res: Type[GlobalSubResource], name: str, obj: GlobalSubResource) -> GlobalSubResource:
+        ...
+
+    @overload
+    def patch(self, res: Type[GlobalResource], name: str, obj: GlobalResource) -> GlobalResource:
+        ...
+
+    def patch(self, res, name, obj):
+        return self._client.request("patch", res=res, name=name, obj=obj)
+
+    @overload
+    def post(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
+        ...
+
+    @overload
+    def post(self, obj: GlobalResource) -> GlobalResource:
+        ...
+
+    def post(self, obj, name=None):
+        return self._client.request("post", name=name, obj=obj)
+
+    @overload
+    def put(self, obj: GlobalSubResource, name: str) -> GlobalSubResource:
+        ...
+
+    @overload
+    def put(self, obj: GlobalResource) -> GlobalResource:
+        ...
+
+    def put(self, obj, name=None):
+        return self._client.request("put", name=name, obj=obj)
 
 
 class NamespacedClient:
     def __init__(self):
-        pass
+        self._client = GenericClient()
 
-    def delete(self, res: Type[NSR], name: str, namespace: str) -> None:
-        pass
+    def delete(self, res: Type[NamespacedResource], name: str, namespace: str) -> None:
+        return self._client.request("delete", res=res, name=name, namespace=namespace)
 
-    def deletecollection(self, res: Type[NSR], namespace: str) -> None:
-        pass
+    def deletecollection(self, res: Type[NamespacedResource], namespace: str) -> None:
+        return self._client.request("deletecollection", res=res, namespace=namespace)
 
-    def get(self, res: Type[NSR], name: str, namespace: str) -> NSR:
-        pass
+    def get(self, res: Type[AllNamespacedResource], name: str, namespace: str) -> AllNamespacedResource:
+        return self._client.request("get", res=res, name=name, namespace=namespace)
 
-    def list(self, res: Type[NSR], namespace: str, watch: bool=False) -> Iterator[NSR]:
-        pass
+    def list(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[NamespacedResource]:
+        return self._client.request("list", res=res, namespace=namespace, name=name)
 
-    def patch(self, res: Type[NSR], namespace: str, patch: object) -> NSR:
-        pass
+    def watch(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[NamespacedResource]:
+        return self._client.request("list", res=res, namespace=namespace, name=name, watch=True)
 
-    def post(self, res: NSR) -> NSR:
-        pass
+    @overload
+    def patch(self, res: Type[NamespacedSubResource], name: str, namespace: str, obj: NamespacedSubResource) -> NamespacedSubResource:
+        ...
 
-    def put(self, res: NSR) -> NSR:
-        pass
+    @overload
+    def patch(self, res: Type[NamespacedResource], name: str, namespace: str, obj: NamespacedSubResource) -> NamespacedResource:
+        ...
 
-    def watch(self, res: Type[NSR], name: str) -> Iterator[NSR]:
-        pass
+    def patch(self, res, name: str, namespace: str, obj: object):
+        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj)
+
+    @overload
+    def post(self, obj: NamespacedSubResource, name: str, namespace: str) -> NamespacedSubResource:
+        ...
+
+    @overload
+    def post(self, obj: NamespacedResource) -> NamespacedResource:
+        ...
+
+    def post(self, obj, name=None, namespace=None):
+        return self._client.request("post", name=name, namespace=namespace, obj=obj)
+
+    @overload
+    def put(self, obj: NamespacedSubResource, name: str, namespace: str) -> NamespacedSubResource:
+        ...
+
+    @overload
+    def put(self, obj: NamespacedResource) -> NamespacedResource:
+        ...
+
+    def put(self, obj, name=None, namespace=None):
+        return self._client.request("put", name=name, namespace=namespace, obj=obj)
 
 

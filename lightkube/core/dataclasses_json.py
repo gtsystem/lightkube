@@ -4,6 +4,7 @@ import dataclasses as dc
 from typing import get_type_hints
 import typing
 from functools import partial
+import inspect
 
 
 def dataclass_json(_cls=None, *, letter_case=None):
@@ -26,9 +27,9 @@ def convert_list(from_dict, value, kwargs):
 def extract_types(cls):
     types = {}
     for k, t in get_type_hints(cls).items():
-        if dc.is_dataclass(t):
+        if dc.is_dataclass(t) and hasattr(t, 'from_dict'):
             types[k] = partial(convert_item, t.from_dict)
-        elif typing.get_origin(t) is list and dc.is_dataclass(typing.get_args(t)[0]):
+        elif typing.get_origin(t) is list and dc.is_dataclass(typing.get_args(t)[0]) and hasattr(typing.get_args(t)[0], 'from_dict'):
             types[k] = partial(convert_list, typing.get_args(t)[0].from_dict)
     return types
 
@@ -39,6 +40,7 @@ class LazyAttribute:
         self.convert = convert
 
     def __get__(self, instance, owner):
+
         value = instance._lazy_values[self.key]
         if value is not None:
             value = self.convert(value, instance._lazy_kwargs)
@@ -59,6 +61,8 @@ class DataclassDictMixIn:
             for k, convert in cls._late_init.items():
                 setattr(cls, k, LazyAttribute(k, convert))
 
+        params = inspect.signature(cls).parameters
+        d = {k: v for k, v in d.items() if k in params}
         if lazy:
             obj = cls(**d)
             obj._lazy_values = {}

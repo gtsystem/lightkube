@@ -11,9 +11,10 @@ class ResourceDef(NamedTuple):
 @dataclass
 class ApiInfo:
     resource: ResourceDef
-    parent: Optional[ResourceDef]
     plural: str
     verbs: List[str]
+    parent: Optional[ResourceDef] = None
+    action: str = None
 
 
 class Resource:
@@ -21,6 +22,10 @@ class Resource:
 
 
 class NamespacedResource(Resource):
+    pass
+
+
+class NamespacedSubResource(Resource):
     pass
 
 
@@ -32,4 +37,6 @@ class NamespacedResourceG(NamespacedResource):
     pass
 
 
+class GlobalSubResource(Resource):
+    pass
 
