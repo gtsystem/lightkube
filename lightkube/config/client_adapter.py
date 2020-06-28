@@ -9,16 +9,20 @@ import httpx
 from .config import KubeConfig
 
 
-def Client(config: KubeConfig) -> httpx.Client:
+def Client(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.Client:
     kwargs = {}
+    if timeout:
+        kwargs['timeout'] = timeout
     _setup(config, kwargs)
     _setup_request_auth(config, kwargs)
     _setup_request_certificates(config, kwargs)
     return httpx.Client(**kwargs)
 
 
-def AsyncClient(config: KubeConfig) -> httpx.AsyncClient:
+def AsyncClient(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.AsyncClient:
     kwargs = {}
+    if timeout:
+        kwargs['timeout'] = timeout
     _setup(config, kwargs)
     _setup_request_auth(config, kwargs)
     _setup_request_certificates(config, kwargs)

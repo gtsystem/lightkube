@@ -1,0 +1,5 @@
+_env38
+lightkube/models
+lightkube/resources
+__pycache__
+.idea

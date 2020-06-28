@@ -101,7 +101,7 @@ class NamespacedClient:
     def list(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[NamespacedResource]:
         return self._client.request("list", res=res, namespace=namespace, name=name)
 
-    def watch(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[NamespacedResource]:
+    def watch(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[Tuple[str, NamespacedResource]]:
         return self._client.request("list", res=res, namespace=namespace, name=name, watch=True)
 
     @overload

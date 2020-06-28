@@ -2,6 +2,9 @@ from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple
 import dataclasses
 from dataclasses import dataclass
 import json
+from copy import copy
+
+import httpx
 
 from . import resource as r
 from ..config.config import KubeConfig
@@ -30,14 +33,17 @@ class BasicRequest:
 
 
 class GenericClient:
-    def __init__(self, config: KubeConfig = None):
+    def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None):
         if config is None:
             try:
                 config = KubeConfig.from_service_account()
             except Exception:
                 config = KubeConfig.from_file()
+        if timeout is None:
+            timeout = httpx.Timeout()
         self._config = config
-        self._client = client_adapter.Client(config)
+        self._timeout = timeout
+        self._client = client_adapter.Client(config, timeout)
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False) -> BasicRequest:
         params = {}
@@ -82,19 +88,24 @@ class GenericClient:
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res)
 
     def watch(self, br: BasicRequest):
+        timeout = copy(self._timeout)
+        timeout.read_timeout = None
         version = br.params.get('resourceVersion')
         res = br.response_type
         while True:
             if version is not None:
                 br.params['resourceVersion'] = version
             req = self._client.build_request(br.method, br.url, params=br.params)
-            resp = self._client.send(req, stream=True)
-            for l in resp.iter_lines():
-                l = json.loads(l)
-                tp = l['type']
-                obj = l['object']
-                version = obj['metadata']['resourceVersion']
-                yield tp, res.from_dict(obj)
+            resp = self._client.send(req, stream=True, timeout=timeout)
+            try:
+                for l in resp.iter_lines():
+                    l = json.loads(l)
+                    tp = l['type']
+                    obj = l['object']
+                    version = obj['metadata']['resourceVersion']
+                    yield tp, res.from_dict(obj)
+            except httpx.HTTPError:     # TODO: see if there is any better exception to catch here
+                continue
 
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, watch)
