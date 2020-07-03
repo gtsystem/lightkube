@@ -5,6 +5,16 @@ from typing import get_type_hints
 import typing
 from functools import partial
 import inspect
+from datetime import datetime
+
+
+def to_datetime(string, **_):
+    return datetime.fromisoformat(string.replace("Z", "+00:00"))
+
+
+TYPE_MAPPING = {
+    datetime: to_datetime
+}
 
 
 def dataclass_json(_cls=None, *, letter_case=None):
@@ -27,10 +37,17 @@ def convert_list(from_dict, value, kwargs):
 def extract_types(cls):
     types = {}
     for k, t in get_type_hints(cls).items():
+        if typing.get_origin(t) is list:
+            convert = convert_list
+            t = typing.get_args(t)[0]
+        else:
+            convert = convert_item
+
         if dc.is_dataclass(t) and hasattr(t, 'from_dict'):
-            types[k] = partial(convert_item, t.from_dict)
-        elif typing.get_origin(t) is list and dc.is_dataclass(typing.get_args(t)[0]) and hasattr(typing.get_args(t)[0], 'from_dict'):
-            types[k] = partial(convert_list, typing.get_args(t)[0].from_dict)
+            types[k] = partial(convert, t.from_dict)
+        elif t in TYPE_MAPPING:
+            types[k] = partial(convert, TYPE_MAPPING[t])
+
     return types
 
 

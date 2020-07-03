@@ -70,7 +70,11 @@ class Model:
                 if 'format' not in defi:
                     self.type = 'str'
                 elif defi['format'] == 'date-time':
-                    self.type = 'str'
+                    self.type = 'datetime'
+                    self.import_module = Import('datetime', 'datetime')
+                elif defi['format'] == 'int-or-string':
+                    self.type = 'Union[int, str]'
+                    self.import_module = Import('typing', 'Union')
 
     @property
     def has_properties(self):
