@@ -4,25 +4,18 @@ from typing import List
 
 from ..core.dataclasses_json import dataclass_json
 
-{% for mod in collect_imports(module, models) %}
-from . import {{mod}}
+{% for mod in modules %}
+from {{mod.from_module}} import {{mod.module}}
 {% endfor %}
 
 
-{%
-set map = {
-  "ns": "NamespacedResource",
-  "nsg": "NamespacedResourceG",
-  "global": "GlobalResource"
-}
-%}
-{% for name, defi in models %}
+{% for model in models %}
 @dataclass_json
 @dataclass
-class {{ name }}:
-  {% if 'properties' in defi %}
-   {% for prop_name, prop_type, default in get_props(defi, module) %}
-    {{prop_name}}: '{{prop_type}}'{{default}}
+class {{ model.name }}:
+  {% if model.has_properties %}
+   {% for prop in model.properties %}
+    {{prop.name}}: '{{prop.type}}'{{prop.default_repr}}
    {% endfor %}
   {% else %}
     pass
