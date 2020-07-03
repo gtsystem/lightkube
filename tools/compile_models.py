@@ -18,6 +18,9 @@ def collect_imports(module: Import, models: List[Model]):
             for prop in model.properties:
                 if prop.import_module:
                     imports.add(prop.import_module)
+        else:
+            if model.import_module:
+                imports.add(model.import_module)
 
     if module in imports:
         imports.remove(module)

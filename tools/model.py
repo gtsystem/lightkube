@@ -54,10 +54,23 @@ class Model:
         sc = schema_name(name)
         self.module = sc.module
         self.name = sc.name
+        self.import_module = None
+        self.type = None
         if 'properties' in defi:
             self.properties = self.get_props(defi)
         else:
             self.properties = None
+            if 'type' not in defi:  # reference to any json type
+                self.type = 'Any'
+                self.import_module = Import('typing', 'Any')
+            elif defi['type'] == 'object':
+                self.type = 'Dict'
+                self.import_module = Import('typing', 'Dict')
+            elif defi['type'] == 'string':
+                if 'format' not in defi:
+                    self.type = 'str'
+                elif defi['format'] == 'date-time':
+                    self.type = 'str'
 
     @property
     def has_properties(self):

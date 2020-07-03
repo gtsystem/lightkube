@@ -10,16 +10,16 @@ from {{mod.from_module}} import {{mod.module}}
 
 
 {% for model in models %}
+{% if model.has_properties %}
 @dataclass_json
 @dataclass
 class {{ model.name }}:
-  {% if model.has_properties %}
    {% for prop in model.properties %}
     {{prop.name}}: '{{prop.type}}'{{prop.default_repr}}
    {% endfor %}
-  {% else %}
-    pass
-  {% endif %}
+{% else %}
+{{ model.name }} = {{ model.type }}
+{% endif %}
 
 
 {% endfor %}
