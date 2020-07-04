@@ -9,6 +9,7 @@ import httpx
 from . import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
+from ..models import meta_v1
 
 
 METHOD_MAPPING = {
@@ -113,6 +114,8 @@ class GenericClient:
             path.append(res.api_info.action)
 
         http_method = METHOD_MAPPING[method]
+        if method == 'delete':
+            res = None
 
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
@@ -152,4 +155,5 @@ class GenericClient:
         if method == 'list':
             return (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
         else:
-            return res.from_dict(data, lazy=self._lazy)
+            if res is not None:
+                return res.from_dict(data, lazy=self._lazy)
