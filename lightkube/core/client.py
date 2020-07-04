@@ -1,4 +1,5 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple
+from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List
+import enum
 import dataclasses
 from dataclasses import dataclass
 import json
@@ -53,15 +54,15 @@ class Client:
         return self._client.request("list", res=res, name=name, watch=True)
 
     @overload
-    def patch(self, res: Type[GlobalSubResource], name: str, obj: GlobalSubResource) -> GlobalSubResource:
+    def patch(self, res: Type[GlobalSubResource], name: str, obj: Union[GlobalSubResource, Dict, List], patch_type: r.PatchType) -> GlobalSubResource:
         ...
 
     @overload
-    def patch(self, res: Type[GlobalResource], name: str, obj: GlobalResource) -> GlobalResource:
+    def patch(self, res: Type[GlobalResource], name: str, obj: Union[GlobalResource, Dict, List], patch_type: r.PatchType) -> GlobalResource:
         ...
 
     def patch(self, res, name, obj):
-        return self._client.request("patch", res=res, name=name, obj=obj)
+        return self._client.request("patch", res=res, name=name, obj=obj, patch_type=r.PatchType.STRATEGIC)
 
     @overload
     def post(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
@@ -106,15 +107,15 @@ class NamespacedClient:
         return self._client.request("list", res=res, namespace=namespace, name=name, watch=True, namespaced=True)
 
     @overload
-    def patch(self, res: Type[NamespacedSubResource], name: str, namespace: str, obj: NamespacedSubResource) -> NamespacedSubResource:
+    def patch(self, res: Type[NamespacedSubResource], name: str, namespace: str, obj: Union[NamespacedSubResource, Dict, List], patch_type: r.PatchType) -> NamespacedSubResource:
         ...
 
     @overload
-    def patch(self, res: Type[NamespacedResource], name: str, namespace: str, obj: NamespacedResource) -> NamespacedResource:
+    def patch(self, res: Type[NamespacedResource], name: str, namespace: str, obj: Union[NamespacedResource, Dict, List], patch_type: r.PatchType) -> NamespacedResource:
         ...
 
-    def patch(self, res, name: str, namespace: str, obj: object):
-        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, namespaced=True)
+    def patch(self, res, name: str, namespace: str, obj: object, patch_type=r.PatchType.STRATEGIC):
+        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, namespaced=True, patch_type=patch_type)
 
     @overload
     def post(self, obj: NamespacedSubResource, name: str, namespace: str) -> NamespacedSubResource:

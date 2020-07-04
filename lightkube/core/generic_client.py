@@ -48,7 +48,7 @@ class GenericClient:
         self._lazy = lazy
         self._client = client_adapter.Client(config, timeout)
 
-    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False) -> BasicRequest:
+    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> BasicRequest:
         params = {}
         data = None
         if res is None:
@@ -91,11 +91,15 @@ class GenericClient:
         if method in ('post', 'put', 'patch'):
             if obj is None:
                 raise ValueError("obj is required for post, put or patch")
-            data = obj.to_dict()
+
+            if method == 'patch' and not isinstance(obj, r.Resource):
+                data = obj
+            else:
+                data = obj.to_dict()
 
         path.append(res.api_info.plural)
         if method in ('delete', 'get', 'patch', 'put') or res.api_info.action:
-            if name is None and method in ('patch', 'put'):
+            if name is None and method == 'put':
                 name = obj.metadata.name
             if name is None:
                 raise ValueError("resource name not defined")
@@ -103,7 +107,7 @@ class GenericClient:
 
         headers = None
         if method == 'patch':
-            headers = {'Content-Type': "application/strategic-merge-patch+json"}
+            headers = {'Content-Type': patch_type.value}
 
         if res.api_info.action:
             path.append(res.api_info.action)
@@ -135,8 +139,8 @@ class GenericClient:
                 # TODO: wait in case of some errors or fail in case of others
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, namespaced, watch)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, namespaced, watch, patch_type)
         print(br)
         if watch:
             return self.watch(br)

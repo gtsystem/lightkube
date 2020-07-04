@@ -1,5 +1,6 @@
 from typing import NamedTuple, List, Optional
 from dataclasses import dataclass
+import enum
 
 
 class ResourceDef(NamedTuple):
@@ -40,3 +41,8 @@ class NamespacedResourceG(NamespacedResource):
 class GlobalSubResource(Resource):
     pass
 
+
+class PatchType(enum.Enum):
+    JSON = 'application/json-patch+json'
+    MERGE = 'application/merge-patch+json'
+    STRATEGIC = 'application/strategic-merge-patch+json'
