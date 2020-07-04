@@ -21,6 +21,15 @@ Resource = TypeVar('Resource', bound=r.Resource)
 class Client:
     def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None, lazy=True):
         self._client = GenericClient(config, timeout=timeout, lazy=lazy)
+        self._namespace_client = NamespacedClient(self._client)
+
+    @property
+    def namespaced(self):
+        return self._namespace_client
+
+    @property
+    def ns(self):
+        return self._namespace_client
 
     def delete(self, res: Type[GlobalResource], name: str) -> None:
         return self._client.request("delete", res=res, name=name)
@@ -88,8 +97,10 @@ class Client:
 
 
 class NamespacedClient:
-    def __init__(self):
-        self._client = GenericClient()
+    def __init__(self, client: GenericClient = None):
+        if not client:
+            client = GenericClient()
+        self._client = client
 
     def delete(self, res: Type[NamespacedResource], name: str, namespace: str) -> None:
         return self._client.request("delete", res=res, name=name, namespace=namespace, namespaced=True)
