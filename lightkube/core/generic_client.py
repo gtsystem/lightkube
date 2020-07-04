@@ -30,6 +30,8 @@ class BasicRequest:
     url: str
     response_type: Any
     params: Dict[str, str] = dataclasses.field(default_factory=dict)
+    data: Any = None
+    headers: Dict[str, str] = None
 
 
 class GenericClient:
@@ -46,14 +48,15 @@ class GenericClient:
         self._lazy = lazy
         self._client = client_adapter.Client(config, timeout)
 
-    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False) -> BasicRequest:
+    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False) -> BasicRequest:
         params = {}
+        data = None
         if res is None:
             if obj is None:
                 raise ValueError("At least a resource or an instance of a resource need to be provided")
             res = obj.__class__
 
-        if namespace is None and issubclass(res, r.NamespacedResourceG):
+        if not namespaced and issubclass(res, r.NamespacedResourceG) and method in ('list', 'watch'):
             real_method = "global_watch" if watch else "global_" + method
         else:
             real_method = "watch" if watch else method
@@ -77,16 +80,37 @@ class GenericClient:
         else:
             path = ["apis", base.group, base.version]
 
-        if namespace and issubclass(res, (r.NamespacedResource, r.NamespacedSubResource)):
+        #namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
+        if namespaced:
+            if namespace is None and method in ('post', 'put'):
+                namespace = obj.metadata.namespace
+            if namespace is None:
+                raise ValueError("resource namespace not defined")
             path.extend(["namespaces", namespace])
+
+        if method in ('post', 'put', 'patch'):
+            if obj is None:
+                raise ValueError("obj is required for post, put or patch")
+            data = obj.to_dict()
+
         path.append(res.api_info.plural)
         if method in ('delete', 'get', 'patch', 'put') or res.api_info.action:
+            if name is None and method in ('patch', 'put'):
+                name = obj.metadata.name
+            if name is None:
+                raise ValueError("resource name not defined")
             path.append(name)
+
+        headers = None
+        if method == 'patch':
+            headers = {'Content-Type': "application/strategic-merge-patch+json"}
+
         if res.api_info.action:
             path.append(res.api_info.action)
 
         http_method = METHOD_MAPPING[method]
-        return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res)
+
+        return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
     def watch(self, br: BasicRequest):
         timeout = copy(self._timeout)
@@ -99,23 +123,29 @@ class GenericClient:
             req = self._client.build_request(br.method, br.url, params=br.params)
             resp = self._client.send(req, stream=True, timeout=timeout)
             try:
+                resp.raise_for_status()
                 for l in resp.iter_lines():
                     l = json.loads(l)
                     tp = l['type']
                     obj = l['object']
                     version = obj['metadata']['resourceVersion']
                     yield tp, res.from_dict(obj, lazy=self._lazy)
-            except httpx.HTTPError:     # TODO: see if there is any better exception to catch here
+            except httpx.HTTPError:
+                # TODO: see if there is any better exception to catch here
+                # TODO: wait in case of some errors or fail in case of others
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, watch)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, namespaced, watch)
+        print(br)
         if watch:
             return self.watch(br)
-        req = self._client.build_request(br.method, br.url, params=br.params)
-        resp = self._client.send(req).json()
+        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+        resp = self._client.send(req)
+        resp.raise_for_status()
+        data = resp.json()
         res = br.response_type
         if method == 'list':
-            return (res.from_dict(obj, lazy=self._lazy) for obj in resp['items'])
+            return (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
         else:
-            return res.from_dict(resp, lazy=self._lazy)
+            return res.from_dict(data, lazy=self._lazy)

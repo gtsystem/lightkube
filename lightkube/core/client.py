@@ -91,30 +91,30 @@ class NamespacedClient:
         self._client = GenericClient()
 
     def delete(self, res: Type[NamespacedResource], name: str, namespace: str) -> None:
-        return self._client.request("delete", res=res, name=name, namespace=namespace)
+        return self._client.request("delete", res=res, name=name, namespace=namespace, namespaced=True)
 
     def deletecollection(self, res: Type[NamespacedResource], namespace: str) -> None:
-        return self._client.request("deletecollection", res=res, namespace=namespace)
+        return self._client.request("deletecollection", res=res, namespace=namespace, namespaced=True)
 
     def get(self, res: Type[AllNamespacedResource], name: str, namespace: str) -> AllNamespacedResource:
-        return self._client.request("get", res=res, name=name, namespace=namespace)
+        return self._client.request("get", res=res, name=name, namespace=namespace, namespaced=True)
 
     def list(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[NamespacedResource]:
-        return self._client.request("list", res=res, namespace=namespace, name=name)
+        return self._client.request("list", res=res, namespace=namespace, name=name, namespaced=True)
 
     def watch(self, res: Type[NamespacedResource], namespace: str, *, name: str = None) -> Iterator[Tuple[str, NamespacedResource]]:
-        return self._client.request("list", res=res, namespace=namespace, name=name, watch=True)
+        return self._client.request("list", res=res, namespace=namespace, name=name, watch=True, namespaced=True)
 
     @overload
     def patch(self, res: Type[NamespacedSubResource], name: str, namespace: str, obj: NamespacedSubResource) -> NamespacedSubResource:
         ...
 
     @overload
-    def patch(self, res: Type[NamespacedResource], name: str, namespace: str, obj: NamespacedSubResource) -> NamespacedResource:
+    def patch(self, res: Type[NamespacedResource], name: str, namespace: str, obj: NamespacedResource) -> NamespacedResource:
         ...
 
     def patch(self, res, name: str, namespace: str, obj: object):
-        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj)
+        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, namespaced=True)
 
     @overload
     def post(self, obj: NamespacedSubResource, name: str, namespace: str) -> NamespacedSubResource:
@@ -125,7 +125,7 @@ class NamespacedClient:
         ...
 
     def post(self, obj, name=None, namespace=None):
-        return self._client.request("post", name=name, namespace=namespace, obj=obj)
+        return self._client.request("post", name=name, namespace=namespace, obj=obj, namespaced=True)
 
     @overload
     def put(self, obj: NamespacedSubResource, name: str, namespace: str) -> NamespacedSubResource:
@@ -136,6 +136,6 @@ class NamespacedClient:
         ...
 
     def put(self, obj, name=None, namespace=None):
-        return self._client.request("put", name=name, namespace=namespace, obj=obj)
+        return self._client.request("put", name=name, namespace=namespace, obj=obj, namespaced=True)
 
 
