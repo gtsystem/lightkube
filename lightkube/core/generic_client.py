@@ -36,7 +36,7 @@ class BasicRequest:
 
 
 class GenericClient:
-    def __init__(self, config: KubeConfig = None, timeout: httpx.Timeout = None, lazy=True):
+    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
         if config is None:
             try:
                 config = KubeConfig.from_service_account()
@@ -48,14 +48,17 @@ class GenericClient:
         self._timeout = timeout
         self._lazy = lazy
         self._client = client_adapter.Client(config, timeout)
+        self.namespace = namespace if namespace else config.namespace
 
-    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> BasicRequest:
+    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> BasicRequest:
         params = {}
         data = None
         if res is None:
             if obj is None:
                 raise ValueError("At least a resource or an instance of a resource need to be provided")
             res = obj.__class__
+
+        namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
 
         if not namespaced and issubclass(res, r.NamespacedResourceG) and method in ('list', 'watch'):
             real_method = "global_watch" if watch else "global_" + method
@@ -81,12 +84,11 @@ class GenericClient:
         else:
             path = ["apis", base.group, base.version]
 
-        #namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
         if namespaced:
             if namespace is None and method in ('post', 'put'):
                 namespace = obj.metadata.namespace
             if namespace is None:
-                raise ValueError("resource namespace not defined")
+                namespace = self.namespace
             path.extend(["namespaces", namespace])
 
         if method in ('post', 'put', 'patch'):
@@ -142,8 +144,8 @@ class GenericClient:
                 # TODO: wait in case of some errors or fail in case of others
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, namespaced=False, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, namespaced, watch, patch_type)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, patch_type)
         print(br)
         if watch:
             return self.watch(br)

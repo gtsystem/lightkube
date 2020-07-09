@@ -13,7 +13,7 @@ from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 
 client = Client()
-pod = client.ns.get(Pod, name="my-pod", namespace="default")
+pod = client.get(Pod, name="my-pod", namespace="default")
 print(pod.namespace.uid)
 ```
 
@@ -33,7 +33,7 @@ from lightkube import Client
 from lightkube.resources.apps_v1 import Deployment
 
 client = Client()
-for op, dep in client.ns.watch(Deployment, namespace="default"):
+for op, dep in client.watch(Deployment, namespace="default"):
     print(f"{dep.namespace.name} {dep.spec.replicas}")
 ```
 
@@ -47,24 +47,24 @@ config = ConfigMap(
     data={'key1': 'value1', 'key2': 'value2'}
 )
 
-client.ns.post(config)
+client.create(config)
 ```
 
 Replace the previous config with a different content
 ```python
 config.data['key1'] = 'new value'
-client.ns.put(config)
+client.replace(config)
 ```
 
 Patch an existing config
 ```python
 patch = {'metadata': {'labels': {'app': 'xyz'}}}
-client.ns.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
+client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
 ```
 
 Delete a namespaced resource
 ```python
-client.ns.delete(ConfigMap, name='my-config', namespace='default')
+client.delete(ConfigMap, name='my-config', namespace='default')
 ```
 
 Scale a deployment
@@ -77,5 +77,5 @@ obj = Deployment.Scale(
     metadata=ObjectMeta(name='metrics-server', namespace='kube-system'),
     spec=ScaleSpec(replicas=1)
 )
-client.ns.put(obj, 'metrics-server', 'kube-system')
+client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
