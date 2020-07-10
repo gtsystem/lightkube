@@ -1,7 +1,9 @@
 import re
 from typing import NamedTuple
+import keyword
 RE_MODEL = re.compile("^.*[.](apis?|pkg)[.]")
 
+KEYWORDS = set(keyword.kwlist)
 
 class Schema(NamedTuple):
     module: str
@@ -21,8 +23,10 @@ def schema_name(orig_name) -> Schema:
 
 
 def make_prop_name(p_name):
-    if p_name == 'continue':
-        return 'continue_'
+    if p_name in KEYWORDS:
+        return f'{p_name}_'
+    p_name = p_name.replace('$', 'd_')
+    p_name = p_name.replace('-', '_')
     return p_name
 
 
@@ -43,10 +47,16 @@ class Property(NamedTuple):
     type: str
     required: bool
     import_module: Import
+    alias: str = None
 
     @property
     def default_repr(self):
-        return ' = None' if not self.required else ''
+        if not self.alias:
+            return ' = None' if not self.required else ''
+        else:
+            if not self.required:
+                return f' = field(metadata={{"json": "{self.alias}"}}, default=None)'
+            return f' = field(metadata={{"json": "{self.alias}"}})'
 
 
 class Model:
@@ -86,11 +96,13 @@ class Model:
         for p_name, p_defi in defi['properties'].items():
             req = p_name in required
             p_type = self.to_pytype(p_defi, required=req)
+            real_name = make_prop_name(p_name)
             properties.append(Property(
-                name=make_prop_name(p_name),
+                name=real_name,
                 type=p_type,
                 required=req,
-                import_module=get_module_from_property_def(p_defi)
+                import_module=get_module_from_property_def(p_defi),
+                alias=p_name if p_name != real_name else None
             ))
 
         properties.sort(key=lambda x: x.required, reverse=True)
