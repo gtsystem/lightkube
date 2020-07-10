@@ -1,5 +1,7 @@
 # lightkube
 
+![](https://img.shields.io/github/workflow/status/gtsystem/lightkube/Python%20package)
+
 Modern lightweight kubernetes module for python
 
 **NOTICE:** This project is still in an early alpha stage and not suitable for production usage.
