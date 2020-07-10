@@ -7,7 +7,7 @@ import httpx
 from ..config.config import KubeConfig
 
 from . import resource as r
-from .generic_client import GenericClient
+from .generic_client import GenericClient, AllNamespaces
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -16,13 +16,6 @@ NamespacedResourceG = TypeVar('NamespacedResourceG', bound=r.NamespacedResourceG
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
-
-
-class AllNamespaces:
-    pass
-
-
-ALL = AllNamespaces()
 
 
 class Client:
@@ -165,12 +158,4 @@ class Client:
         return self._client.request("put", name=name, namespace=namespace, obj=obj)
 
 
-    # we could add conveniency api for
-    # status
-    # scale (Deployment, ReplicaSet, StatefulSet, ReplicationController)
-    # rollback (deployment)
-    # approval (CertificateSigningRequest)
-    # Finalize (namespace)
-    # Binding (Pod)
-    # Eviction (Pod)
-    # Log (Pod)
+

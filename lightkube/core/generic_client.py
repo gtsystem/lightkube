@@ -11,6 +11,12 @@ from ..config.config import KubeConfig
 from ..config import client_adapter
 from ..models import meta_v1
 
+class AllNamespaces:
+    pass
+
+
+ALL = AllNamespaces()
+
 
 class ApiError(httpx.HTTPError):
     def __init__(
@@ -73,7 +79,11 @@ class GenericClient:
 
         namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
 
-        if not namespaced and issubclass(res, r.NamespacedResourceG) and method in ('list', 'watch'):
+        if namespace is ALL:
+            if not issubclass(res, r.NamespacedResourceG):
+                raise ValueError(f"Class {res} doesn't support global {method}")
+            if method not in ('list', 'watch'):
+                raise ValueError("Only methods 'list' and 'watch' can be called for all namespaces")
             real_method = "global_watch" if watch else "global_" + method
         else:
             real_method = "watch" if watch else method
@@ -97,7 +107,7 @@ class GenericClient:
         else:
             path = ["apis", base.group, base.version]
 
-        if namespaced:
+        if namespaced and namespace is not ALL:
             if namespace is None and method in ('post', 'put'):
                 namespace = obj.metadata.namespace
             if namespace is None:
