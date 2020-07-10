@@ -32,7 +32,8 @@ def extract(fname, path):
         sw = json.load(f)
 
     p = path.joinpath("models")
-    shutil.rmtree(p)
+    if p.exists():
+        shutil.rmtree(p)
     p.mkdir()
 
     modules = defaultdict(list)

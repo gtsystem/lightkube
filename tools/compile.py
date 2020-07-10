@@ -187,7 +187,8 @@ def compile(resources, path: Path):
     # global_actions (only if namespaced)
     # sub_actions
     p = path.joinpath("resources")
-    shutil.rmtree(p)
+    if p.exists():
+        shutil.rmtree(p)
     p.mkdir()
     modules = defaultdict(list)
     for key, elements in resources.items():
