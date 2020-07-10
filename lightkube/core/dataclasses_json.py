@@ -98,6 +98,7 @@ def _asdict_inner(obj, dict_factory):
         kwargs = dict(dict_factory=dict_factory)
         result = []
         lazy_attr = getattr(obj, "_lazy_values", None)
+        key_transform = obj._prop_to_json.get
         for k, conv_f in obj._late_init_to:
             if lazy_attr is not None and k in lazy_attr:
                 value = lazy_attr[k]
@@ -107,7 +108,7 @@ def _asdict_inner(obj, dict_factory):
                     continue
                 value = conv_f(value, kwargs)
             if value is not None:
-                result.append((k, value))
+                result.append((key_transform(k, k), value))
         return dict_factory(result)
     else:
         return copy.deepcopy(obj)
@@ -126,16 +127,21 @@ class DataclassDictMixIn:
                 setattr(cls, k, LazyAttribute(k, convert))
 
         params = inspect.signature(cls).parameters
-        d = {k: v for k, v in d.items() if k in params}
+        valid_d = {}
+        transform = cls._json_to_prop.get
+        for k, v in d.items():
+            k = transform(k, k)
+            if k in params:
+                valid_d[k] = v
         if lazy:
-            obj = cls(**d)
+            obj = cls(**valid_d)
             obj._lazy_values = {}
             obj._lazy_kwargs = kwargs
             for k, _ in cls._late_init_from:
                 obj._lazy_values[k] = getattr(obj, k)
                 delattr(obj, k)
         else:
-            obj = cls(**d)
+            obj = cls(**valid_d)
             d = obj.__dict__
             for k, convert in cls._late_init_from:
                 if d[k] is not None:
@@ -153,4 +159,6 @@ def _process_class(cls, letter_case):
     cls.to_dict = DataclassDictMixIn.to_dict
     cls._late_init_from = None
     cls._late_init_to = None
+    cls._prop_to_json = {field.name: field.metadata['json'] for field in dc.fields(cls) if 'json' in field.metadata}
+    cls._json_to_prop = {v: k for k, v in cls._prop_to_json.items()}
     return cls
