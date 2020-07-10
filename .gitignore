@@ -1,4 +1,4 @@
-_env38
+_env*
 lightkube/models
 lightkube/resources
 __pycache__

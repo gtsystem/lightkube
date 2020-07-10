@@ -1,9 +1,11 @@
 import dataclasses as dc
 from typing import get_type_hints
-import typing
 import copy
 import inspect
+import typing
 from datetime import datetime
+
+from .typing_extra import get_args, get_origin
 
 
 def to_datetime(string):
@@ -64,9 +66,9 @@ def extract_types(cls, is_to=True):
     for field in dc.fields(cls):
         k = field.name
         t = types[k]
-        if typing.get_origin(t) is list:
+        if get_origin(t) is list:
             is_list = True
-            t = typing.get_args(t)[0]
+            t = get_args(t)[0]
         else:
             is_list = False
 
