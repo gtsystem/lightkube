@@ -12,6 +12,19 @@ from ..config import client_adapter
 from ..models import meta_v1
 
 
+class ApiError(httpx.HTTPError):
+    def __init__(
+            self, request: httpx.Request = None, response: httpx.Response = None) -> None:
+        self.status = meta_v1.Status.from_dict(response.json())
+        super().__init__(self.status.message, request=request, response=response)
+
+
+def transform_exception(e: httpx.HTTPError):
+    if e.response.headers['Content-Type'] == 'application/json':
+        return ApiError(request=e.request, response=e.response)
+    return e
+
+
 METHOD_MAPPING = {
     'delete': 'DELETE',
     'deletecollection': 'DELETE',
@@ -151,7 +164,10 @@ class GenericClient:
             return self.watch(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = self._client.send(req)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            raise transform_exception(e)
         data = resp.json()
         res = br.response_type
         if method == 'list':
