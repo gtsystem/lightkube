@@ -178,6 +178,9 @@ class GenericClient:
             resp.raise_for_status()
         except httpx.HTTPError as e:
             raise transform_exception(e)
+        if method == 'delete':
+            # TODO: delete actions normallu return a Status object, we may want to return it as well
+            return
         data = resp.json()
         res = br.response_type
         if method == 'list':
