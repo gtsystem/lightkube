@@ -2,10 +2,13 @@ import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+import json
 import pytest
+import httpx
+import respx
+
 import lightkube
 from lightkube.config.config import KubeConfig
-import respx
 from lightkube.resources.core_v1 import Pod, Node, Binding
 
 
@@ -31,6 +34,7 @@ def kubeconfig(tmpdir):
     kubeconfig = tmpdir.join("kubeconfig")
     kubeconfig.write(KUBECONFIG)
     return kubeconfig
+
 
 @pytest.fixture
 def kubeconfig_ns(tmpdir):
@@ -116,3 +120,48 @@ def test_delete_namespaced(client: lightkube.Client):
 def test_delete_global(client: lightkube.Client):
     respx.delete("https://localhost:9443/api/v1/nodes/xx")
     client.delete(Node, name="xx")
+
+
+@respx.mock
+def test_errors(client: lightkube.Client):
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content="Error", status_code=409)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'message': 'got problems'},
+              status_code=409)
+    with pytest.raises(httpx.HTTPError):
+        client.get(Pod, name="xx")
+
+    with pytest.raises(lightkube.ApiError, match='got problems') as exc:
+        client.get(Pod, name="xx")
+    assert exc.value.status.message == 'got problems'
+
+
+@respx.mock
+def test_watch(client: lightkube.Client):
+    resp = "\n".join(json.dumps({'type': 'ADDED', 'object': {'metadata': {'name': f'p{i}', 'resourceVersion': '1'}}}) for i in range(10))
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=resp+"\n")
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true", content=resp + "\n")
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true", status_code=404)
+
+    i = None
+    with pytest.raises(httpx.HTTPError) as exi:
+        for i, (op, node) in enumerate(client.watch(Node)):
+            assert node.metadata.name == f'p{i}'
+            assert op == 'ADDED'
+    assert i == 9
+    assert exi.value.response.status_code == 404
+
+    # testing starting from specific resource version
+    i = None
+    with pytest.raises(httpx.HTTPError) as exi:
+        for i, (op, node) in enumerate(client.watch(Node, resource_version="2")):
+            assert node.metadata.name == f'p{i}'
+            assert op == 'ADDED'
+    assert i == 9
+    assert exi.value.response.status_code == 404
+
+    i = None
+    for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.STOP)):
+        assert node.metadata.name == f'p{i}'
+        assert op == 'ADDED'
+    assert i == 9

@@ -1,8 +1,9 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple
+from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Callable
 import dataclasses
 from dataclasses import dataclass
 import json
 from copy import copy
+import time
 
 import httpx
 
@@ -29,6 +30,10 @@ def transform_exception(e: httpx.HTTPError):
     if e.response.headers['Content-Type'] == 'application/json':
         return ApiError(request=e.request, response=e.response)
     return e
+
+
+def raise_exc(e):
+    return r.WatchOnError.RAISE
 
 
 METHOD_MAPPING = {
@@ -69,8 +74,12 @@ class GenericClient:
         self._client = client_adapter.Client(config, timeout)
         self.namespace = namespace if namespace else config.namespace
 
-    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> BasicRequest:
-        params = {}
+    def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
+                        watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
+        if params is not None:
+            params = {k: v for k, v in params.items() if v is not None}
+        else:
+            params = {}
         data = None
         if res is None:
             if obj is None:
@@ -144,7 +153,7 @@ class GenericClient:
 
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
-    def watch(self, br: BasicRequest):
+    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
         timeout = copy(self._timeout)
         timeout.read_timeout = None
         version = br.params.get('resourceVersion')
@@ -152,6 +161,7 @@ class GenericClient:
         while True:
             if version is not None:
                 br.params['resourceVersion'] = version
+            print(br)
             req = self._client.build_request(br.method, br.url, params=br.params)
             resp = self._client.send(req, stream=True, timeout=timeout)
             try:
@@ -162,9 +172,12 @@ class GenericClient:
                     obj = l['object']
                     version = obj['metadata']['resourceVersion']
                     yield tp, res.from_dict(obj, lazy=self._lazy)
-            except httpx.HTTPError:
-                # TODO: see if there is any better exception to catch here
-                # TODO: wait in case of some errors or fail in case of others
+            except Exception as e:
+                action = on_error(e)
+                if action is r.WatchOnError.RAISE:
+                    raise
+                if action is r.WatchOnError.STOP:
+                    break
                 continue
 
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:

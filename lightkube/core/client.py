@@ -1,4 +1,4 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List
+from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List, Callable
 import enum
 import dataclasses
 from dataclasses import dataclass
@@ -7,7 +7,7 @@ import httpx
 from ..config.config import KubeConfig
 
 from . import resource as r
-from .generic_client import GenericClient, AllNamespaces
+from .generic_client import GenericClient, AllNamespaces, raise_exc
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -78,21 +78,31 @@ class Client:
         return self._client.request("list", res=res, name=name, namespace=namespace)
 
     @overload
-    def watch(self, res: Type[GlobalResource], *, name: str = None) -> Iterator[Tuple[str, GlobalResource]]:
+    def watch(self, res: Type[GlobalResource], *, name: str = None, server_timeout: int = None,
+              resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
+            Iterator[Tuple[str, GlobalResource]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, name: str = None) -> \
+    def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, name: str = None,
+              server_timeout: int = None, resource_version: str = None,
+              on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResourceG]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResource], *, namespace: str = None, name: str = None) -> \
+    def watch(self, res: Type[NamespacedResource], *, namespace: str = None, name: str = None,
+              server_timeout: int = None, resource_version: str = None,
+              on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResource]]:
         ...
 
-    def watch(self, res, *, namespace=None, name=None):
-        return self._client.request("list", res=res, name=name, namespace=namespace, watch=True)
+    def watch(self, res, *, namespace=None, name=None, server_timeout=None, resource_version=None, on_error=raise_exc):
+        br = self._client.prepare_request("list", res=res, name=name, namespace=namespace, watch=True, params={
+            'timeoutSeconds': server_timeout,
+            'resourceVersion': resource_version
+        })
+        return self._client.watch(br, on_error=on_error)
 
     @overload
     def patch(self, res: Type[GlobalSubResource], name: str,

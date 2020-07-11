@@ -46,3 +46,9 @@ class PatchType(enum.Enum):
     JSON = 'application/json-patch+json'
     MERGE = 'application/merge-patch+json'
     STRATEGIC = 'application/strategic-merge-patch+json'
+
+
+class WatchOnError(enum.Enum):
+    RETRY = 0
+    STOP = 1
+    RAISE = 2
