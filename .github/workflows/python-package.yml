@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        pip install flake8 pytest coveralls
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         tools/build.sh
     - name: Lint with flake8
@@ -37,4 +37,5 @@ jobs:
         flake8 lightkube/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        python -m pytest tests/
+        coverage run --source=lightkube -m pytest tests/
+        COVERALLS_REPO_TOKEN=${{ secrets.COVERALLS_REPO_TOKEN }} coveralls

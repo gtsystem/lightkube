@@ -1,6 +1,6 @@
 # lightkube
 
-![](https://img.shields.io/github/workflow/status/gtsystem/lightkube/Python%20package)
+![](https://img.shields.io/github/workflow/status/gtsystem/lightkube/Python%20package) [![Coverage Status](https://coveralls.io/repos/github/gtsystem/lightkube/badge.svg?branch=master)](https://coveralls.io/github/gtsystem/lightkube?branch=master)
 
 Modern lightweight kubernetes module for python
 
