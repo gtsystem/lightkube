@@ -173,7 +173,7 @@ class GenericClient:
             path.append(res.api_info.action)
 
         http_method = METHOD_MAPPING[method]
-        if method == 'delete':
+        if http_method == 'DELETE':
             res = None
 
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
@@ -200,11 +200,11 @@ class GenericClient:
             resp.raise_for_status()
         except httpx.HTTPError as e:
             raise transform_exception(e)
-        if method == 'delete':
-            # TODO: delete actions normally return a Status object, we may want to return it as well
+        res = br.response_type
+        if res is None:
+            # TODO: delete/deletecollection actions normally return a Status object, we may want to return it as well
             return
         data = resp.json()
-        res = br.response_type
         if method == 'list':
             return (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
         else:

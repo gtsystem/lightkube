@@ -106,12 +106,14 @@ class Client:
 
     @overload
     def patch(self, res: Type[GlobalSubResource], name: str,
-              obj: Union[GlobalSubResource, Dict, List], patch_type: r.PatchType) -> GlobalSubResource:
+              obj: Union[GlobalSubResource, Dict, List], *,
+              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalSubResource:
         ...
 
     @overload
     def patch(self, res: Type[GlobalResource], name: str,
-              obj: Union[GlobalResource, Dict, List], patch_type: r.PatchType) -> GlobalResource:
+              obj: Union[GlobalResource, Dict, List], *,
+              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalResource:
         ...
 
     @overload

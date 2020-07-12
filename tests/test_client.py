@@ -10,6 +10,7 @@ import respx
 import lightkube
 from lightkube.config.config import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
+from lightkube.models.meta_v1 import ObjectMeta
 
 
 KUBECONFIG = """
@@ -123,6 +124,21 @@ def test_delete_global(client: lightkube.Client):
 
 
 @respx.mock
+def test_delete_collection_namespaced(client: lightkube.Client):
+    respx.delete("https://localhost:9443/api/v1/namespaces/default/pods")
+    client.deletecollection(Pod)
+
+    respx.delete("https://localhost:9443/api/v1/namespaces/other/pods")
+    client.deletecollection(Pod, namespace="other")
+
+
+@respx.mock
+def test_deletecollection_global(client: lightkube.Client):
+    respx.delete("https://localhost:9443/api/v1/nodes")
+    client.deletecollection(Node)
+
+
+@respx.mock
 def test_errors(client: lightkube.Client):
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content="Error", status_code=409)
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'message': 'got problems'},
@@ -192,3 +208,26 @@ def test_watch_stop_iter(client: lightkube.Client):
     for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.RAISE)):
         break
     assert i == 0
+
+
+@respx.mock
+def test_patch_namespaced(client: lightkube.Client):
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'metadata': {'name': 'xx'}})
+    pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})))
+    assert pod.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/strategic-merge-patch+json"
+
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xx'}})
+    pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
+                       patch_type=lightkube.PatchType.MERGE)
+    assert pod.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/merge-patch+json"
+
+
+@respx.mock
+def test_patch_global(client: lightkube.Client):
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    pod = client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+                       patch_type=lightkube.PatchType.JSON)
+    assert pod.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
