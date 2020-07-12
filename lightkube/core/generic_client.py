@@ -59,6 +59,29 @@ class BasicRequest:
     headers: Dict[str, str] = None
 
 
+class WatchDriver:
+    def __init__(self, br: BasicRequest, build_request, lazy):
+        self._version = br.params.get('resourceVersion')
+        self._convert = br.response_type.from_dict
+        self._br = br
+        self._build_request = build_request
+        self._lazy = lazy
+
+    def get_request(self):
+        br = self._br
+        if self._version is not None:
+            br.params['resourceVersion'] = self._version
+        print(br)
+        return self._build_request(br.method, br.url, params=br.params)
+
+    def process_one_line(self, line):
+        line = json.loads(line)
+        tp = line['type']
+        obj = line['object']
+        self._version = obj['metadata']['resourceVersion']
+        return tp, self._convert(obj, lazy=self._lazy)
+
+
 class GenericClient:
     def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
         if config is None:
@@ -70,6 +93,8 @@ class GenericClient:
             timeout = httpx.Timeout()
         self._config = config
         self._timeout = timeout
+        self._watch_timeout = copy(timeout)
+        self._watch_timeout.read_timeout = None
         self._lazy = lazy
         self._client = client_adapter.Client(config, timeout)
         self.namespace = namespace if namespace else config.namespace
@@ -154,24 +179,14 @@ class GenericClient:
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
     def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
-        timeout = copy(self._timeout)
-        timeout.read_timeout = None
-        version = br.params.get('resourceVersion')
-        res = br.response_type
+        wd = WatchDriver(br, self._client.build_request, self._lazy)
         while True:
-            if version is not None:
-                br.params['resourceVersion'] = version
-            print(br)
-            req = self._client.build_request(br.method, br.url, params=br.params)
-            resp = self._client.send(req, stream=True, timeout=timeout)
+            req = wd.get_request()
+            resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
             try:
                 resp.raise_for_status()
-                for l in resp.iter_lines():
-                    l = json.loads(l)
-                    tp = l['type']
-                    obj = l['object']
-                    version = obj['metadata']['resourceVersion']
-                    yield tp, res.from_dict(obj, lazy=self._lazy)
+                for line in resp.iter_lines():
+                    yield wd.process_one_line(line)
             except Exception as e:
                 action = on_error(e)
                 if action is r.WatchOnError.RAISE:
@@ -180,19 +195,13 @@ class GenericClient:
                     break
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, watch, patch_type)
-        print(br)
-        if watch:
-            return self.watch(br)
-        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-        resp = self._client.send(req)
+    def handle_response(self, method, resp, br):
         try:
             resp.raise_for_status()
         except httpx.HTTPError as e:
             raise transform_exception(e)
         if method == 'delete':
-            # TODO: delete actions normallu return a Status object, we may want to return it as well
+            # TODO: delete actions normally return a Status object, we may want to return it as well
             return
         data = resp.json()
         res = br.response_type
@@ -201,3 +210,12 @@ class GenericClient:
         else:
             if res is not None:
                 return res.from_dict(data, lazy=self._lazy)
+
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, patch_type)
+        print(br)
+        if watch:
+            return self.watch(br)
+        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+        resp = self._client.send(req)
+        return self.handle_response(method, resp, br)

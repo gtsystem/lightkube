@@ -135,13 +135,17 @@ def test_errors(client: lightkube.Client):
     assert exc.value.status.message == 'got problems'
 
 
+def make_watch_list(count=10):
+    resp = "\n".join(
+        json.dumps({'type': 'ADDED', 'object': {'metadata': {'name': f'p{i}', 'resourceVersion': '1'}}}) for i in
+        range(count))
+    return resp+"\n"
+
+
 @respx.mock
 def test_watch(client: lightkube.Client):
-    resp = "\n".join(json.dumps({'type': 'ADDED', 'object': {'metadata': {'name': f'p{i}', 'resourceVersion': '1'}}}) for i in range(10))
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=resp+"\n")
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true", content=resp + "\n")
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true", status_code=404)
 
     i = None
     with pytest.raises(httpx.HTTPError) as exi:
@@ -150,6 +154,12 @@ def test_watch(client: lightkube.Client):
             assert op == 'ADDED'
     assert i == 9
     assert exi.value.response.status_code == 404
+
+
+@respx.mock
+def test_watch_version(client: lightkube.Client):
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true", content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true", status_code=404)
 
     # testing starting from specific resource version
     i = None
@@ -160,8 +170,25 @@ def test_watch(client: lightkube.Client):
     assert i == 9
     assert exi.value.response.status_code == 404
 
+
+@respx.mock
+def test_watch_on_error(client: lightkube.Client):
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+
     i = None
     for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.STOP)):
         assert node.metadata.name == f'p{i}'
         assert op == 'ADDED'
     assert i == 9
+
+
+@respx.mock
+def test_watch_stop_iter(client: lightkube.Client):
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+
+    i = None
+    for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.RAISE)):
+        break
+    assert i == 0
