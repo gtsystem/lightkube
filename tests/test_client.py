@@ -231,3 +231,43 @@ def test_patch_global(client: lightkube.Client):
                        patch_type=lightkube.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
+
+
+@respx.mock
+def test_create_namespaced(client: lightkube.Client):
+    req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods", content={'metadata': {'name': 'xx'}})
+    pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
+    assert req.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx"}}'
+    assert pod.metadata.name == 'xx'
+
+    respx.post("https://localhost:9443/api/v1/namespaces/other/pods", content={'metadata': {'name': 'yy'}})
+    pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})), namespace='other')
+    assert pod.metadata.name == 'yy'
+
+
+@respx.mock
+def test_create_global(client: lightkube.Client):
+    req = respx.post("https://localhost:9443/api/v1/nodes", content={'metadata': {'name': 'xx'}})
+    pod = client.create(Node(metadata=ObjectMeta(name="xx")))
+    assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
+    assert pod.metadata.name == 'xx'
+
+
+@respx.mock
+def test_replace_namespaced(client: lightkube.Client):
+    req = respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy", content={'metadata': {'name': 'xy'}})
+    pod = client.replace(Pod(metadata=ObjectMeta(name="xy")))
+    assert req.calls[0][0].read() == b'{"metadata": {"name": "xy"}}'
+    assert pod.metadata.name == 'xy'
+
+    respx.put("https://localhost:9443/api/v1/namespaces/other/pods/xz", content={'metadata': {'name': 'xz'}})
+    pod = client.replace(Pod(metadata=ObjectMeta(name="xz")), namespace='other')
+    assert pod.metadata.name == 'xz'
+
+
+@respx.mock
+def test_replace_global(client: lightkube.Client):
+    req = respx.put("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    pod = client.replace(Node(metadata=ObjectMeta(name="xx")))
+    assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
+    assert pod.metadata.name == 'xx'
