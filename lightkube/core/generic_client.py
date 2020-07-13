@@ -214,8 +214,6 @@ class GenericClient:
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, watch, patch_type)
         print(br)
-        if watch:
-            return self.watch(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = self._client.send(req)
         return self.handle_response(method, resp, br)
