@@ -1,10 +1,14 @@
 """
 Configuration code.
+
+original source: https://github.com/hjacobs/pykube/tree/20.7.2
 """
 import base64
 import copy
 import os
 import tempfile
+from pathlib import Path
+from typing import Optional
 
 import yaml
 
@@ -25,6 +29,8 @@ class KubeConfig:
     Main configuration class.
     """
 
+    filepath = None
+
     @classmethod
     def from_service_account(
         cls, path="/var/run/secrets/kubernetes.io/serviceaccount", **kwargs
@@ -32,11 +38,13 @@ class KubeConfig:
         """
         Construct KubeConfig from in-cluster service account.
         """
-        with open(os.path.join(path, "namespace")) as fp:
-            namespace = fp.read()
+        service_account_dir = Path(path)
 
-        with open(os.path.join(path, "token")) as fp:
+        with service_account_dir.joinpath("token").open() as fp:
             token = fp.read()
+
+        with service_account_dir.joinpath("namespace").open() as fp:
+            namespace = fp.read()
 
         host = os.environ.get("PYKUBE_KUBERNETES_SERVICE_HOST")
         if host is None:
@@ -50,7 +58,9 @@ class KubeConfig:
                     "name": "self",
                     "cluster": {
                         "server": "https://" + _join_host_port(host, port),
-                        "certificate-authority": os.path.join(path, "ca.crt"),
+                        "certificate-authority": str(
+                            service_account_dir.joinpath("ca.crt")
+                        ),
                     },
                 }
             ],
@@ -79,15 +89,15 @@ class KubeConfig:
         """
         if not filename:
             filename = os.getenv("KUBECONFIG", "~/.kube/config")
-        filename = os.path.expanduser(filename)
-        if not os.path.isfile(filename):
+        filepath = Path(filename).expanduser()
+        if not filepath.is_file():
             raise exceptions.PyKubeError(
                 "Configuration file {} not found".format(filename)
             )
-        with open(filename) as f:
+        with filepath.open() as f:
             doc = yaml.safe_load(f.read())
         self = cls(doc, **kwargs)
-        self.filename = filename
+        self.filepath = filepath
         return self
 
     @classmethod
@@ -140,13 +150,22 @@ class KubeConfig:
         self._current_context = value
 
     @property
-    def kubeconfig_file(self):
+    def kubeconfig_path(self) -> Optional[Path]:
         """
         Returns the path to kubeconfig file, if it exists
         """
-        if not hasattr(self, "filename"):
+        if not hasattr(self, "filepath"):
             return None
-        return self.filename
+        return self.filepath
+
+    @property
+    def kubeconfig_file(self) -> Optional[str]:
+        """
+        Returns the path to kubeconfig file as string, if it exists
+        """
+        if not hasattr(self, "filepath"):
+            return None
+        return str(self.filepath)
 
     @property
     def current_context(self):
@@ -167,7 +186,7 @@ class KubeConfig:
                 cs[cr["name"]] = c = copy.deepcopy(cr["cluster"])
                 if "server" not in c:
                     c["server"] = "http://localhost"
-                BytesOrFile.maybe_set(c, "certificate-authority", self.kubeconfig_file)
+                BytesOrFile.maybe_set(c, "certificate-authority", self.kubeconfig_path)
             self._clusters = cs
         return self._clusters
 
@@ -181,8 +200,8 @@ class KubeConfig:
             if "users" in self.doc:
                 for ur in self.doc["users"]:
                     us[ur["name"]] = u = copy.deepcopy(ur["user"])
-                    BytesOrFile.maybe_set(u, "client-certificate", self.kubeconfig_file)
-                    BytesOrFile.maybe_set(u, "client-key", self.kubeconfig_file)
+                    BytesOrFile.maybe_set(u, "client-certificate", self.kubeconfig_path)
+                    BytesOrFile.maybe_set(u, "client-key", self.kubeconfig_path)
             self._users = us
         return self._users
 
@@ -221,10 +240,11 @@ class KubeConfig:
         return self.contexts[self.current_context].get("namespace", "default")
 
     def persist_doc(self):
-        if not self.kubeconfig_file:
+
+        if not self.kubeconfig_path:
             # Config was provided as string, not way to persit it
             return
-        with open(self.kubeconfig_file, "w") as f:
+        with self.kubeconfig_path.open("w") as f:
             yaml.safe_dump(
                 self.doc,
                 f,
@@ -248,16 +268,16 @@ class BytesOrFile:
     """
 
     @classmethod
-    def maybe_set(cls, d, key, kubeconfig_file):
+    def maybe_set(cls, d, key, kubeconfig_path):
         file_key = key
         data_key = "{}-data".format(key)
         if data_key in d:
-            d[file_key] = cls(data=d[data_key], kubeconfig_file=kubeconfig_file)
+            d[file_key] = cls(data=d[data_key], kubeconfig_path=kubeconfig_path)
             del d[data_key]
         elif file_key in d:
-            d[file_key] = cls(filename=d[file_key], kubeconfig_file=kubeconfig_file)
+            d[file_key] = cls(filename=d[file_key], kubeconfig_path=kubeconfig_path)
 
-    def __init__(self, filename=None, data=None, kubeconfig_file=None):
+    def __init__(self, filename=None, data=None, kubeconfig_path=None):
         """
         Creates a new instance of BytesOrFile.
 
@@ -265,17 +285,18 @@ class BytesOrFile:
            - `filename`: A full path to a file
            - `data`: base64 encoded bytes
         """
-        self._filename = None
+        self._path = None
         self._bytes = None
         if filename is not None and data is not None:
             raise TypeError("filename or data kwarg must be specified, not both")
         elif filename is not None:
 
+            path = Path(filename)
             # If relative path is given, should be made absolute with respect to the directory of the kube config
             # https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#file-references
-            if not os.path.isabs(filename):
-                if kubeconfig_file:
-                    filename = os.path.join(os.path.dirname(kubeconfig_file), filename)
+            if not path.is_absolute():
+                if kubeconfig_path:
+                    path = kubeconfig_path.parent.joinpath(path)
                 else:
                     raise exceptions.PyKubeError(
                         "{} passed as relative path, but cannot determine location of kube config".format(
@@ -283,11 +304,11 @@ class BytesOrFile:
                         )
                     )
 
-            if not os.path.isfile(filename):
+            if not path.is_file():
                 raise exceptions.PyKubeError(
                     "'{}' file does not exist".format(filename)
                 )
-            self._filename = filename
+            self._path = path
         elif data is not None:
             self._bytes = base64.b64decode(data)
         else:
@@ -297,8 +318,8 @@ class BytesOrFile:
         """
         Returns the provided data as bytes.
         """
-        if self._filename:
-            with open(self._filename, "rb") as f:
+        if self._path:
+            with self._path.open("rb") as f:
                 return f.read()
         else:
             return self._bytes
@@ -307,8 +328,8 @@ class BytesOrFile:
         """
         Returns the provided data as a file location.
         """
-        if self._filename:
-            return self._filename
+        if self._path:
+            return str(self._path)
         else:
             with tempfile.NamedTemporaryFile(delete=False) as f:
                 f.write(self._bytes)
