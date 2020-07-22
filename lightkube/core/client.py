@@ -1,11 +1,11 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List, Callable
+from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List, Callable, Iterable
 import enum
 import dataclasses
 from dataclasses import dataclass
 import json
 import httpx
 from ..config.config import KubeConfig
-
+from .. import operators
 from . import resource as r
 from .generic_client import GenericClient, AllNamespaces, raise_exc
 
@@ -16,6 +16,7 @@ NamespacedResourceG = TypeVar('NamespacedResourceG', bound=r.NamespacedResourceG
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
+Selector = Dict[str, Union[str, None, operators.Operator, Iterable]]
 
 
 class Client:
@@ -61,47 +62,53 @@ class Client:
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResource], *, name: str = None) -> Iterator[GlobalResource]:
+    def list(self, res: Type[GlobalResource], *, labels: Selector = None, fields: Selector = None) -> \
+            Iterator[GlobalResource]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, name: str = None) -> \
+    def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
+             labels: Selector = None, fields: Selector = None) -> \
             Iterator[NamespacedResourceG]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResource], *, namespace: str = None, name: str = None) -> \
+    def list(self, res: Type[NamespacedResource], *, namespace: str = None,
+             labels: Selector = None, fields: Selector = None) -> \
             Iterator[NamespacedResource]:
         ...
 
-    def list(self, res, *, name=None, namespace=None):
-        return self._client.request("list", res=res, name=name, namespace=namespace)
+    def list(self, res, *, namespace=None, labels=None, fields=None):
+        return self._client.request("list", res=res, namespace=namespace, labels=labels, fields=fields)
 
     @overload
-    def watch(self, res: Type[GlobalResource], *, name: str = None, server_timeout: int = None,
+    def watch(self, res: Type[GlobalResource], *, labels: Selector = None, fields: Selector = None,
+              server_timeout: int = None,
               resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, GlobalResource]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, name: str = None,
+    def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
+              labels: Selector = None, fields: Selector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResourceG]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResource], *, namespace: str = None, name: str = None,
+    def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
+              labels: Selector = None, fields: Selector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResource]]:
         ...
 
-    def watch(self, res, *, namespace=None, name=None, server_timeout=None, resource_version=None, on_error=raise_exc):
-        br = self._client.prepare_request("list", res=res, name=name, namespace=namespace, watch=True, params={
-            'timeoutSeconds': server_timeout,
-            'resourceVersion': resource_version
-        })
+    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=raise_exc):
+        br = self._client.prepare_request("list", res=res, namespace=namespace, labels=labels,
+            fields=fields, watch=True,
+            params={'timeoutSeconds': server_timeout, 'resourceVersion': resource_version}
+        )
         return self._client.watch(br, on_error=on_error)
 
     @overload

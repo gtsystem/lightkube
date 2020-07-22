@@ -11,6 +11,7 @@ from . import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
 from ..models import meta_v1
+from .selector import build_selector
 
 class AllNamespaces:
     pass
@@ -100,6 +101,7 @@ class GenericClient:
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
+                        labels=None, fields=None,
                         watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
         if params is not None:
             params = {k: v for k, v in params.items() if v is not None}
@@ -176,6 +178,12 @@ class GenericClient:
         if http_method == 'DELETE':
             res = None
 
+        if labels is not None:
+            params['labelSelector'] = build_selector(labels)
+
+        if fields is not None:
+            params['fieldSelector'] = build_selector(fields)
+
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
     def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
@@ -211,8 +219,8 @@ class GenericClient:
             if res is not None:
                 return res.from_dict(data, lazy=self._lazy)
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, watch, patch_type)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
         print(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = self._client.send(req)
