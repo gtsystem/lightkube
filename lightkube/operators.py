@@ -17,31 +17,34 @@ class SequenceOperator(Operator):
         return f"{key} {self.op} ({','.join(self.value)})"
 
 
+class BinaryOperator(Operator):
+    pass
+
+
 class UnaryOperator(Operator):
     def encode(self, key):
         return f"{self.op}{key}"
 
 
-def in_(values: Iterable):
+def in_(values: Iterable) -> SequenceOperator:
     return SequenceOperator('in', sorted(values))
 
 
-def not_in(values: Iterable):
+def not_in(values: Iterable) -> SequenceOperator:
     return SequenceOperator('notin', sorted(values))
 
 
-def exist():
+def exist() -> UnaryOperator:
     return UnaryOperator('', None)
 
 
-def not_exist():
+def not_exist() -> UnaryOperator:
     return UnaryOperator('!', None)
 
 
-def equal(value: str):
-    return Operator('=', value)
+def equal(value: str) -> BinaryOperator:
+    return BinaryOperator('=', value)
 
 
-def not_equal(value: str):
-    return Operator('!=', value)
-
+def not_equal(value: str) -> BinaryOperator:
+    return BinaryOperator('!=', value)

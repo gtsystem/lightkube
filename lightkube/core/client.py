@@ -16,7 +16,8 @@ NamespacedResourceG = TypeVar('NamespacedResourceG', bound=r.NamespacedResourceG
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
-Selector = Dict[str, Union[str, None, operators.Operator, Iterable]]
+LabelSelector = Dict[str, Union[str, None, operators.Operator, Iterable]]
+FieldSelector = Dict[str, Union[str, operators.BinaryOperator]]
 
 
 class Client:
@@ -62,19 +63,19 @@ class Client:
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResource], *, labels: Selector = None, fields: Selector = None) -> \
+    def list(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[GlobalResource]:
         ...
 
     @overload
     def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
-             labels: Selector = None, fields: Selector = None) -> \
+             labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[NamespacedResourceG]:
         ...
 
     @overload
     def list(self, res: Type[NamespacedResource], *, namespace: str = None,
-             labels: Selector = None, fields: Selector = None) -> \
+             labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[NamespacedResource]:
         ...
 
@@ -82,7 +83,7 @@ class Client:
         return self._client.request("list", res=res, namespace=namespace, labels=labels, fields=fields)
 
     @overload
-    def watch(self, res: Type[GlobalResource], *, labels: Selector = None, fields: Selector = None,
+    def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
               resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, GlobalResource]]:
@@ -90,7 +91,7 @@ class Client:
 
     @overload
     def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
-              labels: Selector = None, fields: Selector = None,
+              labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResourceG]]:
@@ -98,7 +99,7 @@ class Client:
 
     @overload
     def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
-              labels: Selector = None, fields: Selector = None,
+              labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, NamespacedResource]]:

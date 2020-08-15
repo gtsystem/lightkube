@@ -99,8 +99,8 @@ def test_list_global(client: lightkube.Client):
     nodes = client.list(Node)
     assert [node.metadata.name for node in nodes] == ['xx', 'yy']
 
-    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k", content=resp)
-    pods = client.list(Pod, namespace=lightkube.ALL, fields={'k': None})
+    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx", content=resp)
+    pods = client.list(Pod, namespace=lightkube.ALL, fields={'k': 'x'})
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
 
     # Binding doesn't support all namespaces

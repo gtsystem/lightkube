@@ -1,3 +1,5 @@
+import pytest
+
 from lightkube.core.selector import build_selector
 from lightkube import operators
 
@@ -25,3 +27,14 @@ def test_operators():
     })
 
     assert r == "k1=v1,!k2,k3 in (b,c),k4 notin (b,c),k5!=v5,k6"
+
+
+def test_binary_only_selector():
+    with pytest.raises(ValueError):
+        build_selector({'k2': None}, binaryOnly=True)
+
+    with pytest.raises(ValueError):
+        build_selector({'k2': operators.in_(['b', 'c'])}, binaryOnly=True)
+
+    r = build_selector({'k1': 'a', 'k2': operators.not_equal('a')}, binaryOnly=True)
+    assert r == "k1=a,k2!=a"

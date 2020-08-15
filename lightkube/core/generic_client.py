@@ -182,7 +182,7 @@ class GenericClient:
             params['labelSelector'] = build_selector(labels)
 
         if fields is not None:
-            params['fieldSelector'] = build_selector(fields)
+            params['fieldSelector'] = build_selector(fields, binaryOnly=True)
 
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
