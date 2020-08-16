@@ -1,4 +1,4 @@
-httpx
+httpx >= 0.14.1
 pytest
 respx
 jinja2

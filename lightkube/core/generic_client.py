@@ -20,7 +20,7 @@ class AllNamespaces:
 ALL = AllNamespaces()
 
 
-class ApiError(httpx.HTTPError):
+class ApiError(httpx.HTTPStatusError):
     def __init__(
             self, request: httpx.Request = None, response: httpx.Response = None) -> None:
         self.status = meta_v1.Status.from_dict(response.json())
@@ -28,7 +28,7 @@ class ApiError(httpx.HTTPError):
 
 
 def transform_exception(e: httpx.HTTPError):
-    if e.response.headers['Content-Type'] == 'application/json':
+    if isinstance(e, httpx.HTTPStatusError) and e.response.headers['Content-Type'] == 'application/json':
         return ApiError(request=e.request, response=e.response)
     return e
 
