@@ -3,3 +3,8 @@ pytest
 respx
 jinja2
 PyYAML
+# build documentation
+mkdocs
+markdown
+mkautodoc
+markdown-include

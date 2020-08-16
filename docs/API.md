@@ -1,0 +1,3 @@
+::: lightkube.Client
+    :docstring:
+    :members:

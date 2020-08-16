@@ -1,0 +1,21 @@
+site_name: LightKube
+theme:
+  name: material
+  hljs_style: monokai
+  palette:
+    primary: deep purple
+
+repo_name: gtsystem/lightkube
+repo_url: https://github.com/gtsystem/lightkube
+edit_uri: ""
+
+nav:
+  - QuickStart: 'README.md'
+  - Interface: API.md
+
+markdown_extensions:
+  - admonition
+  - mkautodoc
+  - codehilite
+  - markdown_include.include:
+      base_path: .
