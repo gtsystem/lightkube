@@ -91,7 +91,7 @@ class GenericClient:
             except Exception:
                 config = KubeConfig.from_file()
         if timeout is None:
-            timeout = httpx.Timeout()
+            timeout = httpx.Timeout(10)
         self._config = config
         self._timeout = timeout
         self._watch_timeout = copy(timeout)
