@@ -3,3 +3,4 @@ mkdocs
 markdown
 mkautodoc
 markdown-include
+mkdocs-material
