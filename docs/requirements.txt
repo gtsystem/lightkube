@@ -1,0 +1,5 @@
+# build documentation
+mkdocs
+markdown
+mkautodoc
+markdown-include
