@@ -1,17 +1,23 @@
+import sys
 from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Callable
 import dataclasses
 from dataclasses import dataclass
 import json
 from copy import copy
-import time
 
 import httpx
 
 from . import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
-from ..models import meta_v1
+
+try:
+    from ..models import meta_v1
+except ImportError:
+    if sys.modules["__main__"].__package__ != 'mkdocs':   # we ignore this import error during documentation generation
+        raise
 from .selector import build_selector
+
 
 class AllNamespaces:
     pass
