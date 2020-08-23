@@ -3,3 +3,7 @@ lightkube/models
 lightkube/resources
 __pycache__
 .idea
+_build/
+build/
+dist/
+*.egg-info

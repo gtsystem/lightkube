@@ -7,7 +7,7 @@ from copy import copy
 
 import httpx
 
-from . import resource as r
+from ..base import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
 
