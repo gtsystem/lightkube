@@ -79,25 +79,30 @@ class Client:
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None) -> \
+    def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[GlobalResource]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
+    def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[NamespacedResourceG]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResource], *, namespace: str = None,
+    def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[NamespacedResource]:
         ...
 
-    def list(self, res, *, namespace=None, labels=None, fields=None):
-        """Returns a list objects of kind `res`. You can filter the returned items by `labels` or `fields`"""
-        return self._client.request("list", res=res, namespace=namespace, labels=labels, fields=fields)
+    def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
+        """Returns an iterator of objects of kind `res`. You can filter the returned items by `labels` or `fields`.
+        It's possible to set the chunk_size` useful to limit the amount of objects returned for each rest API call.
+        This method will automatically execute all subsequent calls until no more data is available."""
+        br = self._client.prepare_request(
+            'list', res=res, namespace=namespace, labels=labels, fields=fields, params={'limit': chunk_size}
+        )
+        return self._client.list(br)
 
     @overload
     def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,

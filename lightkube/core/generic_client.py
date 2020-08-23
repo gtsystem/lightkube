@@ -220,7 +220,12 @@ class GenericClient:
             return
         data = resp.json()
         if method == 'list':
-            return (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
+            if 'metadata' in data and 'continue' in data['metadata']:
+                cont = True
+                br.params['continue'] = data['metadata']['continue']
+            else:
+                cont = False
+            return cont, (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
         else:
             if res is not None:
                 return res.from_dict(data, lazy=self._lazy)
@@ -231,3 +236,12 @@ class GenericClient:
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = self._client.send(req)
         return self.handle_response(method, resp, br)
+
+    def list(self, br: BasicRequest) -> Any:
+        cont = True
+        while cont:
+            print(br)
+            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+            resp = self._client.send(req)
+            cont, chunk = self.handle_response('list', resp, br)
+            yield from chunk
