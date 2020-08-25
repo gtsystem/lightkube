@@ -7,12 +7,11 @@ import httpx
 from ..config.config import KubeConfig
 from .. import operators
 from ..base import resource as r
-from .generic_client import GenericClient, AllNamespaces, raise_exc
+from .generic_client import GenericClient, raise_exc
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
 GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
-NamespacedResourceG = TypeVar('NamespacedResourceG', bound=r.NamespacedResourceG)
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
@@ -84,12 +83,6 @@ class Client:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None, chunk_size: int = None,
-             labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[NamespacedResourceG]:
-        ...
-
-    @overload
     def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
             Iterator[NamespacedResource]:
@@ -109,14 +102,6 @@ class Client:
               server_timeout: int = None,
               resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
             Iterator[Tuple[str, GlobalResource]]:
-        ...
-
-    @overload
-    def watch(self, res: Type[NamespacedResourceG], *, namespace: AllNamespaces = None,
-              labels: LabelSelector = None, fields: FieldSelector = None,
-              server_timeout: int = None, resource_version: str = None,
-              on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
-            Iterator[Tuple[str, NamespacedResourceG]]:
         ...
 
     @overload

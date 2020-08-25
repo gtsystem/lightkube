@@ -77,7 +77,7 @@ def test_get_global(client: lightkube.Client):
 
     # GET doesn't support all namespaces
     with pytest.raises(ValueError):
-        client.get(Pod, name="xx", namespace=lightkube.ALL)
+        client.get(Pod, name="xx", namespace=lightkube.ALL_NS)
 
 
 @respx.mock
@@ -100,12 +100,12 @@ def test_list_global(client: lightkube.Client):
     assert [node.metadata.name for node in nodes] == ['xx', 'yy']
 
     respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx", content=resp)
-    pods = client.list(Pod, namespace=lightkube.ALL, fields={'k': 'x'})
+    pods = client.list(Pod, namespace=lightkube.ALL_NS, fields={'k': 'x'})
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
 
     # Binding doesn't support all namespaces
     with pytest.raises(ValueError):
-        client.list(Binding, namespace=lightkube.ALL)
+        client.list(Binding, namespace=lightkube.ALL_NS)
 
 
 @respx.mock

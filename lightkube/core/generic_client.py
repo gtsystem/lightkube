@@ -19,11 +19,7 @@ except ImportError:
 from .selector import build_selector
 
 
-class AllNamespaces:
-    pass
-
-
-ALL = AllNamespaces()
+ALL_NS = '*'
 
 
 class ApiError(httpx.HTTPStatusError):
@@ -121,7 +117,7 @@ class GenericClient:
 
         namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
 
-        if namespace is ALL:
+        if namespace == ALL_NS:
             if not issubclass(res, r.NamespacedResourceG):
                 raise ValueError(f"Class {res} doesn't support global {method}")
             if method not in ('list', 'watch'):
@@ -149,7 +145,7 @@ class GenericClient:
         else:
             path = ["apis", base.group, base.version]
 
-        if namespaced and namespace is not ALL:
+        if namespaced and namespace != ALL_NS:
             if namespace is None and method in ('post', 'put'):
                 namespace = obj.metadata.namespace
             if namespace is None:
