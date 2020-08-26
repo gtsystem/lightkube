@@ -45,13 +45,13 @@ def _setup_request_auth(config, kwargs):
         exec_conf = config.user["exec"]
 
         api_version = exec_conf["apiVersion"]
-        if api_version == "client.authentication.k8s.io/v1alpha1":
+        if api_version in ("client.authentication.k8s.io/v1alpha1", "client.authentication.k8s.io/v1beta1"):
             cmd_env_vars = dict(os.environ)
             for env_var in exec_conf.get("env") or []:
                 cmd_env_vars[env_var["name"]] = env_var["value"]
 
             output = subprocess.check_output(
-                [exec_conf["command"]] + exec_conf["args"], env=cmd_env_vars
+                [exec_conf["command"]] + exec_conf.get("args", []), env=cmd_env_vars
             )
 
             parsed_out = json.loads(output)
