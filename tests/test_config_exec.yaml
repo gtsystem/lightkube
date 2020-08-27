@@ -1,0 +1,30 @@
+clusters:
+- name: a_cluster
+  cluster: {}
+contexts:
+- name: ctx1
+  context:
+    cluster: a_cluster
+    user: execuser
+- name: ctx2
+  context:
+    cluster: a_cluster
+    user: execuser2
+current-context: ctx1
+users:
+- name: execuser
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      args:
+      - '{"apiVersion":"client.authentication.k8s.io/v1beta1","kind":"ExecCredential","status":{"token":"my-bearer-token"}}'
+      command: echo
+- name: execuser2
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      args: ["-c", "echo $MYENV"]
+      command: bash
+      env:
+      - name: MYENV
+        value: '{"apiVersion":"client.authentication.k8s.io/v1beta1","kind":"ExecCredential","status":{"token":"my-bearer-token"}}'
