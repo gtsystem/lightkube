@@ -7,15 +7,10 @@ from copy import copy
 
 import httpx
 
-from ..base import resource as r
+from . import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
-
-try:
-    from ..models import meta_v1
-except ImportError:
-    if sys.modules["__main__"].__package__ != 'mkdocs':   # we ignore this import error during documentation generation
-        raise
+from .internal_models import meta_v1
 from .selector import build_selector
 
 
