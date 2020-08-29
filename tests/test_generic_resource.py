@@ -4,8 +4,13 @@ from lightkube.core import generic_resource as gr
 from lightkube.core.generic_client import GenericClient
 
 
+class MockedClient(GenericClient):
+    def __init__(self):
+        self.namespace = 'default'
+
+
 def test_create_namespaced_resource():
-    c = GenericClient()
+    c = MockedClient()
     Test = gr.create_namespaced_resource('test.eu', 'v1', 'Test', 'tests')
     assert Test.__name__ == 'Test'
 
@@ -27,7 +32,7 @@ def test_create_namespaced_resource():
 
 
 def test_create_global_resource():
-    c = GenericClient()
+    c = MockedClient()
     Test = gr.create_global_resource('test.eu', 'v1', 'Test', 'tests')
     assert Test.__name__ == 'Test'
 
