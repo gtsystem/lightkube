@@ -14,13 +14,16 @@ setup(
         'lightkube-models >= 1.15.6.1',
         'httpx >= 0.14.1',
         'respx',
-        'PyYAML'
+        'PyYAML',
+        'backports-datetime-fromisoformat;python_version<"3.7"',
+        'dataclasses;python_version<"3.7"'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8'
     ]

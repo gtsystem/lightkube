@@ -1,3 +1,4 @@
+import sys
 import dataclasses as dc
 from typing import get_type_hints
 import copy
@@ -5,11 +6,22 @@ import inspect
 import typing
 from datetime import datetime
 
+try:
+    fromisoformat = datetime.fromisoformat
+except AttributeError:  # python 3.6
+    from backports._datetime_fromisoformat import datetime_fromisoformat as fromisoformat
+
+
 from .typing_extra import get_args, get_origin
+
+if sys.version_info[:2] > (3, 6):
+    list_type = list
+else:
+    list_type = typing.List
 
 
 def to_datetime(string):
-    return datetime.fromisoformat(string.replace("Z", "+00:00"))
+    return fromisoformat(string.replace("Z", "+00:00"))
 
 
 def from_datetime(dt):
@@ -66,7 +78,8 @@ def extract_types(cls, is_to=True):
     for field in dc.fields(cls):
         k = field.name
         t = types[k]
-        if get_origin(t) is list:
+
+        if get_origin(t) is list_type:
             is_list = True
             t = get_args(t)[0]
         else:

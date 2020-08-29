@@ -3,3 +3,5 @@ pytest
 respx
 PyYAML
 lightkube-models >= 1.15.6.1
+backports-datetime-fromisoformat;python_version<"3.7"
+dataclasses;python_version<"3.7"
