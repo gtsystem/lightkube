@@ -16,6 +16,10 @@ class Generic(dict):
         return self.get('kind')
 
     @property
+    def status(self) -> str:
+        return self.get('status')
+
+    @property
     def metadata(self) -> Optional[meta_v1.ObjectMeta]:
         meta = self.get('metadata')
         if meta is None:
@@ -25,7 +29,7 @@ class Generic(dict):
     def __getattr__(self, item):
         if item.startswith("_"):
             raise AttributeError(f"{item} not found")
-        return self[item]
+        return self.get(item)
 
     @classmethod
     def from_dict(cls, d: dict, lazy=True):
@@ -102,13 +106,13 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
     return TmpName
 
 
-def create_global_resource(group, version, kind, plural, verbs=None) \
+def create_global_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
         -> Type[GenericGlobalResource]:
     return _create_resource(
-        GenericGlobalResource, group, version, kind, plural, verbs=verbs)
+        False, group, version, kind, plural, verbs=verbs)
 
 
-def create_namespaced_resource(group, version, kind, plural, verbs=None) \
+def create_namespaced_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
         -> Type[GenericNamespacedResource]:
     return _create_resource(
-        GenericNamespacedResource, group, version, kind, plural, verbs=verbs)
+        True, group, version, kind, plural, verbs=verbs)
