@@ -1,8 +1,11 @@
 #!/bin/bash
-SITE_PKG=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 
-pip install lightkube-models
-rm -f lightkube/base lightkube/models lightkube/resources
-ln -s  $SITE_PKG/lightkube/base lightkube
-ln -s  $SITE_PKG/lightkube/models lightkube
-ln -s  $SITE_PKG/lightkube/resources lightkube
+if [ -d "../lightkube-models" ]; then
+  SOURCE_DIR=$(python -c "import os.path; print(os.path.realpath('../lightkube-models'))")
+else
+  SOURCE_DIR=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+  pip install lightkube-models
+fi
+rm -f lightkube/models lightkube/resources
+ln -s  $SOURCE_DIR/lightkube/models lightkube
+ln -s  $SOURCE_DIR/lightkube/resources lightkube

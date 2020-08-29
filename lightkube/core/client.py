@@ -6,7 +6,7 @@ import json
 import httpx
 from ..config.config import KubeConfig
 from .. import operators
-from ..base import resource as r
+from ..core import resource as r
 from .generic_client import GenericClient, raise_exc
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)

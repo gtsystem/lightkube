@@ -2,4 +2,4 @@ httpx >= 0.14.1
 pytest
 respx
 PyYAML
-lightkube-models
+lightkube-models >= 1.15.6.1

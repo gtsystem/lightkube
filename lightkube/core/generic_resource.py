@@ -1,7 +1,7 @@
 from typing import Type, Any, Optional
 
-from lightkube.base import resource as res
-from lightkube.models import meta_v1, autoscaling_v1
+from . import resource as res
+from .internal_models import meta_v1, autoscaling_v1
 
 __all__ = ['create_global_resource', 'create_namespaced_resource']
 
