@@ -4,7 +4,16 @@
 
 Modern lightweight kubernetes module for python
 
-**NOTICE:** This project is still in an early alpha stage and not suitable for production usage.
+**NOTICE:** This project is still under development and not suitable for production usage.
+
+## Highlights
+
+* Simple interface shared across all kubernetes resource.
+* Defines models and resources generated from the swagger specifications.
+* *Typed*: helps to avoid common mistakes and support for autocompletion (tested on PyCharm).
+* *Lightweight*: Fast to start, and small memory footprint as only needed models and resources are loaded.
+* *Listing*: Automatic handling of pagination when listing resources.
+* *Watching*: Customizable handling of errors when watching resources.
 
 ## Usage
 
@@ -81,3 +90,8 @@ obj = Deployment.Scale(
 )
 client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
+
+## Upcoming features
+
+* Support for async/await
+* Support for loading definitions from yaml files
