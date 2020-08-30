@@ -145,6 +145,9 @@ class GenericClient:
                 namespace = obj.metadata.namespace
             if namespace is None:
                 namespace = self.namespace
+            if method in ('post', 'put'):
+                # we ensure we send here the same namespace defined in the url
+                obj.metadata.namespace = namespace
             path.extend(["namespaces", namespace])
 
         if method in ('post', 'put', 'patch'):

@@ -247,11 +247,17 @@ def test_patch_global(client: lightkube.Client):
 def test_create_namespaced(client: lightkube.Client):
     req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods", content={'metadata': {'name': 'xx'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
-    assert req.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx"}}'
+    assert req.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx", "namespace": "default"}}'
     assert pod.metadata.name == 'xx'
 
-    respx.post("https://localhost:9443/api/v1/namespaces/other/pods", content={'metadata': {'name': 'yy'}})
+    req2 = respx.post("https://localhost:9443/api/v1/namespaces/other/pods", content={'metadata': {'name': 'yy'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})), namespace='other')
+    assert pod.metadata.name == 'yy'
+    assert req2.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx", "namespace": "other"}}'
+
+    respx.post("https://localhost:9443/api/v1/namespaces/ns2/pods",
+               content={'metadata': {'name': 'yy'}})
+    pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'}, namespace='ns2')))
     assert pod.metadata.name == 'yy'
 
 
@@ -267,7 +273,7 @@ def test_create_global(client: lightkube.Client):
 def test_replace_namespaced(client: lightkube.Client):
     req = respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy", content={'metadata': {'name': 'xy'}})
     pod = client.replace(Pod(metadata=ObjectMeta(name="xy")))
-    assert req.calls[0][0].read() == b'{"metadata": {"name": "xy"}}'
+    assert req.calls[0][0].read() == b'{"metadata": {"name": "xy", "namespace": "default"}}'
     assert pod.metadata.name == 'xy'
 
     respx.put("https://localhost:9443/api/v1/namespaces/other/pods/xz", content={'metadata': {'name': 'xz'}})
