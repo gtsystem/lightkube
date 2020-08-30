@@ -85,3 +85,8 @@ def test_dict(lazy):
 def test_datatime():
     d = DT.from_dict({'dt': '2019-08-03T11:32:48Z'})
     assert d.dt == datetime(2019, 8, 3, 11, 32, 48, tzinfo=timezone.utc)
+    assert d.to_dict() == {'dt': '2019-08-03T11:32:48Z'}
+
+    d = DT.from_dict({'dt': '2019-08-03T11:32:48+02:30'})
+    assert isinstance(d.dt, datetime) and str(d.dt) == '2019-08-03 11:32:48+02:30'
+    assert d.to_dict() == {'dt': '2019-08-03T11:32:48+02:30'}
