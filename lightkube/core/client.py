@@ -133,15 +133,9 @@ class Client:
         ...
 
     @overload
-    def patch(self, res: Type[NamespacedSubResource], name: str,
-              obj: Union[NamespacedSubResource, Dict, List], *, namespace: str = None,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> NamespacedSubResource:
-        ...
-
-    @overload
-    def patch(self, res: Type[NamespacedResource], name: str,
-              obj: Union[NamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> NamespacedResource:
+    def patch(self, res: Type[AllNamespacedResource], name: str,
+              obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
+              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> AllNamespacedResource:
         ...
 
     def patch(self, res, name, obj, *, namespace=None, patch_type=r.PatchType.STRATEGIC):
