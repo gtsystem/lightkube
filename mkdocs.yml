@@ -10,8 +10,8 @@ repo_url: https://github.com/gtsystem/lightkube
 edit_uri: ""
 
 nav:
-  - QuickStart: 'README.md'
-  - Interface: API.md
+  - QuickStart: index.md
+  - Interface: client.md
 
 markdown_extensions:
   - admonition

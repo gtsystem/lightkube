@@ -24,9 +24,9 @@ class Client:
 
     **parameters**
 
-    * **config** - instance of `KubeConfig`. When not set the configuration will be detected automatically with the
+    * **config** - Instance of `KubeConfig`. When not set the configuration will be detected automatically with the
       following order: in cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
-    * **namespace** - default namespace to use. This attribute is used in case namespaced resources are called without
+    * **namespace** - Default namespace to use. This attribute is used in case namespaced resources are called without
       defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
     * **timeout** - Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
       is ignored when watching changes.
@@ -38,7 +38,7 @@ class Client:
 
     @property
     def namespace(self):
-        """Returns the default namespace that will be used when a namespace has not been specified"""
+        """Return the default namespace that will be used when a namespace has not been specified"""
         return self._client.namespace
 
     @overload
@@ -50,7 +50,14 @@ class Client:
         ...
 
     def delete(self, res, name: str, *, namespace: str = None):
-        """Deletes the object named `name` of kind `res`."""
+        """Delete an object
+
+        **parameters**
+
+        * **res** - Resource kind.
+        * **name** - Name of the object to delete.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        """
         return self._client.request("delete", res=res, name=name, namespace=namespace)
 
     @overload
@@ -62,7 +69,11 @@ class Client:
         ...
 
     def deletecollection(self, res, *, namespace: str = None):
-        """Deletes all objects of kind `res`."""
+        """Delete all objects of the given kind
+
+        * **res** - Resource kind.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        """
         return self._client.request("deletecollection", res=res, namespace=namespace)
 
     @overload
@@ -74,7 +85,14 @@ class Client:
         ...
 
     def get(self, res, name, *, namespace=None):
-        """Returns the object named `name` of kind `res`."""
+        """Return an object
+
+        **parameters**
+
+        * **res** - Resource kind.
+        * **name** - Name of the object to fetch.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        """
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
@@ -89,9 +107,18 @@ class Client:
         ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
-        """Returns an iterator of objects of kind `res`. You can filter the returned items by `labels` or `fields`.
-        It's possible to set the chunk_size` useful to limit the amount of objects returned for each rest API call.
-        This method will automatically execute all subsequent calls until no more data is available."""
+        """Return an iterator of objects matching the selection criteria.
+
+        **parameters**
+
+        * **res** - resource kind.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **chunk_size** - *(optional)* Limit the amount of objects returned for each rest API call.
+             This method will automatically execute all subsequent calls until no more data is available.
+        * **labels** - *(optional)* Filter the returned objects by labels.
+        * **fields** - *(optional)* Filter the returned objects by fields.
+        """
+
         br = self._client.prepare_request(
             'list', res=res, namespace=namespace, labels=labels, fields=fields, params={'limit': chunk_size}
         )
@@ -113,7 +140,20 @@ class Client:
         ...
 
     def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=raise_exc):
-        """Watch objects of kind `res`. You can filter the returned items by `labels` or `fields`"""
+        """Watch changes to objects
+
+        **parameters**
+
+        * **res** - resource kind.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **labels** - *(optional)* Filter the returned objects by labels.
+        * **fields** - *(optional)* Filter the returned objects by fields.
+        * **server_timeout** - *(optional)* Server side timeout to close a watch request. This method
+            will automatically create a new request whenever the backend close the connection without errors.
+        * **resource_version** - *(optional)* When set, only modification events following this version will be returned.
+        * **on_error** - *(optional)* Function that will be called when an error occur. By default any error will raise
+            an exception and stop the watching.
+        """
         br = self._client.prepare_request("list", res=res, namespace=namespace, labels=labels,
             fields=fields, watch=True,
             params={'timeoutSeconds': server_timeout, 'resourceVersion': resource_version}
@@ -139,7 +179,16 @@ class Client:
         ...
 
     def patch(self, res, name, obj, *, namespace=None, patch_type=r.PatchType.STRATEGIC):
-        """Patch the object named `name` of kind `res` with the content of `obj`."""
+        """Patch an object.
+
+        **parameters**
+
+        * **res** - Resource kind.
+        * **name** - Name of the object to patch.
+        * **obj** - patch object.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
+        """
         return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, patch_type=patch_type)
 
     @overload
@@ -159,7 +208,12 @@ class Client:
         ...
 
     def create(self, obj, name=None, *, namespace=None):
-        """Creates a new object `obj`. If `obj` is a sub-resources, the `name` of the object should be provided."""
+        """Creates a new object
+
+        * **obj** - object to create. This need to be an instance of a resource kind.
+        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        """
         return self._client.request("post", name=name, namespace=namespace, obj=obj)
 
     @overload
@@ -179,8 +233,12 @@ class Client:
         ...
 
     def replace(self, obj, name=None, *, namespace=None):
-        """Replace an existing resource with `obj`. If `obj` is a sub-resources, the `name` of the object
-        should be provided."""
+        """Replace an existing resource.
+
+        * **obj** - new object. This need to be an instance of a resource kind.
+        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        """
         return self._client.request("put", name=name, namespace=namespace, obj=obj)
 
 

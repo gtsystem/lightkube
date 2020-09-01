@@ -8,12 +8,19 @@ Modern lightweight kubernetes module for python
 
 ## Highlights
 
-* Simple interface shared across all kubernetes resource.
-* Defines models and resources generated from the swagger specifications.
-* *Typed*: helps to avoid common mistakes and support for autocompletion (tested on PyCharm).
-* *Lightweight*: Fast to start, and small memory footprint as only needed models and resources are loaded.
-* *Listing*: Automatic handling of pagination when listing resources.
-* *Watching*: Customizable handling of errors when watching resources.
+* *Simple* interface shared across all kubernetes APIs.
+* Extensive *type hints* to avoid common mistakes and to support autocompletion (tested on PyCharm).
+* Defines models and resources generated from the swagger specifications. Models are defined using standard dataclasses.
+* Lazy instantiation of inner models.
+* Fast startup and small memory footprint as only needed models and resources can be loaded.
+* Automatic handling of pagination when listing resources.
+* Customizable handling of errors when watching resources.
+
+This module is powered by [httpx](https://github.com/encode/httpx/tree/master/httpx). 
+
+## Installation
+
+    pip install lightkube
 
 ## Usage
 
@@ -95,3 +102,4 @@ client.replace(obj, 'metrics-server', namespace='kube-system')
 
 * Support for async/await
 * Support for loading definitions from yaml files
+* Support for installing a specific version of the kubernetes models
