@@ -210,6 +210,8 @@ class Client:
     def create(self, obj, name=None, *, namespace=None):
         """Creates a new object
 
+        **parameters**
+
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
@@ -234,6 +236,8 @@ class Client:
 
     def replace(self, obj, name=None, *, namespace=None):
         """Replace an existing resource.
+
+        **parameters**
 
         * **obj** - new object. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
