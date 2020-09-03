@@ -1,12 +1,12 @@
 from lightkube import operators
 
 
-def test_exist():
-    assert operators.exist().encode('key') == 'key'
+def test_exists():
+    assert operators.exists().encode('key') == 'key'
 
 
-def test_not_exist():
-    assert operators.not_exist().encode('key') == '!key'
+def test_not_exists():
+    assert operators.not_exists().encode('key') == '!key'
 
 
 def test_equal():

@@ -19,11 +19,11 @@ def test_simple_types():
 def test_operators():
     r = build_selector({
         'k1': operators.equal('v1'),
-        'k2': operators.not_exist(),
+        'k2': operators.not_exists(),
         'k3': operators.in_(['b', 'c']),
         'k4': operators.not_in(['b', 'c']),
         'k5': operators.not_equal('v5'),
-        'k6': operators.exist()
+        'k6': operators.exists()
     })
 
     assert r == "k1=v1,!k2,k3 in (b,c),k4 notin (b,c),k5!=v5,k6"
