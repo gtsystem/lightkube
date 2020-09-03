@@ -115,8 +115,8 @@ class Client:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **chunk_size** - *(optional)* Limit the amount of objects returned for each rest API call.
              This method will automatically execute all subsequent calls until no more data is available.
-        * **labels** - *(optional)* Filter the returned objects by labels.
-        * **fields** - *(optional)* Filter the returned objects by fields.
+        * **labels** - *(optional)* Limit the returned objects by labels. More [details](../selectors).
+        * **fields** - *(optional)* Limit the returned objects by fields. More [details](../selectors).
         """
 
         br = self._client.prepare_request(
@@ -146,13 +146,14 @@ class Client:
 
         * **res** - resource kind.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **labels** - *(optional)* Filter the returned objects by labels.
-        * **fields** - *(optional)* Filter the returned objects by fields.
-        * **server_timeout** - *(optional)* Server side timeout to close a watch request. This method
-            will automatically create a new request whenever the backend close the connection without errors.
+        * **labels** - *(optional)* Limit the returned objects by labels. More [details](../selectors).
+        * **fields** - *(optional)* Limit the returned objects by fields. More [details](../selectors).
+        * **server_timeout** - *(optional)* Server side timeout in seconds to close a watch request.
+            This method will automatically create a new request whenever the backend close the connection
+            without errors.
         * **resource_version** - *(optional)* When set, only modification events following this version will be returned.
-        * **on_error** - *(optional)* Function that will be called when an error occur. By default any error will raise
-            an exception and stop the watching.
+        * **on_error** - *(optional)* Function that control what to do in case of errors.
+            The default implementation will raise any error.
         """
         br = self._client.prepare_request("list", res=res, namespace=namespace, labels=labels,
             fields=fields, watch=True,
