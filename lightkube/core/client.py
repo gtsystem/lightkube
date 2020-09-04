@@ -15,8 +15,10 @@ GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
-LabelSelector = Dict[str, Union[str, None, operators.Operator, Iterable]]
-FieldSelector = Dict[str, Union[str, operators.BinaryOperator]]
+LabelValue = Union[str, None, operators.Operator, Iterable]
+FieldValue = Union[str, operators.BinaryOperator, operators.SequenceOperator]
+LabelSelector = Dict[str, LabelValue]
+FieldSelector = Dict[str, FieldValue]
 
 
 class Client:

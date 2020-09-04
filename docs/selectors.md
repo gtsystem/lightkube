@@ -16,7 +16,7 @@ For more details regarding label selectors see the official [Kubernetes document
 
 This is the list of possible matching operations:
 
-| Operation | Operator | Example | Alternative syntax |
+| Operator | Signature | Example | Alternative syntax |
 |---|---|---|---|
 | Equal | `equal(value)` | `{"env": equal("prod")}` | `{"env": "prod"}` |
 | Not equal | `not_equal(value)` | `{"env": not_equal("prod")}` | - |
@@ -78,7 +78,7 @@ For more details regarding field selectors see the official [Kubernetes document
     Each resource support a specific (and very limited) set of fields that can be used in the selector.
 
 !!! note
-    The valid operations for field selectors are only "equal" and "not equal".
+    The valid operations for field selectors are only "equal", "not equal" and "not in".
 
 ### Examples
 

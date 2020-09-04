@@ -31,10 +31,13 @@ def test_operators():
 
 def test_binary_only_selector():
     with pytest.raises(ValueError):
-        build_selector({'k2': None}, binaryOnly=True)
+        build_selector({'k2': None}, for_fields=True)
 
     with pytest.raises(ValueError):
-        build_selector({'k2': operators.in_(['b', 'c'])}, binaryOnly=True)
+        build_selector({'k2': operators.in_(['b', 'c'])}, for_fields=True)
 
-    r = build_selector({'k1': 'a', 'k2': operators.not_equal('a')}, binaryOnly=True)
+    r = build_selector({'k1': 'a', 'k2': operators.not_equal('a')}, for_fields=True)
     assert r == "k1=a,k2!=a"
+
+    r = build_selector({'k1': 'a', 'k2': operators.not_in(['a', 'b'])}, for_fields=True)
+    assert r == "k1=a,k2!=a,k2!=b"

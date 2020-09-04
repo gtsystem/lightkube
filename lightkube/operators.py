@@ -4,9 +4,10 @@ __all__ = ['in_', 'not_in', 'exists', 'not_exists', 'equal', 'not_equal']
 
 
 class Operator:
-    def __init__(self, op: str, value):
+    def __init__(self, op_name: str, op: str, value=None):
         self.op = op
         self.value = value
+        self.op_name = op_name
 
     def encode(self, key):
         return f"{key}{self.op}{self.value}"
@@ -27,24 +28,25 @@ class UnaryOperator(Operator):
 
 
 def in_(values: Iterable) -> SequenceOperator:
-    return SequenceOperator('in', sorted(values))
+    return SequenceOperator('in_', 'in', sorted(values))
 
 
 def not_in(values: Iterable) -> SequenceOperator:
-    return SequenceOperator('notin', sorted(values))
+    return SequenceOperator('not_in', 'notin', sorted(values))
 
 
 def exists() -> UnaryOperator:
-    return UnaryOperator('', None)
+    return UnaryOperator('exists', '')
 
 
 def not_exists() -> UnaryOperator:
-    return UnaryOperator('!', None)
+    return UnaryOperator('not_exists', '!')
 
 
 def equal(value: str) -> BinaryOperator:
-    return BinaryOperator('=', value)
+    return BinaryOperator('equal', '=', value)
 
 
 def not_equal(value: str) -> BinaryOperator:
-    return BinaryOperator('!=', value)
+    return BinaryOperator('not_equal', '!=', value)
+
