@@ -1,3 +1,5 @@
+## Interface
+
 ::: lightkube.Client
     :docstring:
     :members:

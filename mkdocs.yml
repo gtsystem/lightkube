@@ -12,7 +12,7 @@ edit_uri: ""
 nav:
   - QuickStart: index.md
   - Interface: client.md
-  - Resources: resources.md
+  - Resources & Models: resources-and-models.md
   - Advanced:
       - Selectors: selectors.md
 
