@@ -1,7 +1,7 @@
 from typing import Type, Any, Optional
 
-from . import resource as res
-from .internal_models import meta_v1, autoscaling_v1
+from .core import resource as res
+from .core.internal_models import meta_v1, autoscaling_v1
 
 __all__ = ['create_global_resource', 'create_namespaced_resource']
 

@@ -1,6 +1,6 @@
 import pytest
 
-from lightkube.core import generic_resource as gr
+from lightkube import generic_resource as gr
 from lightkube.core.generic_client import GenericClient
 
 
