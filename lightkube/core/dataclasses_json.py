@@ -54,12 +54,9 @@ class Converter(typing.NamedTuple):
         return self.func(value, **kw)
 
 
-def dataclass_json(_cls=None, *, letter_case=None):
+def dataclass_json(_cls=None):
     def wrap(cls):
-        return _process_class(cls, letter_case)
-
-    if _cls is None:
-        return wrap
+        return _process_class(cls)
     return wrap(_cls)
 
 
@@ -109,30 +106,24 @@ class LazyAttribute:
 
 
 def _asdict_inner(obj, dict_factory):
-    if dc.is_dataclass(obj):
-        kwargs = dict(dict_factory=dict_factory)
-        result = []
-        lazy_attr = getattr(obj, "_lazy_values", None)
-        key_transform = obj._prop_to_json.get
-        for k, conv_f in obj._late_init_to:
-            if lazy_attr is not None and k in lazy_attr:
-                value = lazy_attr[k]
-            else:
-                value = getattr(obj, k)
-                if value is None:
-                    continue
-                value = conv_f(value, kwargs)
-            if value is not None:
-                result.append((key_transform(k, k), value))
-        return dict_factory(result)
-    else:
-        return copy.deepcopy(obj)
+    kwargs = dict(dict_factory=dict_factory)
+    result = []
+    lazy_attr = getattr(obj, "_lazy_values", None)
+    key_transform = obj._prop_to_json.get
+    for k, conv_f in obj._late_init_to:
+        if lazy_attr is not None and k in lazy_attr:
+            value = lazy_attr[k]
+        else:
+            value = getattr(obj, k)
+            if value is None:
+                continue
+            value = conv_f(value, kwargs)
+        if value is not None:
+            result.append((key_transform(k, k), value))
+    return dict_factory(result)
 
 
 class DataclassDictMixIn:
-    def __init__(self, **kwargs):
-        pass
-
     @classmethod
     def from_dict(cls, d, lazy=True):
         kwargs = dict(lazy=lazy)
@@ -148,15 +139,14 @@ class DataclassDictMixIn:
             k = transform(k, k)
             if k in params:
                 valid_d[k] = v
+        obj = cls(**valid_d)
         if lazy:
-            obj = cls(**valid_d)
             obj._lazy_values = {}
             obj._lazy_kwargs = kwargs
             for k, _ in cls._late_init_from:
                 obj._lazy_values[k] = getattr(obj, k)
                 delattr(obj, k)
         else:
-            obj = cls(**valid_d)
             d = obj.__dict__
             for k, convert in cls._late_init_from:
                 if d[k] is not None:
@@ -169,7 +159,7 @@ class DataclassDictMixIn:
         return _asdict_inner(self, dict_factory)
 
 
-def _process_class(cls, letter_case):
+def _process_class(cls):
     cls.from_dict = classmethod(DataclassDictMixIn.from_dict.__func__)
     cls.to_dict = DataclassDictMixIn.to_dict
     cls._late_init_from = None

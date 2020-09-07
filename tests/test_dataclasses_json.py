@@ -1,5 +1,5 @@
 from typing import List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import pytest
@@ -20,6 +20,7 @@ class B:
 class C:
     c1: str
     c2: List['A'] = None
+    c3: str = field(metadata={"json": "$ref"}, default=None)
 
 
 @dataclass_json
@@ -83,6 +84,7 @@ def test_dict(lazy):
 
 
 def test_datatime():
+    """Datetime get converted to string and back"""
     d = DT.from_dict({'dt': '2019-08-03T11:32:48Z'})
     assert d.dt == datetime(2019, 8, 3, 11, 32, 48, tzinfo=timezone.utc)
     assert d.to_dict() == {'dt': '2019-08-03T11:32:48Z'}
@@ -90,3 +92,24 @@ def test_datatime():
     d = DT.from_dict({'dt': '2019-08-03T11:32:48+02:30'})
     assert isinstance(d.dt, datetime) and str(d.dt) == '2019-08-03 11:32:48+02:30'
     assert d.to_dict() == {'dt': '2019-08-03T11:32:48+02:30'}
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_rename(lazy):
+    """We can rename fields from/to dicts"""
+    c = C.from_dict({'c1': 'a', '$ref': 'b'}, lazy=lazy)
+    assert c.c1 == 'a'
+    assert c.c3 == 'b'
+    c.c3 = 'c'
+
+    assert c.to_dict() == {'c1': 'a', '$ref': 'c'}
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_drop_unknown(lazy):
+    """Unknown attributes are dropped"""
+    c = C.from_dict({'c1': 'a', 'k': 'b'}, lazy=lazy)
+    assert c.c1 == 'a'
+    assert not hasattr(c, 'k')
+
+    assert c.to_dict() == {'c1': 'a'}
