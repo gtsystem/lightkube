@@ -75,12 +75,12 @@ def extract_types(cls, is_to=True):
             is_list = False
 
         if is_dataclass_json(t):
-            yield k, Converter(is_list=is_list, supp_kw=True, func=getattr(t, method_name))
+            yield k, Converter(is_list=is_list, supp_kw=True, func=getattr(t, method_name)), field.default
         elif t in TYPE_CONVERTERS:
-            yield k, Converter(is_list=is_list, supp_kw=False, func=getattr(TYPE_CONVERTERS[t], func_name))
+            yield k, Converter(is_list=is_list, supp_kw=False, func=getattr(TYPE_CONVERTERS[t], func_name)), field.default
         else:
             if is_to:
-                yield k, nohop
+                yield k, nohop, field.default
 
 
 class LazyAttribute:
@@ -107,7 +107,7 @@ class DataclassDictMixIn:
     @classmethod
     def _setup(cls):
         if cls._late_init_from is None:
-            cls._late_init_from = list(extract_types(cls, is_to=False))
+            cls._late_init_from = list(t[:2] for t in extract_types(cls, is_to=False))
             for k, convert in cls._late_init_from:
                 setattr(cls, k, LazyAttribute(k, convert))
             cls._prop_to_json = {field.name: field.metadata['json'] for field in dc.fields(cls) if 'json' in field.metadata}
@@ -146,12 +146,12 @@ class DataclassDictMixIn:
         result = []
         lazy_attr = getattr(self, "_lazy_values", None)
         key_transform = self._prop_to_json.get
-        for k, conv_f in self._late_init_to:
+        for k, conv_f, default in self._late_init_to:
             if lazy_attr is not None and k in lazy_attr:
                 value = lazy_attr[k]
             else:
                 value = getattr(self, k)
-                if value is None:
+                if value == default:
                     continue
                 value = conv_f(value, kwargs)
             if value is not None:

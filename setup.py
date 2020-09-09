@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='lightkube',
-    version="0.1.0",
+    version="0.2.0",
     description='Lightweight kubernetes client library',
     long_description='Lightweight kubernetes client library',
     author='Giuseppe Tribulato',

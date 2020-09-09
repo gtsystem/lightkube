@@ -33,13 +33,21 @@ class DT(DataclassDictMixIn):
     dt: 'datetime'
 
 
+@dataclass
+class Def(DataclassDictMixIn):
+    d1: str
+    d2: int = 2
+    d3: 'bool' = False
+    d4: str = "ok"
+
+
 @pytest.mark.parametrize("lazy", [True, False])
 def test_single(lazy):
     a = A.from_dict({'a1': 'a', 'a3': True}, lazy=lazy)
     assert a.a1 == 'a'
     assert a.a2 == 0
     assert a.a3 is True
-    assert a.to_dict() == {'a1': 'a', 'a2': 0, 'a3': True}
+    assert a.to_dict() == {'a1': 'a', 'a3': True}
 
 
 @pytest.mark.parametrize("lazy", [True, False])
@@ -51,7 +59,7 @@ def test_nasted(lazy):
     else:
         assert 'b2' in vars(b)
     assert b.b2.a3 is True
-    assert b.to_dict() == {'b1': 'ok', 'b2': {'a1': 'a', 'a2': 0, 'a3': True}}
+    assert b.to_dict() == {'b1': 'ok', 'b2': {'a1': 'a', 'a3': True}}
 
 
 @pytest.mark.parametrize("lazy", [True, False])
@@ -64,7 +72,7 @@ def test_nasted_in_list(lazy):
     assert c.c2[0].a3 is True
     assert c.c2[1].a1 == 'b'
     assert c.to_dict() == {'c1': 'ok', 'c2': [
-        {'a1': 'a', 'a2': 0, 'a3': True}, {'a1': 'b', 'a2': 0, 'a3': False}
+        {'a1': 'a', 'a3': True}, {'a1': 'b'}
     ]}
 
 
@@ -109,3 +117,14 @@ def test_drop_unknown(lazy):
     assert not hasattr(c, 'k')
 
     assert c.to_dict() == {'c1': 'a'}
+
+
+def test_default_not_encoded():
+    """Test that default values are not returned in the dict"""
+    assert Def(d1='a').to_dict() == {'d1': 'a'}
+    assert Def(d1='a', d2=2).to_dict() == {'d1': 'a'}
+    assert Def(d1='a', d2=0).to_dict() == {'d1': 'a', 'd2': 0}
+    assert Def(d1='a', d3=False).to_dict() == {'d1': 'a'}
+    assert Def(d1='a', d3=True).to_dict() == {'d1': 'a', 'd3': True}
+    assert Def(d1='a', d4='ok').to_dict() == {'d1': 'a'}
+    assert Def(d1='a', d4='ko').to_dict() == {'d1': 'a', 'd4': 'ko'}
