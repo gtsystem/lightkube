@@ -1,10 +1,8 @@
 import sys
-import dataclasses as dc
-from typing import get_type_hints
-import copy
-import inspect
 import typing
+from typing import get_type_hints
 from datetime import datetime
+import dataclasses as dc
 
 try:
     fromisoformat = datetime.fromisoformat
@@ -54,18 +52,12 @@ class Converter(typing.NamedTuple):
         return self.func(value, **kw)
 
 
-def dataclass_json(_cls=None):
-    def wrap(cls):
-        return _process_class(cls)
-    return wrap(_cls)
-
-
 def nohop(x, kw):
     return x
 
 
 def is_dataclass_json(cls):
-    return dc.is_dataclass(cls) and hasattr(cls, '_late_init_to')
+    return dc.is_dataclass(cls) and issubclass(cls, DataclassDictMixIn)
 
 
 def extract_types(cls, is_to=True):
@@ -105,34 +97,29 @@ class LazyAttribute:
         return value
 
 
-def _asdict_inner(obj, dict_factory):
-    kwargs = dict(dict_factory=dict_factory)
-    result = []
-    lazy_attr = getattr(obj, "_lazy_values", None)
-    key_transform = obj._prop_to_json.get
-    for k, conv_f in obj._late_init_to:
-        if lazy_attr is not None and k in lazy_attr:
-            value = lazy_attr[k]
-        else:
-            value = getattr(obj, k)
-            if value is None:
-                continue
-            value = conv_f(value, kwargs)
-        if value is not None:
-            result.append((key_transform(k, k), value))
-    return dict_factory(result)
-
-
 class DataclassDictMixIn:
+    _late_init_from: typing.List = None
+    _late_init_to: typing.List = None
+    _json_to_prop: typing.Dict = None
+    _prop_to_json: typing.Dict = None
+    _valid_params: typing.Set = None
+
     @classmethod
-    def from_dict(cls, d, lazy=True):
-        kwargs = dict(lazy=lazy)
+    def _setup(cls):
         if cls._late_init_from is None:
             cls._late_init_from = list(extract_types(cls, is_to=False))
             for k, convert in cls._late_init_from:
                 setattr(cls, k, LazyAttribute(k, convert))
+            cls._prop_to_json = {field.name: field.metadata['json'] for field in dc.fields(cls) if 'json' in field.metadata}
+            cls._json_to_prop = {v: k for k, v in cls._prop_to_json.items()}
+            cls._late_init_to = list(extract_types(cls, is_to=True))
+            cls._valid_params = {f.name for f in dc.fields(cls)}
 
-        params = inspect.signature(cls).parameters
+    @classmethod
+    def from_dict(cls, d, lazy=True):
+        cls._setup()
+        kwargs = dict(lazy=lazy)
+        params = cls._valid_params
         valid_d = {}
         transform = cls._json_to_prop.get
         for k, v in d.items():
@@ -154,16 +141,19 @@ class DataclassDictMixIn:
         return obj
 
     def to_dict(self, dict_factory=dict):
-        if self._late_init_to is None:
-            self.__class__._late_init_to = list(extract_types(self.__class__, is_to=True))
-        return _asdict_inner(self, dict_factory)
-
-
-def _process_class(cls):
-    cls.from_dict = classmethod(DataclassDictMixIn.from_dict.__func__)
-    cls.to_dict = DataclassDictMixIn.to_dict
-    cls._late_init_from = None
-    cls._late_init_to = None
-    cls._prop_to_json = {field.name: field.metadata['json'] for field in dc.fields(cls) if 'json' in field.metadata}
-    cls._json_to_prop = {v: k for k, v in cls._prop_to_json.items()}
-    return cls
+        self._setup()
+        kwargs = dict(dict_factory=dict_factory)
+        result = []
+        lazy_attr = getattr(self, "_lazy_values", None)
+        key_transform = self._prop_to_json.get
+        for k, conv_f in self._late_init_to:
+            if lazy_attr is not None and k in lazy_attr:
+                value = lazy_attr[k]
+            else:
+                value = getattr(self, k)
+                if value is None:
+                    continue
+                value = conv_f(value, kwargs)
+            if value is not None:
+                result.append((key_transform(k, k), value))
+        return dict_factory(result)

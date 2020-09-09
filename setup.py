@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='lightkube',
-    version="0.0.1",
+    version="0.1.0",
     description='Lightweight kubernetes client library',
     long_description='Lightweight kubernetes client library',
     author='Giuseppe Tribulato',
@@ -11,7 +11,7 @@ setup(
     url='https://github.com/gtsystem/lightkube',
     packages=['lightkube', 'lightkube.config', 'lightkube.core'],
     install_requires=[
-        'lightkube-models >= 1.15.6.1',
+        'lightkube-models >= 1.15.6.2',
         'httpx >= 0.14.1',
         'respx',
         'PyYAML',

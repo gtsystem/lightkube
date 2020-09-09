@@ -4,36 +4,32 @@ from datetime import datetime, timezone
 
 import pytest
 
-from lightkube.core.dataclasses_json import dataclass_json
+from lightkube.core.dataclasses_dict import DataclassDictMixIn
 
 
-@dataclass_json
 @dataclass
-class B:
+class B(DataclassDictMixIn):
     b1: str
     b2: 'A' = None
     b3: 'dict' = None
 
 
-@dataclass_json
 @dataclass
-class C:
+class C(DataclassDictMixIn):
     c1: str
     c2: List['A'] = None
     c3: str = field(metadata={"json": "$ref"}, default=None)
 
 
-@dataclass_json
 @dataclass
-class A:
+class A(DataclassDictMixIn):
     a1: str
     a2: int = 0
     a3: 'bool' = False
 
 
-@dataclass_json
 @dataclass
-class DT:
+class DT(DataclassDictMixIn):
     dt: 'datetime'
 
 
