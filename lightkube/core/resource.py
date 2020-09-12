@@ -19,7 +19,11 @@ class ApiInfo:
 
 
 class Resource:
-    api_info: ApiInfo
+    _api_info: ApiInfo
+
+
+def api_info(res: Resource):
+    return res._api_info
 
 
 class NamespacedResource(Resource):

@@ -11,7 +11,7 @@ setup(
     url='https://github.com/gtsystem/lightkube',
     packages=['lightkube', 'lightkube.config', 'lightkube.core'],
     install_requires=[
-        'lightkube-models >= 1.15.6.2',
+        'lightkube-models >= 1.15.12.0',
         'httpx >= 0.14.1',
         'respx',
         'PyYAML',

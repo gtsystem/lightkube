@@ -121,7 +121,8 @@ class GenericClient:
         else:
             real_method = "watch" if watch else method
 
-        if real_method not in res.api_info.verbs:
+        api_info = r.api_info(res)
+        if real_method not in api_info.verbs:
             if watch:
                 raise ValueError(f"Resource '{res.__name__}' is not watchable")
             else:
@@ -130,10 +131,10 @@ class GenericClient:
         if watch:
             params['watch'] = "true"
 
-        if res.api_info.parent is None:
-            base = res.api_info.resource
+        if api_info.parent is None:
+            base = api_info.resource
         else:
-            base = res.api_info.parent
+            base = api_info.parent
 
         if base.group == '':
             path = ["api", base.version]
@@ -159,8 +160,8 @@ class GenericClient:
             else:
                 data = obj.to_dict()
 
-        path.append(res.api_info.plural)
-        if method in ('delete', 'get', 'patch', 'put') or res.api_info.action:
+        path.append(api_info.plural)
+        if method in ('delete', 'get', 'patch', 'put') or api_info.action:
             if name is None and method == 'put':
                 name = obj.metadata.name
             if name is None:
@@ -171,8 +172,8 @@ class GenericClient:
         if method == 'patch':
             headers = {'Content-Type': patch_type.value}
 
-        if res.api_info.action:
-            path.append(res.api_info.action)
+        if api_info.action:
+            path.append(api_info.action)
 
         http_method = METHOD_MAPPING[method]
         if http_method == 'DELETE':

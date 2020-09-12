@@ -68,7 +68,7 @@ class GenericNamespacedStatus(res.NamespacedResourceG, Generic):
 
 def _create_subresource(main_class, parent_info: res.ApiInfo, action):
     class TmpName(main_class):
-        api_info = res.ApiInfo(
+        _api_info = res.ApiInfo(
             resource=parent_info.resource if action == 'status' else res.ResourceDef('autoscaling', 'v1', 'Scale'),
             parent=parent_info.resource,
             plural=parent_info.plural,
@@ -97,10 +97,10 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
         main, status, scale = GenericGlobalResource, GenericGlobalStatus, GenericGlobalScale
 
     class TmpName(main):
-        api_info = create_api_info(group, version, kind, plural, verbs=verbs)
+        _api_info = create_api_info(group, version, kind, plural, verbs=verbs)
 
-        Scale = _create_subresource(scale, api_info, action='scale')
-        Status = _create_subresource(status, api_info, action='status')
+        Scale = _create_subresource(scale, _api_info, action='scale')
+        Status = _create_subresource(status, _api_info, action='status')
 
     TmpName.__name__ = TmpName.__qualname__ = kind
     return TmpName
