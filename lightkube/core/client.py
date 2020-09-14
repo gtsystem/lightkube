@@ -7,7 +7,7 @@ import httpx
 from ..config.config import KubeConfig
 from .. import operators
 from ..core import resource as r
-from .generic_client import GenericClient, raise_exc
+from .generic_client import GenericSyncClient, raise_exc
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -36,7 +36,7 @@ class Client:
       accessed.
     """
     def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        self._client = GenericClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
+        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
 
     @property
     def namespace(self):

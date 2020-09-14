@@ -81,20 +81,16 @@ class WatchDriver:
 
 
 class GenericClient:
+    AdapterClient = staticmethod(client_adapter.Client)
+
     def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        if config is None:
-            try:
-                config = KubeConfig.from_service_account()
-            except Exception:
-                config = KubeConfig.from_file()
         if timeout is None:
             timeout = httpx.Timeout(10)
-        self._config = config
         self._timeout = timeout
         self._watch_timeout = copy(timeout)
         self._watch_timeout.read_timeout = None
         self._lazy = lazy
-        self._client = client_adapter.Client(config, timeout)
+        self._client = self.AdapterClient(config, timeout)
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
@@ -187,23 +183,6 @@ class GenericClient:
 
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
-    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
-        wd = WatchDriver(br, self._client.build_request, self._lazy)
-        while True:
-            req = wd.get_request()
-            resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
-            try:
-                resp.raise_for_status()
-                for line in resp.iter_lines():
-                    yield wd.process_one_line(line)
-            except Exception as e:
-                action = on_error(e)
-                if action is r.WatchOnError.RAISE:
-                    raise
-                if action is r.WatchOnError.STOP:
-                    break
-                continue
-
     def handle_response(self, method, resp, br):
         try:
             resp.raise_for_status()
@@ -224,6 +203,45 @@ class GenericClient:
         else:
             if res is not None:
                 return res.from_dict(data, lazy=self._lazy)
+
+    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
+        return NotImplementedError
+
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
+                labels=None, fields=None, watch: bool = False,
+                patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        return NotImplementedError
+
+    def list(self, br: BasicRequest) -> Any:
+        return NotImplementedError
+
+
+class GenericSyncClient(GenericClient):
+    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
+        if config is None:
+            try:
+                config = KubeConfig.from_service_account()
+            except Exception:
+                config = KubeConfig.from_file()
+
+        super().__init__(config=config, namespace=namespace, timeout=timeout, lazy=lazy)
+
+    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
+        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        while True:
+            req = wd.get_request()
+            resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
+            try:
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    yield wd.process_one_line(line)
+            except Exception as e:
+                action = on_error(e)
+                if action is r.WatchOnError.RAISE:
+                    raise
+                if action is r.WatchOnError.STOP:
+                    break
+                continue
 
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
