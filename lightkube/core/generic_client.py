@@ -1,10 +1,10 @@
-import sys
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Callable
+import time
+from typing import Type, Any, Dict
 import dataclasses
 from dataclasses import dataclass
 import json
 from copy import copy
-
+import asyncio
 import httpx
 
 from . import resource as r
@@ -12,6 +12,7 @@ from ..config.config import KubeConfig
 from ..config import client_adapter
 from .internal_models import meta_v1
 from .selector import build_selector
+from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
 
 
 ALL_NS = '*'
@@ -28,10 +29,6 @@ def transform_exception(e: httpx.HTTPError):
     if isinstance(e, httpx.HTTPStatusError) and e.response.headers['Content-Type'] == 'application/json':
         return ApiError(request=e.request, response=e.response)
     return e
-
-
-def raise_exc(e):
-    return r.WatchOnError.RAISE
 
 
 METHOD_MAPPING = {
@@ -100,7 +97,7 @@ class GenericClient:
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
                         labels=None, fields=None,
-                        watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
+                        watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
         if params is not None:
             params = {k: v for k, v in params.items() if v is not None}
         else:
@@ -211,24 +208,29 @@ class GenericClient:
 
 
 class GenericSyncClient(GenericClient):
-    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
+    def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
+        err_count = 0
         while True:
             req = wd.get_request()
             resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
             try:
                 resp.raise_for_status()
+                err_count = 0
                 for line in resp.iter_lines():
                     yield wd.process_one_line(line)
             except Exception as e:
-                action = on_error(e)
-                if action is r.WatchOnError.RAISE:
+                err_count += 1
+                handle_error = on_error(e, err_count)
+                if handle_error.action is OnErrorAction.RAISE:
                     raise
-                if action is r.WatchOnError.STOP:
+                if handle_error.action is OnErrorAction.STOP:
                     break
+                if handle_error.sleep > 0:
+                    time.sleep(handle_error.sleep)
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
         print(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
@@ -248,24 +250,29 @@ class GenericSyncClient(GenericClient):
 class GenericAsyncClient(GenericClient):
     AdapterClient = staticmethod(client_adapter.AsyncClient)
 
-    async def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
+    async def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
+        err_count = 0
         while True:
             req = wd.get_request()
             resp = await self._client.send(req, stream=True, timeout=self._watch_timeout)
             try:
                 resp.raise_for_status()
+                err_count = 0
                 async for line in resp.aiter_lines():
                     yield wd.process_one_line(line)
             except Exception as e:
-                action = on_error(e)
-                if action is r.WatchOnError.RAISE:
+                err_count += 1
+                handle_error = on_error(e, err_count)
+                if handle_error.action is OnErrorAction.RAISE:
                     raise
-                if action is r.WatchOnError.STOP:
+                if handle_error.action is OnErrorAction.STOP:
                     break
+                if handle_error.sleep > 0:
+                    await asyncio.sleep(handle_error.sleep)
                 continue
 
-    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
         print(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)

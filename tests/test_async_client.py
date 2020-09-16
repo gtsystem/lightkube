@@ -11,7 +11,7 @@ import lightkube
 from lightkube.config.config import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
 from lightkube.models.meta_v1 import ObjectMeta
-
+from lightkube import types
 
 KUBECONFIG = """
 apiVersion: v1
@@ -153,7 +153,7 @@ async def test_watch_version(client: lightkube.AsyncClient):
 async def test_patch_global(client: lightkube.AsyncClient):
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
     pod = await client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
-                       patch_type=lightkube.PatchType.JSON)
+                       patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
 

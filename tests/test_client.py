@@ -11,7 +11,7 @@ import lightkube
 from lightkube.config.config import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
 from lightkube.models.meta_v1 import ObjectMeta
-
+from lightkube import types
 
 KUBECONFIG = """
 apiVersion: v1
@@ -203,7 +203,7 @@ def test_watch_on_error(client: lightkube.Client):
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
 
     i = None
-    for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.STOP)):
+    for i, (op, node) in enumerate(client.watch(Node, on_error=types.on_error_stop)):
         assert node.metadata.name == f'p{i}'
         assert op == 'ADDED'
     assert i == 9
@@ -215,7 +215,7 @@ def test_watch_stop_iter(client: lightkube.Client):
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
 
     i = None
-    for i, (op, node) in enumerate(client.watch(Node, on_error=lambda e: lightkube.WatchOnError.RAISE)):
+    for i, _ in enumerate(client.watch(Node, on_error=types.on_error_raise)):
         break
     assert i == 0
 
@@ -229,7 +229,7 @@ def test_patch_namespaced(client: lightkube.Client):
 
     req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xx'}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
-                       patch_type=lightkube.PatchType.MERGE)
+                       patch_type=types.PatchType.MERGE)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/merge-patch+json"
 
@@ -238,7 +238,7 @@ def test_patch_namespaced(client: lightkube.Client):
 def test_patch_global(client: lightkube.Client):
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
     pod = client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
-                       patch_type=lightkube.PatchType.JSON)
+                       patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
 

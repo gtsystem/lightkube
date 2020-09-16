@@ -1,13 +1,10 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Any, Dict, Tuple, List, Callable, Iterable, AsyncIterable
-import enum
-import dataclasses
-from dataclasses import dataclass
-import json
+from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
 import httpx
 from ..config.config import KubeConfig
 from .. import operators
 from ..core import resource as r
-from .generic_client import GenericSyncClient, GenericAsyncClient, raise_exc
+from .generic_client import GenericSyncClient, GenericAsyncClient
+from ..types import OnErrorHandler, PatchType, on_error_raise
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -129,7 +126,7 @@ class Client:
     @overload
     def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
-              resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
+              resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
             Iterator[Tuple[str, GlobalResource]]:
         ...
 
@@ -137,11 +134,11 @@ class Client:
     def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
               labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
-              on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
+              on_error: OnErrorHandler = on_error_raise) -> \
             Iterator[Tuple[str, NamespacedResource]]:
         ...
 
-    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=raise_exc):
+    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
         """Watch changes to objects
 
         **parameters**
@@ -166,22 +163,22 @@ class Client:
     @overload
     def patch(self, res: Type[GlobalSubResource], name: str,
               obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalSubResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalSubResource:
         ...
 
     @overload
     def patch(self, res: Type[GlobalResource], name: str,
               obj: Union[GlobalResource, Dict, List], *,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalResource:
         ...
 
     @overload
     def patch(self, res: Type[AllNamespacedResource], name: str,
               obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> AllNamespacedResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> AllNamespacedResource:
         ...
 
-    def patch(self, res, name, obj, *, namespace=None, patch_type=r.PatchType.STRATEGIC):
+    def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC):
         """Patch an object.
 
         **parameters**
@@ -357,7 +354,7 @@ class AsyncClient:
     @overload
     def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
-              resource_version: str = None, on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
+              resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
             AsyncIterable[Tuple[str, GlobalResource]]:
         ...
 
@@ -365,11 +362,11 @@ class AsyncClient:
     def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
               labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
-              on_error: Callable[[Exception], r.WatchOnError] = raise_exc) -> \
+              on_error: OnErrorHandler = on_error_raise) -> \
             AsyncIterable[Tuple[str, NamespacedResource]]:
         ...
 
-    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=raise_exc):
+    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
         """Watch changes to objects
 
         **parameters**
@@ -394,22 +391,22 @@ class AsyncClient:
     @overload
     async def patch(self, res: Type[GlobalSubResource], name: str,
               obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalSubResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalSubResource:
         ...
 
     @overload
     async def patch(self, res: Type[GlobalResource], name: str,
               obj: Union[GlobalResource, Dict, List], *,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> GlobalResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalResource:
         ...
 
     @overload
     async def patch(self, res: Type[AllNamespacedResource], name: str,
               obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: r.PatchType = r.PatchType.STRATEGIC) -> AllNamespacedResource:
+              patch_type: PatchType = PatchType.STRATEGIC) -> AllNamespacedResource:
         ...
 
-    async def patch(self, res, name, obj, *, namespace=None, patch_type=r.PatchType.STRATEGIC):
+    async def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC):
         """Patch an object.
 
         **parameters**
