@@ -1,5 +1,6 @@
 httpx >= 0.14.1
 pytest
+pytest-asyncio
 respx
 PyYAML
 lightkube-models >= 1.15.6.1

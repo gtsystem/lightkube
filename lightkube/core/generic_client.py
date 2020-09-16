@@ -90,6 +90,11 @@ class GenericClient:
         self._watch_timeout = copy(timeout)
         self._watch_timeout.read_timeout = None
         self._lazy = lazy
+        if config is None:
+            try:
+                config = KubeConfig.from_service_account()
+            except Exception:
+                config = KubeConfig.from_file()
         self._client = self.AdapterClient(config, timeout)
         self.namespace = namespace if namespace else config.namespace
 
@@ -204,28 +209,8 @@ class GenericClient:
             if res is not None:
                 return res.from_dict(data, lazy=self._lazy)
 
-    def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
-        return NotImplementedError
-
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
-                labels=None, fields=None, watch: bool = False,
-                patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
-        return NotImplementedError
-
-    def list(self, br: BasicRequest) -> Any:
-        return NotImplementedError
-
 
 class GenericSyncClient(GenericClient):
-    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        if config is None:
-            try:
-                config = KubeConfig.from_service_account()
-            except Exception:
-                config = KubeConfig.from_file()
-
-        super().__init__(config=config, namespace=namespace, timeout=timeout, lazy=lazy)
-
     def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
         while True:
@@ -258,3 +243,41 @@ class GenericSyncClient(GenericClient):
             resp = self._client.send(req)
             cont, chunk = self.handle_response('list', resp, br)
             yield from chunk
+
+
+class GenericAsyncClient(GenericClient):
+    AdapterClient = staticmethod(client_adapter.AsyncClient)
+
+    async def watch(self, br: BasicRequest, on_error: Callable[[Exception], r.WatchOnError] = raise_exc):
+        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        while True:
+            req = wd.get_request()
+            resp = await self._client.send(req, stream=True, timeout=self._watch_timeout)
+            try:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    yield wd.process_one_line(line)
+            except Exception as e:
+                action = on_error(e)
+                if action is r.WatchOnError.RAISE:
+                    raise
+                if action is r.WatchOnError.STOP:
+                    break
+                continue
+
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: r.PatchType = r.PatchType.STRATEGIC) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
+        print(br)
+        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+        resp = await self._client.send(req)
+        return self.handle_response(method, resp, br)
+
+    async def list(self, br: BasicRequest) -> Any:
+        cont = True
+        while cont:
+            print(br)
+            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+            resp = await self._client.send(req)
+            cont, chunk = self.handle_response('list', resp, br)
+            for item in chunk:
+                yield item
