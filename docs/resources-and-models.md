@@ -1,5 +1,13 @@
 # Resources & Models
 
+## Reference
+
+* lightkube-models [1.15](https://gtsystem.github.io/lightkube-models/1.15)
+* lightkube-models [1.16](https://gtsystem.github.io/lightkube-models/1.16)
+* lightkube-models [1.17](https://gtsystem.github.io/lightkube-models/1.17)
+* lightkube-models [1.18](https://gtsystem.github.io/lightkube-models/1.18)
+* lightkube-models [1.19](https://gtsystem.github.io/lightkube-models/1.19)
+
 ## Resources
 
 Kubernetes API provides access to several resource kinds organized by version and 
