@@ -108,11 +108,33 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
 
 def create_global_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
         -> Type[GenericGlobalResource]:
+    """Create a new class representing a global resource with the provided specifications.
+
+    **Parameters**
+
+    * **group** `str` - API group of the resource. Example `stable.example.com`.
+    * **version** `str` - API group version. Example `v1`.
+    * **kind** `str` - Resource name. Example `Job`.
+    * **plural** `str` - Resource collection name. Example `jobs`.
+
+    **returns**  Subclass of `GenericGlobalResource`.
+    """
     return _create_resource(
         False, group, version, kind, plural, verbs=verbs)
 
 
 def create_namespaced_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
         -> Type[GenericNamespacedResource]:
+    """Create a new class representing a namespaced resource with the provided specifications.
+
+    **Parameters**
+
+    * **group** `str` - API group of the resource. Example `stable.example.com`.
+    * **version** `str` - API group version. Example `v1`.
+    * **kind** `str` - Resource name. Example `Job`.
+    * **plural** `str` - Resource collection name. Example `jobs`.
+
+    **returns**  Subclass of `GenericNamespacedResource`.
+    """
     return _create_resource(
         True, group, version, kind, plural, verbs=verbs)
