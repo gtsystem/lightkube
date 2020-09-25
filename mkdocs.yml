@@ -13,6 +13,7 @@ nav:
   - QuickStart: index.md
   - Interface: client.md
   - Resources & Models: resources-and-models.md
+  - Async Usage: async-usage.md
   - Advanced:
       - Selectors: selectors.md
 
