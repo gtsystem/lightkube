@@ -3,8 +3,8 @@ from typing import Type, Any, Dict
 import dataclasses
 from dataclasses import dataclass
 import json
-from copy import copy
 import asyncio
+
 import httpx
 
 from . import resource as r
@@ -66,7 +66,6 @@ class WatchDriver:
         br = self._br
         if self._version is not None:
             br.params['resourceVersion'] = self._version
-        print(br)
         return self._build_request(br.method, br.url, params=br.params)
 
     def process_one_line(self, line):
@@ -84,8 +83,8 @@ class GenericClient:
         if timeout is None:
             timeout = httpx.Timeout(10)
         self._timeout = timeout
-        self._watch_timeout = copy(timeout)
-        self._watch_timeout.read_timeout = None
+        self._watch_timeout = httpx.Timeout(timeout)
+        self._watch_timeout.read = None
         self._lazy = lazy
         if config is None:
             try:
@@ -232,7 +231,6 @@ class GenericSyncClient(GenericClient):
 
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
-        print(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = self._client.send(req)
         return self.handle_response(method, resp, br)
@@ -240,7 +238,6 @@ class GenericSyncClient(GenericClient):
     def list(self, br: BasicRequest) -> Any:
         cont = True
         while cont:
-            print(br)
             req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
             resp = self._client.send(req)
             cont, chunk = self.handle_response('list', resp, br)
@@ -274,7 +271,6 @@ class GenericAsyncClient(GenericClient):
 
     async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
-        print(br)
         req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
         resp = await self._client.send(req)
         return self.handle_response(method, resp, br)
@@ -282,7 +278,6 @@ class GenericAsyncClient(GenericClient):
     async def list(self, br: BasicRequest) -> Any:
         cont = True
         while cont:
-            print(br)
             req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
             resp = await self._client.send(req)
             cont, chunk = self.handle_response('list', resp, br)

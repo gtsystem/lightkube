@@ -22,7 +22,6 @@ def build_selector(pairs: Union[List, Dict], for_fields=False):
             raise ValueError(f"selector value '{v}' should be str, None, Iterable or instance of operator")
 
         if for_fields and v.op_name not in FIELDS_SUPPORT:
-            print(for_fields, v.op_name)
             raise ValueError(f"parameter 'fields' only support operators {FIELDS_SUPPORT_STR}")
 
         if for_fields and v.op_name == 'not_in':    # not_in can be implement using several !=
