@@ -69,3 +69,5 @@ at release 1.
 
 Depending on the Kubernetes server in use, the appropriate version
 should be selected as follow `lightkube-models>=1.15,<1.16`.
+
+A list of available versions, can be seen on [pypi](https://pypi.org/project/lightkube-models/#history).

@@ -102,7 +102,10 @@ obj = Deployment.Scale(
 client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
 
-## Upcoming features
+## Unsupported features
 
-* Support for loading definitions from yaml files
-* Support for Custom Resource Definitions
+The following features are not supported at the moment:
+
+* Special subresources like `log`, `attach`, `exec`, `portforward` and `proxy`.
+* `auth-provider` authentication method is not supported. The supported
+  authentication methods are `token`, `username` + `password` and `exec`.
