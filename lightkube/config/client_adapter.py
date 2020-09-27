@@ -6,7 +6,9 @@ import json
 import os
 import subprocess
 import httpx
+
 from .config import KubeConfig
+from ..core.exceptions import ConfigError
 
 
 def Client(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.Client:
@@ -57,7 +59,7 @@ def _setup_request_auth(config, kwargs):
             parsed_out = json.loads(output)
             token = parsed_out["status"]["token"]
         else:
-            raise NotImplementedError(
+            raise ConfigError(
                 f"auth exec api version {api_version} not implemented"
             )
 
@@ -69,7 +71,7 @@ def _setup_request_auth(config, kwargs):
         return None
 
     if "auth-provider" in config.user:
-        raise Exception("auth-provider not supported")
+        raise ConfigError("auth-provider not supported")
 
     return None
 

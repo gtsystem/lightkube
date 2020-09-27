@@ -1,5 +1,6 @@
 from pathlib import Path
 from lightkube.config import config, client_adapter
+from lightkube import ConfigError
 import pytest
 
 BASEDIR = Path("tests")
@@ -22,7 +23,7 @@ def test_exec_with_envs():
 def test_exec_wrong_version():
     cfg = config.KubeConfig.from_file(BASEDIR / "test_config_exec.yaml")
     cfg.user["exec"]["apiVersion"] = "client.authentication.k8s.io/v1beta5"
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ConfigError):
         client_adapter._setup_request_auth(cfg, {})
 
 

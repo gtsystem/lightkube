@@ -10,19 +10,12 @@ import httpx
 from . import resource as r
 from ..config.config import KubeConfig
 from ..config import client_adapter
-from .internal_models import meta_v1
+from .exceptions import ApiError
 from .selector import build_selector
 from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
 
 
 ALL_NS = '*'
-
-
-class ApiError(httpx.HTTPStatusError):
-    def __init__(
-            self, request: httpx.Request = None, response: httpx.Response = None) -> None:
-        self.status = meta_v1.Status.from_dict(response.json())
-        super().__init__(self.status.message, request=request, response=response)
 
 
 def transform_exception(e: httpx.HTTPError):

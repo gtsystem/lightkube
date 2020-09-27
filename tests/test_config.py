@@ -117,7 +117,7 @@ class TestConfig(TestCase):
 
         # Ensure that if a file does not exist the creation fails
         self.assertRaises(
-            exceptions.PyKubeError, config.KubeConfig.from_file, "doesnotexist"
+            exceptions.ConfigError, config.KubeConfig.from_file, "doesnotexist"
         )
 
     def test_set_current_context(self):
@@ -160,7 +160,7 @@ class TestConfig(TestCase):
             self.fail(
                 "cluster was found without a current context set: {}".format(cluster)
             )
-        except exceptions.PyKubeError:
+        except exceptions.ConfigError:
             # We should get an error
             pass
 
@@ -175,7 +175,7 @@ class TestConfig(TestCase):
         try:
             user = self.cfg.user
             self.fail("user was found without a current context set: {}".format(user))
-        except exceptions.PyKubeError:
+        except exceptions.ConfigError:
             # We should get an error
             pass
 

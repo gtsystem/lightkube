@@ -15,6 +15,7 @@ nav:
   - Resources & Models: resources-and-models.md
   - Async Usage: async-usage.md
   - Advanced:
+      - Exceptions: exceptions.md
       - Selectors: selectors.md
       - Generic Resources: generic-resources.md
 

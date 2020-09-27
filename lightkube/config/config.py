@@ -91,7 +91,7 @@ class KubeConfig:
             filename = os.getenv("KUBECONFIG", "~/.kube/config")
         filepath = Path(filename).expanduser()
         if not filepath.is_file():
-            raise exceptions.PyKubeError(
+            raise exceptions.ConfigError(
                 "Configuration file {} not found".format(filename)
             )
         with filepath.open() as f:
@@ -170,7 +170,7 @@ class KubeConfig:
     @property
     def current_context(self):
         if self._current_context is None:
-            raise exceptions.PyKubeError(
+            raise exceptions.ConfigError(
                 "current context not set; call set_current_context"
             )
         return self._current_context
@@ -298,14 +298,14 @@ class BytesOrFile:
                 if kubeconfig_path:
                     path = kubeconfig_path.parent.joinpath(path)
                 else:
-                    raise exceptions.PyKubeError(
+                    raise exceptions.ConfigError(
                         "{} passed as relative path, but cannot determine location of kube config".format(
                             filename
                         )
                     )
 
             if not path.is_file():
-                raise exceptions.PyKubeError(
+                raise exceptions.ConfigError(
                     "'{}' file does not exist".format(filename)
                 )
             self._path = path
