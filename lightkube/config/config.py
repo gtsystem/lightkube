@@ -1,336 +1,157 @@
-"""
-Configuration code.
-
-original source: https://github.com/hjacobs/pykube/tree/20.7.2
-"""
-import base64
-import copy
 import os
-import tempfile
-from pathlib import Path
-from typing import Optional
-
 import yaml
+import tempfile
+import base64
+from typing import Dict, NamedTuple, Optional
+from pathlib import Path
 
 from ..core import exceptions
+from .models import Cluster, User, Context
+
+"""
+| behavior                  | kubectl                   | lightkube             |
+|---------------------------|---------------------------|-----------------------|
+| current-context missing   | use proxy                 | fail (conf is None)   |
+| current-context wrong     | fail                      | fail                  |
+| context.cluster missing   | use proxy                 | fail                  |
+| context.user missing      | interactive user/password | no auth set           |
+| context.user wrong        | interactive user/password | fail                  |
+| context.namespace missing | use default namespace     | use default namespace |
+"""
 
 
-def _join_host_port(host, port):
-    """Adapted golang's net.JoinHostPort"""
-    template = "{}:{}"
-    host_requires_bracketing = ":" in host or "%" in host
-    if host_requires_bracketing:
-        template = "[{}]:{}"
-    return template.format(host, port)
+def to_mapping(obj_list, key, factory):
+    return {obj['name']: factory.from_dict(obj[key], lazy=False) for obj in obj_list}
+
+
+DEFAULT_NAMESPACE = "default"
+SERVICE_ACCOUNT = "/var/run/secrets/kubernetes.io/serviceaccount"
+DEFAULT_KUBECONFIG = "~/.kube/config"
+
+
+class SingleConfig(NamedTuple):
+    context_name: str
+    context: Context
+    cluster: Cluster
+    user: User = None
+    fname: Path = None
+
+    @property
+    def namespace(self):
+        return self.context.namespace or DEFAULT_NAMESPACE
+
+    def abs_file(self, fname):
+        if Path(fname).is_absolute():
+            return fname
+
+        if self.fname is None:
+            raise exceptions.ConfigError(f"{fname} is relative, but kubeconfig path unknown")
+
+        return self.fname.parent.joinpath(fname)
+
+
+PROXY_CONF = SingleConfig(
+    context_name="default", context=Context(cluster="default"),
+    cluster=Cluster(server="http://localhost:8080")
+)
 
 
 class KubeConfig:
-    """
-    Main configuration class.
-    """
+    clusters: Dict[str, Cluster]
+    users: Dict[str, User]
+    contexts: Dict[str, Context]
 
-    filepath = None
-
-    @classmethod
-    def from_service_account(
-        cls, path="/var/run/secrets/kubernetes.io/serviceaccount", **kwargs
-    ):
-        """
-        Construct KubeConfig from in-cluster service account.
-        """
-        service_account_dir = Path(path)
-
-        with service_account_dir.joinpath("token").open() as fp:
-            token = fp.read()
-
-        with service_account_dir.joinpath("namespace").open() as fp:
-            namespace = fp.read()
-
-        host = os.environ.get("PYKUBE_KUBERNETES_SERVICE_HOST")
-        if host is None:
-            host = os.environ["KUBERNETES_SERVICE_HOST"]
-        port = os.environ.get("PYKUBE_KUBERNETES_SERVICE_PORT")
-        if port is None:
-            port = os.environ["KUBERNETES_SERVICE_PORT"]
-        doc = {
-            "clusters": [
-                {
-                    "name": "self",
-                    "cluster": {
-                        "server": "https://" + _join_host_port(host, port),
-                        "certificate-authority": str(
-                            service_account_dir.joinpath("ca.crt")
-                        ),
-                    },
-                }
-            ],
-            "users": [{"name": "self", "user": {"token": token}}],
-            "contexts": [
-                {
-                    "name": "self",
-                    "context": {
-                        "cluster": "self",
-                        "user": "self",
-                        "namespace": namespace,
-                    },
-                }
-            ],
-            "current-context": "self",
-        }
-        self = cls(doc, **kwargs)
-        return self
+    def __init__(self, *, clusters, contexts, users=None, current_context=None, fname=None):
+        self.current_context = current_context
+        self.clusters = clusters
+        self.contexts = contexts
+        self.users = users or {}
+        self.fname = Path(fname) if fname else None
 
     @classmethod
-    def from_file(cls, filename=None, **kwargs):
-        """
-        Creates an instance of the KubeConfig class from a kubeconfig file.
+    def from_dict(cls, conf: Dict, fname=None):
+        return cls(
+            current_context=conf.get('current-context'),
+            clusters=to_mapping(conf['clusters'], 'cluster', factory=Cluster),
+            contexts=to_mapping(conf['contexts'], 'context', factory=Context),
+            users=to_mapping(conf.get('users', []), 'user', factory=User),
+            fname=fname
+        )
 
-        :param filename: The full path to the configuration file. Defaults to ~/.kube/config
-        """
-        if not filename:
-            filename = os.getenv("KUBECONFIG", "~/.kube/config")
-        filepath = Path(filename).expanduser()
-        if not filepath.is_file():
-            raise exceptions.ConfigError(
-                "Configuration file {} not found".format(filename)
-            )
-        with filepath.open() as f:
-            doc = yaml.safe_load(f.read())
-        self = cls(doc, **kwargs)
-        self.filepath = filepath
-        return self
-
-    @classmethod
-    def from_env(cls):
-        """
-        Convenience function to create an instance of KubeConfig from the current environment.
-
-        First tries to use in-cluster ServiceAccount, then tries default ~/.kube/config (or KUBECONFIG)
-        """
+    def get(self, context_name=None, default: SingleConfig = None) -> Optional[SingleConfig]:
+        """Get the configuration matching the given context."""
+        if context_name is None:
+            context_name = self.current_context
+        if context_name is None:
+            if default is None:
+                raise exceptions.ConfigError("No current context set and no default provided")
+            return default
         try:
-            # running in cluster
-            config = cls.from_service_account()
-        except FileNotFoundError:
-            # not running in cluster => load local ~/.kube/config
-            config = cls.from_file()
-        return config
+            ctx = self.contexts[context_name]
+        except KeyError:
+            raise exceptions.ConfigError(f"Context '{context_name}' not found")
+        return SingleConfig(
+            context_name=context_name, context=ctx,
+            cluster=self.clusters[ctx.cluster],
+            user=self.users[ctx.user] if ctx.user else None,
+            fname=self.fname
+        )
 
     @classmethod
-    def from_url(cls, url, **kwargs):
-        """
-        Creates an instance of the KubeConfig class from a single URL (useful
-        for interacting with kubectl proxy).
-        """
-        doc = {
-            "clusters": [{"name": "self", "cluster": {"server": url}}],
-            "contexts": [{"name": "self", "context": {"cluster": "self"}}],
-            "current-context": "self",
-        }
-        self = cls(doc, **kwargs)
-        return self
-
-    def __init__(self, doc, current_context=None):
-        """
-        Creates an instance of the KubeConfig class.
-        """
-        self.doc = doc
-        self._current_context = None
-        if current_context is not None:
-            self.set_current_context(current_context)
-        elif "current-context" in doc and doc["current-context"]:
-            self.set_current_context(doc["current-context"])
-
-    def set_current_context(self, value):
-        """
-        Sets the context to the provided value.
-
-        :Parameters:
-           - `value`: The value for the current context
-        """
-        self._current_context = value
-
-    @property
-    def kubeconfig_path(self) -> Optional[Path]:
-        """
-        Returns the path to kubeconfig file, if it exists
-        """
-        if not hasattr(self, "filepath"):
-            return None
-        return self.filepath
-
-    @property
-    def kubeconfig_file(self) -> Optional[str]:
-        """
-        Returns the path to kubeconfig file as string, if it exists
-        """
-        if not hasattr(self, "filepath"):
-            return None
-        return str(self.filepath)
-
-    @property
-    def current_context(self):
-        if self._current_context is None:
-            raise exceptions.ConfigError(
-                "current context not set; call set_current_context"
-            )
-        return self._current_context
-
-    @property
-    def clusters(self):
-        """
-        Returns known clusters by exposing as a read-only property.
-        """
-        if not hasattr(self, "_clusters"):
-            cs = {}
-            for cr in self.doc["clusters"]:
-                cs[cr["name"]] = c = copy.deepcopy(cr["cluster"])
-                if "server" not in c:
-                    c["server"] = "http://localhost"
-                BytesOrFile.maybe_set(c, "certificate-authority", self.kubeconfig_path)
-            self._clusters = cs
-        return self._clusters
-
-    @property
-    def users(self):
-        """
-        Returns known users by exposing as a read-only property.
-        """
-        if not hasattr(self, "_users"):
-            us = {}
-            if "users" in self.doc:
-                for ur in self.doc["users"]:
-                    us[ur["name"]] = u = copy.deepcopy(ur["user"])
-                    BytesOrFile.maybe_set(u, "client-certificate", self.kubeconfig_path)
-                    BytesOrFile.maybe_set(u, "client-key", self.kubeconfig_path)
-            self._users = us
-        return self._users
-
-    @property
-    def contexts(self):
-        """
-        Returns known contexts by exposing as a read-only property.
-        """
-        if not hasattr(self, "_contexts"):
-            cs = {}
-            for cr in self.doc["contexts"]:
-                cs[cr["name"]] = copy.deepcopy(cr["context"])
-            self._contexts = cs
-        return self._contexts
-
-    @property
-    def cluster(self):
-        """
-        Returns the current selected cluster by exposing as a
-        read-only property.
-        """
-        return self.clusters[self.contexts[self.current_context]["cluster"]]
-
-    @property
-    def user(self):
-        """
-        Returns the current user set by current context
-        """
-        return self.users.get(self.contexts[self.current_context].get("user", ""), {})
-
-    @property
-    def namespace(self) -> str:
-        """
-        Returns the current context namespace by exposing as a read-only property.
-        """
-        return self.contexts[self.current_context].get("namespace", "default")
-
-    def persist_doc(self):
-
-        if not self.kubeconfig_path:
-            # Config was provided as string, not way to persit it
-            return
-        with self.kubeconfig_path.open("w") as f:
-            yaml.safe_dump(
-                self.doc,
-                f,
-                encoding="utf-8",
-                allow_unicode=True,
-                default_flow_style=False,
-            )
-
-    def reload(self):
-        if hasattr(self, "_users"):
-            delattr(self, "_users")
-        if hasattr(self, "_contexts"):
-            delattr(self, "_contexts")
-        if hasattr(self, "_clusters"):
-            delattr(self, "_clusters")
-
-
-class BytesOrFile:
-    """
-    Implements the same interface for files and byte input.
-    """
+    def from_file(cls, fname):
+        """Creates an instance of the KubeConfig class from a kubeconfig file."""
+        filepath = Path(fname).expanduser()
+        if not filepath.is_file():
+            raise exceptions.ConfigError(f"Configuration file {fname} not found")
+        with filepath.open() as f:
+            return cls.from_dict(yaml.safe_load(f.read()), fname=filepath)
 
     @classmethod
-    def maybe_set(cls, d, key, kubeconfig_path):
-        file_key = key
-        data_key = "{}-data".format(key)
-        if data_key in d:
-            d[file_key] = cls(data=d[data_key], kubeconfig_path=kubeconfig_path)
-            del d[data_key]
-        elif file_key in d:
-            d[file_key] = cls(filename=d[file_key], kubeconfig_path=kubeconfig_path)
+    def from_one(cls, *, cluster, user=None, context_name='default', namespace=None, fname=None):
+        """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
+        context = Context(cluster=context_name, user=context_name if user else None, namespace=namespace)
+        return cls(
+            clusters={context_name: cluster},
+            contexts={context_name: context},
+            users={context_name: user} if user else None,
+            current_context=context_name,
+            fname=fname
+        )
 
-    def __init__(self, filename=None, data=None, kubeconfig_path=None):
-        """
-        Creates a new instance of BytesOrFile.
+    @classmethod
+    def from_server(cls, url, namespace=None):
+        """Creates an instance of the KubeConfig class from the cluster server url"""
+        return cls.from_one(cluster=Cluster(server=url), namespace=namespace)
 
-        :Parameters:
-           - `filename`: A full path to a file
-           - `data`: base64 encoded bytes
-        """
-        self._path = None
-        self._bytes = None
-        if filename is not None and data is not None:
-            raise TypeError("filename or data kwarg must be specified, not both")
-        elif filename is not None:
+    @classmethod
+    def from_service_account(cls, path=SERVICE_ACCOUNT):
+        """New KubeConfig for in-cluster configuration using service account."""
+        account_dir = Path(path)
 
-            path = Path(filename)
-            # If relative path is given, should be made absolute with respect to the directory of the kube config
-            # https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#file-references
-            if not path.is_absolute():
-                if kubeconfig_path:
-                    path = kubeconfig_path.parent.joinpath(path)
-                else:
-                    raise exceptions.ConfigError(
-                        "{} passed as relative path, but cannot determine location of kube config".format(
-                            filename
-                        )
-                    )
+        try:
+            token = account_dir.joinpath("token").read_text()
+            namespace = account_dir.joinpath("namespace").read_text()
+        except FileNotFoundError as e:
+            raise exceptions.ConfigError(str(e))
 
-            if not path.is_file():
-                raise exceptions.ConfigError(
-                    "'{}' file does not exist".format(filename)
-                )
-            self._path = path
-        elif data is not None:
-            self._bytes = base64.b64decode(data)
-        else:
-            raise TypeError("filename or data kwarg must be specified")
+        host = os.environ["KUBERNETES_SERVICE_HOST"]
+        port = os.environ["KUBERNETES_SERVICE_PORT"]
+        if ":" in host:     # ipv6
+            host = f"[{host}]"
+        return cls.from_one(
+            cluster=Cluster(
+                server=f"https://{host}:{port}",
+                certificate_auth=str(account_dir.joinpath("ca.crt"))
+            ),
+            user=User(token=token),
+            namespace=namespace
+        )
 
-    def bytes(self):
-        """
-        Returns the provided data as bytes.
-        """
-        if self._path:
-            with self._path.open("rb") as f:
-                return f.read()
-        else:
-            return self._bytes
+    @classmethod
+    def from_env(cls, service_account=SERVICE_ACCOUNT, default_config=DEFAULT_KUBECONFIG):
+        """Attempt to load the config first from service account and then from local kubeconfig file"""
+        try:
+            return KubeConfig.from_service_account(path=service_account)
+        except exceptions.ConfigError:
+            return KubeConfig.from_file(os.environ.get('KUBECONFIG', default_config))
 
-    def filename(self):
-        """
-        Returns the provided data as a file location.
-        """
-        if self._path:
-            return str(self._path)
-        else:
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(self._bytes)
-            return f.name

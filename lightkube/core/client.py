@@ -1,6 +1,6 @@
 from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
 import httpx
-from ..config.config import KubeConfig
+from ..config.config import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
 from .generic_client import GenericSyncClient, GenericAsyncClient
@@ -23,8 +23,8 @@ class Client:
 
     **parameters**
 
-    * **config** - Instance of `KubeConfig`. When not set the configuration will be detected automatically with the
-      following order: in cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
+    * **config** - Instance of `SingleConfig` or `KubeConfig`. When not set the configuration will be detected automatically
+      using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
     * **namespace** - Default namespace to use. This attribute is used in case namespaced resources are called without
       defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
     * **timeout** - Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
@@ -32,7 +32,7 @@ class Client:
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
     """
-    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
         self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
 
     @property
@@ -251,8 +251,8 @@ class AsyncClient:
 
     **parameters**
 
-    * **config** - Instance of `KubeConfig`. When not set the configuration will be detected automatically with the
-      following order: in cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
+    * **config** - Instance of `SingleConfig` or `KubeConfig`. When not set the configuration will be detected automatically
+      using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
     * **namespace** - Default namespace to use. This attribute is used in case namespaced resources are called without
       defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
     * **timeout** - Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
@@ -260,7 +260,7 @@ class AsyncClient:
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
     """
-    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
         self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
 
     @property

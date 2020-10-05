@@ -1,5 +1,5 @@
 import time
-from typing import Type, Any, Dict
+from typing import Type, Any, Dict, Union
 import dataclasses
 from dataclasses import dataclass
 import json
@@ -8,7 +8,7 @@ import asyncio
 import httpx
 
 from . import resource as r
-from ..config.config import KubeConfig
+from ..config.config import KubeConfig, SingleConfig
 from ..config import client_adapter
 from .exceptions import ApiError
 from .selector import build_selector
@@ -72,7 +72,7 @@ class WatchDriver:
 class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
-    def __init__(self, config: KubeConfig = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
         if timeout is None:
             timeout = httpx.Timeout(10)
         self._timeout = timeout
@@ -80,10 +80,9 @@ class GenericClient:
         self._watch_timeout.read = None
         self._lazy = lazy
         if config is None:
-            try:
-                config = KubeConfig.from_service_account()
-            except Exception:
-                config = KubeConfig.from_file()
+            config = KubeConfig.from_env().get()
+        elif isinstance(config, KubeConfig):
+            config = config.get()
         self._client = self.AdapterClient(config, timeout)
         self.namespace = namespace if namespace else config.namespace
 
