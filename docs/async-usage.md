@@ -3,8 +3,8 @@
 The AsyncClient allows to perform the same operation that are possible using the Client but in
 an asycronous way:
 
-* The operations `create`, `delete`, `deletecollection`, `patch`, `replace`, `get` returns a corouting and need to be used with `await ...`.
-* The operations `list` and `watch` returns an asynchronous iterable and can be used with `async for ...`.
+* The operations `create`, `delete`, `deletecollection`, `patch`, `replace`, `get` return a corouting and need to be used with `await ...`.
+* The operations `list` and `watch` return an asynchronous iterable and can be used with `async for ...`.
 
 ## Examples
 

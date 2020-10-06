@@ -1,10 +1,10 @@
-## Interface
+## Client
 
 ::: lightkube.Client
     :docstring:
     :members:
 
-## `namespace` parameter
+### `namespace` parameter
 
 All API calls for namespaced resources will need to refer to a specific namespace.
 By default the namespace provided in the kubeconfig file is used. This default
@@ -21,6 +21,12 @@ Override rules summary:
 * `Client(..., namespace=...)`
 * kubernetes config file
 
-### List or watch objects in all namespaces
+#### List or watch objects in all namespaces
 
 The methods `list` and `watch` can also return objects for all namespaces using `namespace='*'`.
+
+## KubeConfig
+
+::: lightkube.KubeConfig
+    :docstring:
+    :members:
