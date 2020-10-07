@@ -472,3 +472,7 @@ class AsyncClient:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         """
         return await self._client.request("put", name=name, namespace=namespace, obj=obj)
+
+    async def close(self):
+        """Close the underline httpx client"""
+        await self._client.close()

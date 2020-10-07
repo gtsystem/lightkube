@@ -2,7 +2,6 @@ import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-import json
 import pytest
 import httpx
 import respx
@@ -68,6 +67,7 @@ async def test_get_namespaced(client: lightkube.AsyncClient):
     respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xy'}})
     pod = await client.get(Pod, name="xx", namespace="other")
     assert pod.metadata.name == 'xy'
+    await client.close()
 
 
 @respx.mock
@@ -85,7 +85,7 @@ async def test_list_global(client: lightkube.AsyncClient):
     # Binding doesn't support all namespaces
     with pytest.raises(ValueError):
         client.list(Binding, namespace=lightkube.ALL_NS)
-
+    await client.close()
 
 @respx.mock
 @pytest.mark.asyncio
@@ -96,6 +96,7 @@ async def test_list_chunk_size(client: lightkube.AsyncClient):
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes", content=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name async for pod in pods] == ['xx', 'yy', 'zz']
+    await client.close()
 
 
 @respx.mock
@@ -103,13 +104,14 @@ async def test_list_chunk_size(client: lightkube.AsyncClient):
 async def test_delete_global(client: lightkube.AsyncClient):
     respx.delete("https://localhost:9443/api/v1/nodes/xx")
     await client.delete(Node, name="xx")
-
+    await client.close()
 
 @respx.mock
 @pytest.mark.asyncio
 async def test_deletecollection_global(client: lightkube.AsyncClient):
     respx.delete("https://localhost:9443/api/v1/nodes")
     await client.deletecollection(Node)
+    await client.close()
 
 from tests.test_client import make_watch_list
 
@@ -129,6 +131,7 @@ async def test_watch(client: lightkube.AsyncClient):
 
     assert i == 9
     assert exi.value.response.status_code == 404
+    await client.close()
 
 
 @respx.mock
@@ -146,6 +149,7 @@ async def test_watch_version(client: lightkube.AsyncClient):
             assert op == 'ADDED'
     assert i == 9
     assert exi.value.response.status_code == 404
+    await client.close()
 
 
 @respx.mock
@@ -156,6 +160,7 @@ async def test_patch_global(client: lightkube.AsyncClient):
                        patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
+    await client.close()
 
 
 @respx.mock
@@ -165,6 +170,7 @@ async def test_create_global(client: lightkube.AsyncClient):
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
+    await client.close()
 
 
 @respx.mock
@@ -174,3 +180,4 @@ async def test_replace_global(client: lightkube.AsyncClient):
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
+    await client.close()

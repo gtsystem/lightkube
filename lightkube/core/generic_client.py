@@ -275,3 +275,6 @@ class GenericAsyncClient(GenericClient):
             cont, chunk = self.handle_response('list', resp, br)
             for item in chunk:
                 yield item
+
+    async def close(self):
+        await self._client.aclose()
