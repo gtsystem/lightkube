@@ -14,7 +14,7 @@ setup(
     packages=['lightkube', 'lightkube.config', 'lightkube.core'],
     install_requires=[
         'lightkube-models >= 1.15.12.0',
-        'httpx < 0.15',
+        'httpx >= 0.15',
         'respx',
         'PyYAML',
         'backports-datetime-fromisoformat;python_version<"3.7"',
@@ -27,6 +27,7 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8'
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9'
     ]
 )
