@@ -1,6 +1,6 @@
 from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
 import httpx
-from ..config.config import SingleConfig, KubeConfig
+from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
 from .generic_client import GenericSyncClient, GenericAsyncClient

@@ -4,18 +4,18 @@ from unittest.mock import patch
 
 import pytest
 
-from lightkube.config import config
+from lightkube.config import kubeconfig
 from lightkube.core import exceptions
 
 
 def test_from_server():
-    cfg = config.KubeConfig.from_server("http://testserver.com").get()
+    cfg = kubeconfig.KubeConfig.from_server("http://testserver.com").get()
     assert cfg.context_name == "default"
     assert cfg.namespace == "default"
     assert cfg.cluster.server == "http://testserver.com"
     assert cfg.user is None
 
-    cfg = config.KubeConfig.from_server("http://testserver.com", namespace="ns").get()
+    cfg = kubeconfig.KubeConfig.from_server("http://testserver.com", namespace="ns").get()
     assert cfg.context_name == "default"
     assert cfg.namespace == "ns"
 
@@ -23,7 +23,7 @@ def test_from_server():
 @pytest.fixture()
 def cfg():
     fname = Path("tests").joinpath("test_config.yaml")
-    return config.KubeConfig.from_file(fname)
+    return kubeconfig.KubeConfig.from_file(fname)
 
 
 def test_from_file(cfg):
@@ -33,14 +33,14 @@ def test_from_file(cfg):
     assert c.user.password == 'p1'
     assert c.cluster.server == 'server1'
     assert c.context.user == 'user1'
-    assert c.namespace == config.DEFAULT_NAMESPACE
+    assert c.namespace == kubeconfig.DEFAULT_NAMESPACE
 
     c = cfg.get(context_name='ctx12')
     assert c.context_name == 'ctx12'
     assert c.user.token == 'ABC'
     assert c.cluster.server == 'server1'
     assert c.context.user == 'user2'
-    assert c.namespace == config.DEFAULT_NAMESPACE
+    assert c.namespace == kubeconfig.DEFAULT_NAMESPACE
 
     c = cfg.get(context_name='ctx21')
     assert c.context_name == 'ctx21'
@@ -61,12 +61,12 @@ def test_from_file_miss_config(cfg):
         assert cfg.get()
 
     # default context is missing, but a default is provided
-    c = cfg.get(default=config.PROXY_CONF)
-    assert c is config.PROXY_CONF
+    c = cfg.get(default=kubeconfig.PROXY_CONF)
+    assert c is kubeconfig.PROXY_CONF
 
 
 def test_from_dict():
-    cfg = config.KubeConfig.from_dict({
+    cfg = kubeconfig.KubeConfig.from_dict({
         'clusters': [{'name': 'cl1', 'cluster': {'server': 'a'}}],
         'contexts': [{'name': 'a', 'context': {'cluster': 'cl1', 'namespace': 'ns'}}]
     })
@@ -92,7 +92,7 @@ def service_account(tmpdir):
 
 
 def test_from_service_account(service_account):
-    cfg = config.KubeConfig.from_service_account(service_account)
+    cfg = kubeconfig.KubeConfig.from_service_account(service_account)
     c = cfg.get()
     assert c.namespace == "my-namespace"
     assert c.user.token == "ABCD"
@@ -101,26 +101,26 @@ def test_from_service_account(service_account):
 
 def test_from_service_account_not_found(tmpdir):
     with pytest.raises(exceptions.ConfigError):
-        config.KubeConfig.from_service_account(tmpdir)
+        kubeconfig.KubeConfig.from_service_account(tmpdir)
 
 
 def test_from_file_not_found(tmpdir):
     with pytest.raises(exceptions.ConfigError):
-        config.KubeConfig.from_file(Path(tmpdir).joinpath("bla"))
+        kubeconfig.KubeConfig.from_file(Path(tmpdir).joinpath("bla"))
 
 
 def test_from_env(service_account):
-    cfg = config.KubeConfig.from_env(service_account)
+    cfg = kubeconfig.KubeConfig.from_env(service_account)
     assert cfg.get().user.token == "ABCD"
 
-    with patch("lightkube.config.config.os.environ") as environ:
+    with patch("lightkube.config.kubeconfig.os.environ") as environ:
         environ.get.return_value = str(Path("tests").joinpath("test_config.yaml"))
-        cfg = config.KubeConfig.from_env(service_account.joinpath("xyz"))
+        cfg = kubeconfig.KubeConfig.from_env(service_account.joinpath("xyz"))
         assert cfg.get().context_name == 'ctx11'
-        environ.get.assert_called_with("KUBECONFIG", config.DEFAULT_KUBECONFIG)
+        environ.get.assert_called_with("KUBECONFIG", kubeconfig.DEFAULT_KUBECONFIG)
 
-    with patch("lightkube.config.config.os.environ") as environ:
+    with patch("lightkube.config.kubeconfig.os.environ") as environ:
         environ.get.return_value = str(Path("tests").joinpath("test_config.yaml"))
-        cfg = config.KubeConfig.from_env(service_account.joinpath("xyz"), default_config='/tmp/bla')
+        cfg = kubeconfig.KubeConfig.from_env(service_account.joinpath("xyz"), default_config='/tmp/bla')
         assert cfg.get().context_name == 'ctx11'
         environ.get.assert_called_with("KUBECONFIG", '/tmp/bla')

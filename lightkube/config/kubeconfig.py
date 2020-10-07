@@ -100,8 +100,8 @@ class KubeConfig:
         )
 
     def get(self, context_name=None, default: SingleConfig = None) -> Optional[SingleConfig]:
-        """Returns a `SingleConfig` instance, representing the configuration matching the given context_name.
-        Lightkube clients will automatically call this method without parameters when an instance of `KubeConfig`
+        """Returns a `SingleConfig` instance, representing the configuration matching the given `context_name`.
+        Lightkube client will automatically call this method without parameters when an instance of `KubeConfig`
         is provided.
 
         **Parameters**

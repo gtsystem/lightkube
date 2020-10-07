@@ -6,7 +6,7 @@ import asyncio.subprocess
 
 import httpx
 
-from .config import SingleConfig
+from .kubeconfig import SingleConfig
 from .models import Cluster, User, UserExec, FileStr
 from ..core.exceptions import ConfigError
 

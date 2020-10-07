@@ -8,7 +8,7 @@ import httpx
 import respx
 
 import lightkube
-from lightkube.config.config import KubeConfig
+from lightkube.config.kubeconfig import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types

@@ -8,7 +8,7 @@ import asyncio
 import httpx
 
 from . import resource as r
-from ..config.config import KubeConfig, SingleConfig
+from ..config.kubeconfig import KubeConfig, SingleConfig
 from ..config import client_adapter
 from .exceptions import ApiError
 from .selector import build_selector

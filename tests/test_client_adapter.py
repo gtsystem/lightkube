@@ -1,6 +1,6 @@
 from pathlib import Path
 from unittest.mock import Mock
-from lightkube.config import config, client_adapter
+from lightkube.config import kubeconfig, client_adapter
 from lightkube.config import models
 from lightkube import ConfigError
 import pytest
@@ -11,7 +11,7 @@ BASEDIR = Path("tests")
 
 
 def single_conf(cluster=None, user=None, fname=None):
-    return config.SingleConfig(
+    return kubeconfig.SingleConfig(
         context=models.Context(cluster="x"), context_name="x",
         cluster=cluster, user=user, fname=fname
     )
