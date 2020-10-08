@@ -1,17 +1,29 @@
-# TODO: Replace with a more realistic example
 clusters:
-    - name: thecluster
-      cluster: {}
+  - name: cl1
+    cluster: {server: server1}
+  - name: cl2
+    cluster: {server: server2}
 users:
-    - name: admin
-      user: data
+  - name: user1
+    user:
+      username: u1
+      password: p1
+  - name: user2
+    user:
+      token: ABC
 contexts:
-    - name: thename
-      context:
-        cluster: thecluster
-        user: admin
-    - name: second
-      context: secondcontext
-    - name: context_with_namespace
-      context:
-        namespace: foospace
+  - name: ctx11
+    context:
+      cluster: cl1
+      user: user1
+  - name: ctx12
+    context:
+      cluster: cl1
+      user: user2
+  - name: ctx21
+    context:
+      cluster: cl2
+      user: user1
+      namespace: ns21
+current-context: ctx11
+

@@ -1,91 +1,136 @@
-"""
-Source: https://raw.githubusercontent.com/hjacobs/pykube/master/pykube/http.py
-HTTP request related code.
-"""
 import json
 import os
 import subprocess
+from typing import Optional
+import asyncio.subprocess
+
 import httpx
 
-from .config import KubeConfig
+from .kubeconfig import SingleConfig
+from .models import Cluster, User, UserExec, FileStr
 from ..core.exceptions import ConfigError
 
 
-def Client(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.Client:
-    kwargs = {}
-    _setup(config, kwargs, timeout=timeout)
-    return httpx.Client(**kwargs)
+def Client(config: SingleConfig, timeout: httpx.Timeout) -> httpx.Client:
+    return httpx.Client(**httpx_parameters(config, timeout))
 
 
-def AsyncClient(config: KubeConfig, timeout: httpx.Timeout = None) -> httpx.AsyncClient:
-    kwargs = {}
-    _setup(config, kwargs, timeout=timeout)
-    return httpx.AsyncClient(**kwargs)
+def AsyncClient(config: SingleConfig, timeout: httpx.Timeout) -> httpx.AsyncClient:
+    return httpx.AsyncClient(**httpx_parameters(config, timeout))
 
 
-def _setup(config, kwargs, timeout: httpx.Timeout = None):
-    if timeout:
-        kwargs['timeout'] = timeout
-    kwargs["base_url"] = config.cluster['server']
-    _setup_request_auth(config, kwargs)
-    _setup_request_certificates(config, kwargs)
+def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout):
+    return dict(
+        timeout=timeout, base_url=config.cluster.server,
+        verify=verify_cluster(config.cluster, config.abs_file),
+        cert=user_cert(config.user, config.abs_file),
+        auth=user_auth(config.user)
+    )
 
 
-def _setup_request_auth(config, kwargs):
-    """
-    Set up authorization for the request.
+class BearerAuth(httpx.Auth):
+    def __init__(self, token):
+        self._bearer = f"Bearer {token}"
 
-    Return an optional function to use as a retry manager if the initial request fails
-    with an unauthorized error.
-    """
+    def auth_flow(self, request: httpx.Request):
+        request.headers["Authorization"] = self._bearer
+        yield request
 
-    if config.user.get("token"):
-        kwargs.setdefault("headers", {})["Authorization"] = "Bearer {}".format(config.user["token"])
+
+async def async_check_output(command, env):
+    PIPE = asyncio.subprocess.PIPE
+    proc = await asyncio.create_subprocess_exec(*command, env=env, stdin=None, stdout=PIPE, stderr=PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
+    return stdout
+
+
+def sync_check_output(command, env):
+    proc = subprocess.Popen(command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
+    return stdout
+
+
+class ExecAuth(httpx.Auth):
+    def __init__(self, exec: UserExec):
+        self._exec = exec
+        self._last_bearer = None
+
+    def _prepare(self):
+        exec = self._exec
+        if exec.apiVersion not in ("client.authentication.k8s.io/v1alpha1", "client.authentication.k8s.io/v1beta1"):
+            raise ConfigError(f"auth exec api version {exec.apiVersion} not implemented")
+        cmd_env_vars = dict(os.environ)
+        cmd_env_vars.update((var.name, var.value) for var in exec.env)
+        # TODO: add support for passing KUBERNETES_EXEC_INFO env var
+        # https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/kubectl-exec-plugins.md
+        return [exec.command] + exec.args, cmd_env_vars
+
+    def sync_auth_flow(self, request: httpx.Request):
+        if self._last_bearer:
+            request.headers["Authorization"] = self._last_bearer
+            response = yield request
+            if response.status_code != 401:
+                return
+
+        command, env = self._prepare()
+        output = sync_check_output(command, env=env)
+        token = json.loads(output)["status"]["token"]
+        request.headers["Authorization"] = self._last_bearer = f"Bearer {token}"
+        yield request
+
+    async def async_auth_flow(self, request: httpx.Request):
+        if self._last_bearer:
+            request.headers["Authorization"] = self._last_bearer
+            response = yield request
+            if response.status_code != 401:
+                return
+
+        command, env = self._prepare()
+        output = await async_check_output(command, env=env)
+        token = json.loads(output)["status"]["token"]
+        request.headers["Authorization"] = self._last_bearer = f"Bearer {token}"
+        yield request
+
+
+def user_auth(user: Optional[User]):
+    if user is None:
         return None
 
-    if "exec" in config.user:
-        exec_conf = config.user["exec"]
+    if user.token is not None:
+        return BearerAuth(user.token)
 
-        api_version = exec_conf["apiVersion"]
-        if api_version in ("client.authentication.k8s.io/v1alpha1", "client.authentication.k8s.io/v1beta1"):
-            cmd_env_vars = dict(os.environ)
-            for env_var in exec_conf.get("env") or []:
-                cmd_env_vars[env_var["name"]] = env_var["value"]
+    if user.exec:
+        return ExecAuth(user.exec)
 
-            output = subprocess.check_output(
-                [exec_conf["command"]] + exec_conf.get("args", []), env=cmd_env_vars
-            )
+    if user.username and user.password:
+        return httpx.BasicAuth(user.username, user.password)
 
-            parsed_out = json.loads(output)
-            token = parsed_out["status"]["token"]
-        else:
-            raise ConfigError(
-                f"auth exec api version {api_version} not implemented"
-            )
-
-        kwargs.setdefault("headers", {})["Authorization"] = "Bearer {}".format(token)
-        return None
-
-    if config.user.get("username") and config.user.get("password"):
-        kwargs["auth"] = (config.user["username"], config.user["password"])
-        return None
-
-    if "auth-provider" in config.user:
+    if user.auth_provider:
         raise ConfigError("auth-provider not supported")
 
+    raise ConfigError("unknown user authentication")
+
+
+def user_cert(user: User, abs_file):
+    """Extract user certificates"""
+    if user.client_cert or user.client_cert_data:
+        return (
+            FileStr(user.client_cert_data) or abs_file(user.client_cert),
+            FileStr(user.client_key_data) or abs_file(user.client_key)
+        )
     return None
 
 
-def _setup_request_certificates(config, kwargs):
-    if "client-certificate" in config.user:
-        kwargs["cert"] = (
-            config.user["client-certificate"].filename(),
-            config.user["client-key"].filename(),
-        )
-    # setup certificate verification
-    if "certificate-authority" in config.cluster:
-        kwargs["verify"] = config.cluster["certificate-authority"].filename()
-    elif "insecure-skip-tls-verify" in config.cluster:
-        kwargs["verify"] = not config.cluster["insecure-skip-tls-verify"]
-
-
+def verify_cluster(cluster: Cluster, abs_file):
+    """setup certificate verification"""
+    if cluster.certificate_auth:
+        return abs_file(cluster.certificate_auth)
+    elif cluster.certificate_auth_data:
+        return FileStr(cluster.certificate_auth_data)
+    elif cluster.insecure:
+        return False
+    return True
