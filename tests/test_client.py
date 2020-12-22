@@ -60,18 +60,18 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
 
 @respx.mock
 def test_get_namespaced(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'metadata': {'name': 'xx'}})
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.get(Pod, name="xx")
     assert pod.metadata.name == 'xx'
 
-    respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xy'}})
+    respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={'metadata': {'name': 'xy'}})
     pod = client.get(Pod, name="xx", namespace="other")
     assert pod.metadata.name == 'xy'
 
 
 @respx.mock
 def test_get_global(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/nodes/n1", content={'metadata': {'name': 'n1'}})
+    respx.get("https://localhost:9443/api/v1/nodes/n1").respond(json={'metadata': {'name': 'n1'}})
     pod = client.get(Node, name="n1")
     assert pod.metadata.name == 'n1'
 
@@ -83,11 +83,11 @@ def test_get_global(client: lightkube.Client):
 @respx.mock
 def test_list_namespaced(client: lightkube.Client):
     resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     pods = client.list(Pod)
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
 
-    respx.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv").respond(json=resp)
     pods = client.list(Pod, namespace="other", labels={'k': 'v'})
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
 
@@ -95,11 +95,11 @@ def test_list_namespaced(client: lightkube.Client):
 @respx.mock
 def test_list_global(client: lightkube.Client):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
-    respx.get("https://localhost:9443/api/v1/nodes", content=resp)
+    respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
     assert [node.metadata.name for node in nodes] == ['xx', 'yy']
 
-    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx", content=resp)
+    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx").respond(json=resp)
     pods = client.list(Pod, namespace=lightkube.ALL_NS, fields={'k': 'x'})
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
 
@@ -111,9 +111,9 @@ def test_list_global(client: lightkube.Client):
 @respx.mock
 def test_list_chunk_size(client: lightkube.Client):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], 'metadata': {'continue': 'yes'}}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
     resp = {'items': [{'metadata': {'name': 'zz'}}]}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy', 'zz']
 
@@ -150,8 +150,8 @@ def test_deletecollection_global(client: lightkube.Client):
 
 @respx.mock
 def test_errors(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content="Error", status_code=409)
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'message': 'got problems'},
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(content="Error", status_code=409)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'message': 'got problems'},
               status_code=409)
     with pytest.raises(httpx.HTTPError):
         client.get(Pod, name="xx")
@@ -170,8 +170,8 @@ def make_watch_list(count=10):
 
 @respx.mock
 def test_watch(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
     i = None
     with pytest.raises(httpx.HTTPError) as exi:
@@ -184,8 +184,8 @@ def test_watch(client: lightkube.Client):
 
 @respx.mock
 def test_watch_version(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
 
     # testing starting from specific resource version
     i = None
@@ -199,8 +199,8 @@ def test_watch_version(client: lightkube.Client):
 
 @respx.mock
 def test_watch_on_error(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
     i = None
     for i, (op, node) in enumerate(client.watch(Node, on_error=types.on_error_stop)):
@@ -211,8 +211,8 @@ def test_watch_on_error(client: lightkube.Client):
 
 @respx.mock
 def test_watch_stop_iter(client: lightkube.Client):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
     i = None
     for i, _ in enumerate(client.watch(Node, on_error=types.on_error_raise)):
@@ -222,12 +222,12 @@ def test_watch_stop_iter(client: lightkube.Client):
 
 @respx.mock
 def test_patch_namespaced(client: lightkube.Client):
-    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})))
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/strategic-merge-patch+json"
 
-    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
                        patch_type=types.PatchType.MERGE)
     assert pod.metadata.name == 'xx'
@@ -236,7 +236,7 @@ def test_patch_namespaced(client: lightkube.Client):
 
 @respx.mock
 def test_patch_global(client: lightkube.Client):
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
                        patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
@@ -245,25 +245,25 @@ def test_patch_global(client: lightkube.Client):
 
 @respx.mock
 def test_create_namespaced(client: lightkube.Client):
-    req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods", content={'metadata': {'name': 'xx'}})
+    req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods").respond(json={'metadata': {'name': 'xx'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
     assert req.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx", "namespace": "default"}}'
     assert pod.metadata.name == 'xx'
 
-    req2 = respx.post("https://localhost:9443/api/v1/namespaces/other/pods", content={'metadata': {'name': 'yy'}})
+    req2 = respx.post("https://localhost:9443/api/v1/namespaces/other/pods").respond(json={'metadata': {'name': 'yy'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})), namespace='other')
     assert pod.metadata.name == 'yy'
     assert req2.calls[0][0].read() == b'{"metadata": {"labels": {"l": "ok"}, "name": "xx", "namespace": "other"}}'
 
-    respx.post("https://localhost:9443/api/v1/namespaces/ns2/pods",
-               content={'metadata': {'name': 'yy'}})
+    respx.post("https://localhost:9443/api/v1/namespaces/ns2/pods").respond(
+        json={'metadata': {'name': 'yy'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'}, namespace='ns2')))
     assert pod.metadata.name == 'yy'
 
 
 @respx.mock
 def test_create_global(client: lightkube.Client):
-    req = respx.post("https://localhost:9443/api/v1/nodes", content={'metadata': {'name': 'xx'}})
+    req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={'metadata': {'name': 'xx'}})
     pod = client.create(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
@@ -271,19 +271,19 @@ def test_create_global(client: lightkube.Client):
 
 @respx.mock
 def test_replace_namespaced(client: lightkube.Client):
-    req = respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy", content={'metadata': {'name': 'xy'}})
+    req = respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy").respond(json={'metadata': {'name': 'xy'}})
     pod = client.replace(Pod(metadata=ObjectMeta(name="xy")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xy", "namespace": "default"}}'
     assert pod.metadata.name == 'xy'
 
-    respx.put("https://localhost:9443/api/v1/namespaces/other/pods/xz", content={'metadata': {'name': 'xz'}})
+    respx.put("https://localhost:9443/api/v1/namespaces/other/pods/xz").respond(json={'metadata': {'name': 'xz'}})
     pod = client.replace(Pod(metadata=ObjectMeta(name="xz")), namespace='other')
     assert pod.metadata.name == 'xz'
 
 
 @respx.mock
 def test_replace_global(client: lightkube.Client):
-    req = respx.put("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.replace(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'

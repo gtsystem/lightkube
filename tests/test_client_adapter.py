@@ -155,6 +155,8 @@ async def test_user_auth_exec_async():
     # we pretend the cache is old
     await flow.asend(httpx.Response(status_code=401, request=m))
     assert m.headers["Authorization"] == "Bearer my-bearer-token"
+    with pytest.raises(StopAsyncIteration):
+        await flow.__anext__()
 
 
 @pytest.mark.asyncio
