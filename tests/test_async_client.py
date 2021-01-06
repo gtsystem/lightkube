@@ -181,3 +181,29 @@ async def test_replace_global(client: lightkube.AsyncClient):
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
     await client.close()
+
+
+async def alist(aiter):
+    return [l async for l in aiter]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_pod_log(client: lightkube.AsyncClient):
+    result = ['line1\n', 'line2\n', 'line3\n']
+    content = "".join(result)
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
+    lines = await alist(client.log('test'))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?since=30&timestamps=true").respond(
+        content=content)
+    lines = await alist(client.log('test', since=30, timestamps=True))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
+        content=content)
+    lines = await alist(client.log('test', container="bla"))
+    assert lines == result
+    await client.close()

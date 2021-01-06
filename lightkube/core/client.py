@@ -5,6 +5,7 @@ from .. import operators
 from ..core import resource as r
 from .generic_client import GenericSyncClient, GenericAsyncClient
 from ..types import OnErrorHandler, PatchType, on_error_raise
+from .internal_resources import core_v1
 from .selector import build_selector
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
@@ -256,6 +257,34 @@ class Client:
         """
         return self._client.request("put", name=name, namespace=namespace, obj=obj)
 
+    @overload
+    def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
+            since: int = None, tail_lines: int = None, timestamps: bool = False) -> Iterator[str]:
+        ...
+
+    def log(self, name, *, namespace=None, container=None, follow=False,
+            since=None, tail_lines=None, timestamps=False):
+        """Return log lines for the given Pod
+
+        **parameters**
+
+        * **name** - Name of the Pod.
+        * **namespace** - *(optional)* Name of the namespace containing the Pod.
+        * **container** - *(optional)* The container for which to stream logs. Defaults to only container if there is one container in the pod.
+        * **follow** - *(optional)* If `True`, follow the log stream of the pod.
+        * **since** - *(optional)* If set, a relative time in seconds before the current time from which to fetch logs.
+        * **tail_lines** - *(optional)* If set, the number of lines from the end of the logs to fetch.
+        * **timestamps** - *(optional)* If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
+        """
+        br = self._client.prepare_request(
+            'get', core_v1.PodLog, name=name, namespace=namespace,
+            params={'timestamps': timestamps, 'tailLines': tail_lines, 'container': container,
+                    'sinceSeconds': since, 'follow': follow})
+        req = self._client.build_adapter_request(br)
+        resp = self._client.send(req, stream=follow)
+        self._client.raise_for_status(resp)
+        return resp.iter_lines()
+
 
 class AsyncClient:
     """Creates a new lightkube client
@@ -493,6 +522,38 @@ class AsyncClient:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         """
         return await self._client.request("put", name=name, namespace=namespace, obj=obj)
+
+    @overload
+    def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
+            since: int = None, tail_lines: int = None, timestamps: bool = False) -> AsyncIterable[str]:
+        ...
+
+    def log(self, name, *, namespace=None, container=None, follow=False,
+            since=None, tail_lines=None, timestamps=False):
+        """Return log lines for the given Pod
+
+        **parameters**
+
+        * **name** - Name of the Pod.
+        * **namespace** - *(optional)* Name of the namespace containing the Pod.
+        * **container** - *(optional)* The container for which to stream logs. Defaults to only container if there is one container in the pod.
+        * **follow** - *(optional)* If `True`, follow the log stream of the pod.
+        * **since** - *(optional)* If set, a relative time in seconds before the current time from which to fetch logs.
+        * **tail_lines** - *(optional)* If set, the number of lines from the end of the logs to fetch.
+        * **timestamps** - *(optional)* If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
+        """
+        br = self._client.prepare_request(
+            'get', core_v1.PodLog, name=name, namespace=namespace,
+            params={'timestamps': timestamps, 'tailLines': tail_lines, 'container': container,
+                    'sinceSeconds': since, 'follow': follow})
+        req = self._client.build_adapter_request(br)
+
+        async def stream_log():
+            resp = await self._client.send(req, stream=follow)
+            self._client.raise_for_status(resp)
+            async for line in resp.aiter_lines():
+                yield line
+        return stream_log()
 
     async def close(self):
         """Close the underline httpx client"""

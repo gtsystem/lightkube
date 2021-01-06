@@ -104,10 +104,19 @@ obj = Deployment.Scale(
 client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
 
+Stream pod logs
+```python
+from lightkube import Client
+
+client = Client()
+for line in client.log('my-pod', follow=True):
+    print(line)
+```
+
 ## Unsupported features
 
 The following features are not supported at the moment:
 
-* Special subresources like `log`, `attach`, `exec`, `portforward` and `proxy`.
+* Special subresources `attach`, `exec`, `portforward` and `proxy`.
 * `auth-provider` authentication method is not supported. The supported
   authentication methods are `token`, `username` + `password` and `exec`.

@@ -287,3 +287,32 @@ def test_replace_global(client: lightkube.Client):
     pod = client.replace(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
+
+@respx.mock
+def test_pod_log(client: lightkube.Client):
+    result = ['line1\n', 'line2\n', 'line3\n']
+    content = "".join(result)
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
+    lines = list(client.log('test'))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?follow=true").respond(
+        content=content)
+    lines = list(client.log('test', follow=True))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?tailLines=3").respond(
+        content=content)
+    lines = list(client.log('test', tail_lines=3))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?since=30&timestamps=true").respond(
+        content=content)
+    lines = list(client.log('test', since=30, timestamps=True))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
+        content=content)
+    lines = list(client.log('test', container="bla"))
+    assert lines == result
