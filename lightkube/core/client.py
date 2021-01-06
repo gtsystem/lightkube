@@ -189,7 +189,8 @@ class Client:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
         """
-        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, patch_type=patch_type)
+        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
+                                    headers={'Content-Type': patch_type.value})
 
     @overload
     def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
@@ -417,7 +418,8 @@ class AsyncClient:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
         """
-        return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj, patch_type=patch_type)
+        return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
+                                          headers={'Content-Type': patch_type.value})
 
     @overload
     async def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
