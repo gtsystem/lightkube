@@ -87,7 +87,6 @@ class GenericClient:
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
-                        labels=None, fields=None,
                         watch: bool = False, params: dict = None, headers: dict = None) -> BasicRequest:
         if params is not None:
             params = {k: v for k, v in params.items() if v is not None}
@@ -166,12 +165,6 @@ class GenericClient:
         if http_method == 'DELETE':
             res = None
 
-        if labels is not None:
-            params['labelSelector'] = build_selector(labels)
-
-        if fields is not None:
-            params['fieldSelector'] = build_selector(fields, for_fields=True)
-
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
     @staticmethod
@@ -230,8 +223,8 @@ class GenericSyncClient(GenericClient):
                 continue
 
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, headers: dict = None) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, headers=headers)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
         req = self.build_adapter_request(br)
         resp = self.send(req)
         return self.handle_response(method, resp, br)
@@ -273,8 +266,8 @@ class GenericAsyncClient(GenericClient):
                     await asyncio.sleep(handle_error.sleep)
                 continue
 
-    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, headers: dict = None) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, headers=headers)
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
         req = self.build_adapter_request(br)
         resp = await self.send(req)
         return self.handle_response(method, resp, br)

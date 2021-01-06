@@ -5,6 +5,7 @@ from .. import operators
 from ..core import resource as r
 from .generic_client import GenericSyncClient, GenericAsyncClient
 from ..types import OnErrorHandler, PatchType, on_error_raise
+from .selector import build_selector
 
 NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -119,7 +120,12 @@ class Client:
         """
 
         br = self._client.prepare_request(
-            'list', res=res, namespace=namespace, labels=labels, fields=fields, params={'limit': chunk_size}
+            'list', res=res, namespace=namespace,
+            params={
+                'limit': chunk_size,
+                'labelSelector': build_selector(labels) if labels else None,
+                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
+            }
         )
         return self._client.list(br)
 
@@ -154,9 +160,13 @@ class Client:
         * **on_error** - *(optional)* Function that control what to do in case of errors.
             The default implementation will raise any error.
         """
-        br = self._client.prepare_request("list", res=res, namespace=namespace, labels=labels,
-            fields=fields, watch=True,
-            params={'timeoutSeconds': server_timeout, 'resourceVersion': resource_version}
+        br = self._client.prepare_request("list", res=res, namespace=namespace, watch=True,
+            params={
+                'timeoutSeconds': server_timeout,
+                'resourceVersion': resource_version,
+                'labelSelector': build_selector(labels) if labels else None,
+                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
+            }
         )
         return self._client.watch(br, on_error=on_error)
 
@@ -348,7 +358,12 @@ class AsyncClient:
         """
 
         br = self._client.prepare_request(
-            'list', res=res, namespace=namespace, labels=labels, fields=fields, params={'limit': chunk_size}
+            'list', res=res, namespace=namespace,
+            params={
+                'limit': chunk_size,
+                'labelSelector': build_selector(labels) if labels else None,
+                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
+            }
         )
         return self._client.list(br)
 
@@ -383,9 +398,13 @@ class AsyncClient:
         * **on_error** - *(optional)* Function that control what to do in case of errors.
             The default implementation will raise any error.
         """
-        br = self._client.prepare_request("list", res=res, namespace=namespace, labels=labels,
-            fields=fields, watch=True,
-            params={'timeoutSeconds': server_timeout, 'resourceVersion': resource_version}
+        br = self._client.prepare_request("list", res=res, namespace=namespace, watch=True,
+            params={
+                'timeoutSeconds': server_timeout,
+                'resourceVersion': resource_version,
+                'labelSelector': build_selector(labels) if labels else None,
+                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
+            }
         )
         return self._client.watch(br, on_error=on_error)
 
