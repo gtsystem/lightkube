@@ -90,3 +90,13 @@ async def example():
     )
     await client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
+
+Stream pod logs
+```python
+from lightkube import AsyncClient
+
+async def example():
+    client = AsyncClient()
+    async for line in client.log('my-pod', follow=True):
+        print(line)
+```

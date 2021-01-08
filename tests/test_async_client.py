@@ -60,11 +60,11 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
 @respx.mock
 @pytest.mark.asyncio
 async def test_get_namespaced(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx", content={'metadata': {'name': 'xx'}})
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.get(Pod, name="xx")
     assert pod.metadata.name == 'xx'
 
-    respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx", content={'metadata': {'name': 'xy'}})
+    respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={'metadata': {'name': 'xy'}})
     pod = await client.get(Pod, name="xx", namespace="other")
     assert pod.metadata.name == 'xy'
     await client.close()
@@ -74,11 +74,11 @@ async def test_get_namespaced(client: lightkube.AsyncClient):
 @pytest.mark.asyncio
 async def test_list_global(client: lightkube.AsyncClient):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
-    respx.get("https://localhost:9443/api/v1/nodes", content=resp)
+    respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
     assert [node.metadata.name async for node in nodes] == ['xx', 'yy']
 
-    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx", content=resp)
+    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx").respond(json=resp)
     pods = client.list(Pod, namespace=lightkube.ALL_NS, fields={'k': 'x'})
     assert [pod.metadata.name async for pod in pods] == ['xx', 'yy']
 
@@ -91,9 +91,9 @@ async def test_list_global(client: lightkube.AsyncClient):
 @pytest.mark.asyncio
 async def test_list_chunk_size(client: lightkube.AsyncClient):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], 'metadata': {'continue': 'yes'}}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
     resp = {'items': [{'metadata': {'name': 'zz'}}]}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes", content=resp)
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name async for pod in pods] == ['xx', 'yy', 'zz']
     await client.close()
@@ -119,8 +119,8 @@ from tests.test_client import make_watch_list
 @respx.mock
 @pytest.mark.asyncio
 async def test_watch(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
     i = -1
     with pytest.raises(httpx.HTTPError) as exi:
@@ -137,8 +137,8 @@ async def test_watch(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_watch_version(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true", content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true", status_code=404)
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
+    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
 
     # testing starting from specific resource version
     i = -1
@@ -155,7 +155,7 @@ async def test_watch_version(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_patch_global(client: lightkube.AsyncClient):
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
                        patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
@@ -166,7 +166,7 @@ async def test_patch_global(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_create_global(client: lightkube.AsyncClient):
-    req = respx.post("https://localhost:9443/api/v1/nodes", content={'metadata': {'name': 'xx'}})
+    req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
@@ -176,8 +176,34 @@ async def test_create_global(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_replace_global(client: lightkube.AsyncClient):
-    req = respx.put("https://localhost:9443/api/v1/nodes/xx", content={'metadata': {'name': 'xx'}})
+    req = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
+    await client.close()
+
+
+async def alist(aiter):
+    return [l async for l in aiter]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_pod_log(client: lightkube.AsyncClient):
+    result = ['line1\n', 'line2\n', 'line3\n']
+    content = "".join(result)
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
+    lines = await alist(client.log('test'))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?since=30&timestamps=true").respond(
+        content=content)
+    lines = await alist(client.log('test', since=30, timestamps=True))
+    assert lines == result
+
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
+        content=content)
+    lines = await alist(client.log('test', container="bla"))
+    assert lines == result
     await client.close()

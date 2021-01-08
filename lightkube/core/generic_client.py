@@ -87,12 +87,13 @@ class GenericClient:
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
-                        labels=None, fields=None,
-                        watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC, params: dict = None) -> BasicRequest:
+                        watch: bool = False, params: dict = None, headers: dict = None) -> BasicRequest:
         if params is not None:
             params = {k: v for k, v in params.items() if v is not None}
         else:
             params = {}
+        if headers is not None:
+            headers = {k: v for k, v in headers.items() if v is not None}
         data = None
         if res is None:
             if obj is None:
@@ -157,10 +158,6 @@ class GenericClient:
                 raise ValueError("resource name not defined")
             path.append(name)
 
-        headers = None
-        if method == 'patch':
-            headers = {'Content-Type': patch_type.value}
-
         if api_info.action:
             path.append(api_info.action)
 
@@ -168,19 +165,20 @@ class GenericClient:
         if http_method == 'DELETE':
             res = None
 
-        if labels is not None:
-            params['labelSelector'] = build_selector(labels)
-
-        if fields is not None:
-            params['fieldSelector'] = build_selector(fields, for_fields=True)
-
         return BasicRequest(method=http_method, url="/".join(path), params=params, response_type=res, data=data, headers=headers)
 
-    def handle_response(self, method, resp, br):
+    @staticmethod
+    def raise_for_status(resp):
         try:
             resp.raise_for_status()
         except httpx.HTTPError as e:
             raise transform_exception(e)
+
+    def build_adapter_request(self, br: BasicRequest):
+        return self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
+
+    def handle_response(self, method, resp, br):
+        self.raise_for_status(resp)
         res = br.response_type
         if res is None:
             # TODO: delete/deletecollection actions normally return a Status object, we may want to return it as well
@@ -199,12 +197,15 @@ class GenericClient:
 
 
 class GenericSyncClient(GenericClient):
+    def send(self, req, stream=False):
+        return self._client.send(req, stream=stream, timeout=self._watch_timeout if stream else None)
+
     def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
         err_count = 0
         while True:
             req = wd.get_request()
-            resp = self._client.send(req, stream=True, timeout=self._watch_timeout)
+            resp = self.send(req, stream=True)
             try:
                 resp.raise_for_status()
                 err_count = 0
@@ -221,17 +222,18 @@ class GenericSyncClient(GenericClient):
                     time.sleep(handle_error.sleep)
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
-        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-        resp = self._client.send(req)
+
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
+        req = self.build_adapter_request(br)
+        resp = self.send(req)
         return self.handle_response(method, resp, br)
 
     def list(self, br: BasicRequest) -> Any:
         cont = True
         while cont:
-            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-            resp = self._client.send(req)
+            req = self.build_adapter_request(br)
+            resp = self.send(req)
             cont, chunk = self.handle_response('list', resp, br)
             yield from chunk
 
@@ -239,12 +241,15 @@ class GenericSyncClient(GenericClient):
 class GenericAsyncClient(GenericClient):
     AdapterClient = staticmethod(client_adapter.AsyncClient)
 
+    async def send(self, req, stream=False):
+        return await self._client.send(req, stream=stream, timeout=self._watch_timeout if stream else None)
+
     async def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
         err_count = 0
         while True:
             req = wd.get_request()
-            resp = await self._client.send(req, stream=True, timeout=self._watch_timeout)
+            resp = await self.send(req, stream=True)
             try:
                 resp.raise_for_status()
                 err_count = 0
@@ -261,17 +266,17 @@ class GenericAsyncClient(GenericClient):
                     await asyncio.sleep(handle_error.sleep)
                 continue
 
-    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, labels=None, fields=None, watch: bool = False, patch_type: PatchType = PatchType.STRATEGIC) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, labels, fields, watch, patch_type)
-        req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-        resp = await self._client.send(req)
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
+        req = self.build_adapter_request(br)
+        resp = await self.send(req)
         return self.handle_response(method, resp, br)
 
     async def list(self, br: BasicRequest) -> Any:
         cont = True
         while cont:
-            req = self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-            resp = await self._client.send(req)
+            req = self.build_adapter_request(br)
+            resp = await self.send(req)
             cont, chunk = self.handle_response('list', resp, br)
             for item in chunk:
                 yield item

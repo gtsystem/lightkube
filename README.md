@@ -14,7 +14,7 @@ Modern lightweight kubernetes module for python
 * Extensive *type hints* to avoid common mistakes and to support autocompletion.
 * Models and resources generated from the swagger specifications using standard dataclasses.
 * Support for async/await
-* Support for installing a specific version of the kubernetes models (1.15 to 1.19)
+* Support for installing a specific version of the kubernetes models (1.15 to 1.20)
 * Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
@@ -104,10 +104,19 @@ obj = Deployment.Scale(
 client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
 
+Stream pod logs
+```python
+from lightkube import Client
+
+client = Client()
+for line in client.log('my-pod', follow=True):
+    print(line)
+```
+
 ## Unsupported features
 
 The following features are not supported at the moment:
 
-* Special subresources like `log`, `attach`, `exec`, `portforward` and `proxy`.
+* Special subresources `attach`, `exec`, `portforward` and `proxy`.
 * `auth-provider` authentication method is not supported. The supported
   authentication methods are `token`, `username` + `password` and `exec`.

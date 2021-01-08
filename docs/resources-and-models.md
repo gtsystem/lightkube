@@ -7,6 +7,7 @@
 * lightkube-models [1.17](https://gtsystem.github.io/lightkube-models/1.17)
 * lightkube-models [1.18](https://gtsystem.github.io/lightkube-models/1.18)
 * lightkube-models [1.19](https://gtsystem.github.io/lightkube-models/1.19)
+* lightkube-models [1.20](https://gtsystem.github.io/lightkube-models/1.20)
 
 ## Resources
 
