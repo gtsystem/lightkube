@@ -1,12 +1,28 @@
-from typing import Type, Any, Optional
+from typing import Type, Any, Optional, overload
 
 from .core import resource as res
 from .core.internal_models import meta_v1, autoscaling_v1
 
 __all__ = ['create_global_resource', 'create_namespaced_resource']
 
+_created_resources = {}
+
+
+def get_generic_resource(version, kind):
+    global _created_resources
+    model = _created_resources.get((version, kind))
+    return model[0] if model is not None else None
+
 
 class Generic(dict):
+    @overload
+    def __init__(self, apiVersion: str=None, kind: str=None,
+                 metadata: meta_v1.ObjectMeta=None, **kwargs):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @property
     def apiVersion(self) -> str:
         return self.get('apiVersion')
@@ -24,6 +40,8 @@ class Generic(dict):
         meta = self.get('metadata')
         if meta is None:
             return None
+        elif isinstance(meta, meta_v1.ObjectMeta):
+            return meta
         return meta_v1.ObjectMeta.from_dict(meta)
 
     def __getattr__(self, item):
@@ -36,7 +54,10 @@ class Generic(dict):
         return cls(d)
 
     def to_dict(self, dict_factory=dict):
-        return dict_factory(self)
+        d = dict_factory(self)
+        if 'metadata' in d and isinstance(d['metadata'], meta_v1.ObjectMeta):
+            d['metadata'] = d['metadata'].to_dict(dict_factory)
+        return d
 
 
 def create_api_info(group, version, kind, plural, verbs=None) -> res.ApiInfo:
@@ -91,6 +112,15 @@ class GenericNamespacedResource(res.NamespacedResourceG, Generic):
 
 
 def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> Any:
+    global _created_resources
+    res_key = (f'{group}/{version}', kind)
+    signature = (namespaced, plural, tuple(verbs) if verbs else None)
+    if res_key in _created_resources:
+        model, curr_signature = _created_resources[res_key]
+        if curr_signature != signature:
+            raise ValueError(f"Resource {kind} already created but with different signature")
+        return model
+
     if namespaced:
         main, status, scale = GenericNamespacedResource, GenericNamespacedStatus, GenericNamespacedScale
     else:
@@ -103,6 +133,7 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
         Status = _create_subresource(status, _api_info, action='status')
 
     TmpName.__name__ = TmpName.__qualname__ = kind
+    _created_resources[res_key] = (TmpName, signature)
     return TmpName
 
 
