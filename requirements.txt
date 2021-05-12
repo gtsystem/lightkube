@@ -1,4 +1,4 @@
-httpx >= 0.16.1
+httpx >= 0.18.1
 pytest
 pytest-asyncio
 respx

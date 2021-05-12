@@ -13,6 +13,7 @@ Modern lightweight kubernetes module for python
 * *Simple* interface shared across all kubernetes APIs.
 * Extensive *type hints* to avoid common mistakes and to support autocompletion.
 * Models and resources generated from the swagger specifications using standard dataclasses.
+* Load/Dump resource objects from YAML.
 * Support for async/await
 * Support for installing a specific version of the kubernetes models (1.15 to 1.21)
 * Lazy instantiation of inner models.
@@ -89,6 +90,16 @@ client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
 Delete a namespaced resource
 ```python
 client.delete(ConfigMap, name='my-config', namespace='default')
+```
+
+Create resources defined in a file
+```python
+from lightkube import Client, codecs
+
+client = Client()
+with open('deployment.yaml') as f:
+    for obj in codecs.load_all_yaml(f):
+        client.create(obj)
 ```
 
 Scale a deployment

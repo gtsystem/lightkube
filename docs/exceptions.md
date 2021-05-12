@@ -59,3 +59,8 @@ Status(
     status='Failure'
 )
 ```
+
+## LoadResourceError
+
+This exception can be raised when loading an undefined resource using `codecs.from_dict()`
+or `codecs.load_all_yaml()` (See [Load/Dump kubernetes objects](codecs.md)).

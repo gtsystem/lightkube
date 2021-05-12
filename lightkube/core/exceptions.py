@@ -18,3 +18,9 @@ class ApiError(httpx.HTTPStatusError):
             self, request: httpx.Request = None, response: httpx.Response = None) -> None:
         self.status = meta_v1.Status.from_dict(response.json())
         super().__init__(self.status.message, request=request, response=response)
+
+
+class LoadResourceError(Exception):
+    """
+    Error in loading a resource
+    """
