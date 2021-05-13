@@ -94,7 +94,7 @@ can be used as follow:
 with open('service.tmpl') as f:
     # render the template using `context` and return the corresponding resource objects.
     objs = codecs.load_all_yaml(f, context={'env': 'prd'})
-    print(objs[0].labels['env'])  # prints `prd`
+    print(objs[0].metadata.labels['env'])  # prints `prd`
 ```
 
 ## Dump to YAML
