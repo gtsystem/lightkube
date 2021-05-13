@@ -82,3 +82,14 @@ def test_scale_model():
     Test = gr.create_global_resource('test.eu', 'v1', 'TestS', 'tests')
     a = Test.Scale.from_dict({'spec': {'replicas': 2}})
     assert a.spec.replicas == 2
+
+
+def test_signature_change_not_allowed():
+    gr.create_namespaced_resource('test.eu', 'v1', 'TestN', 'tests')
+    gr.create_namespaced_resource('test.eu', 'v1', 'TestN', 'tests')
+
+    with pytest.raises(ValueError, match='.*different signature'):
+        gr.create_namespaced_resource('test.eu', 'v1', 'TestN', 'tests', verbs=['get'])
+
+    with pytest.raises(ValueError, match='.*different signature'):
+        gr.create_global_resource('test.eu', 'v1', 'TestN', 'tests')
