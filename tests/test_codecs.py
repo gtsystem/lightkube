@@ -1,10 +1,12 @@
 import textwrap
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
 from lightkube import codecs
 from lightkube.resources.core_v1 import ConfigMap
+from lightkube.resources.rbac_authorization_v1 import Role
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.generic_resource import create_namespaced_resource
 from lightkube import LoadResourceError
@@ -30,6 +32,31 @@ def test_from_dict():
     assert config_map.data['file1.txt'] == 'some content here'
     assert config_map.data['file2.txt'] == 'some other content'
 
+    role = codecs.from_dict({
+        'apiVersion': 'rbac.authorization.k8s.io/v1',
+        'kind': 'Role',
+        'metadata': {'name': 'read-pod'},
+        'rules': [{
+            'apiGroup': '',
+            'resources': ['pods'],
+            'verbs': ['get','watch', 'list']
+        }]
+    })
+    assert isinstance(role, Role)
+    assert role.kind == 'Role'
+    assert role.apiVersion == 'rbac.authorization.k8s.io/v1'
+    assert role.metadata.name == 'read-pod'
+    assert role.rules[0].resources == ['pods']
+
+
+def test_from_dict_wrong_model():
+    # apiVersion and kind are required
+    with pytest.raises(LoadResourceError, match=".*key 'apiVersion' missing"):
+        codecs.from_dict({
+            'kind': 'ConfigMap',
+            'metadata': {'name': 'config-name'},
+        })
+
 
 def test_from_dict_generic_res():
      Mydb = create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
@@ -53,6 +80,9 @@ def test_from_dict_not_found():
 
     with pytest.raises(AttributeError):
         codecs.from_dict({'apiVersion': 'v1', 'kind': 'Missing'})
+
+    with pytest.raises(LoadResourceError):
+        codecs.from_dict({'apiVersion': 'extra/v1', 'kind': 'Missing'})
 
 
 def test_load_all_yaml_static():
@@ -107,6 +137,23 @@ def test_load_all_yaml_template_env():
 
     assert kinds == ['Secret', 'Mydb', 'Service', 'Deployment']
     assert objs[1].metadata.name == 'bla-global'
+
+    # template_env is not an environment
+    with pytest.raises(LoadResourceError, match='.*valid jinja2 template'):
+        codecs.load_all_yaml(
+            data_dir.joinpath('example-def.tmpl').read_text(),
+            context={},
+            template_env={}
+        )
+
+
+@mock.patch('lightkube.codecs.jinja2', new=None)
+def test_load_all_yaml_missing_dependency():
+    with pytest.raises(ImportError, match='.*requires jinja2.*'):
+        codecs.load_all_yaml(
+            data_dir.joinpath('example-def.tmpl').read_text(),
+            context={'test': 'xyz'}
+        )
 
 
 def test_dump_all_yaml():

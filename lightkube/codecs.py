@@ -27,6 +27,7 @@ def _load_model(version, kind):
                 return model
             raise LoadResourceError(f"Resource with version='{version}' and kind='{kind}' undefined." 
                                     "Did you define a generic resource?")
+        group = group.replace(".", "_")
         version = "_".join([group, version_n])
     else:
         version = f'core_{version}'
@@ -105,7 +106,7 @@ def _template(stream: Union[str, TextIO], context: dict = None, template_env = N
     if template_env is None:
         template_env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True)
     elif not isinstance(template_env, jinja2.Environment):
-        raise LoadResourceError("template_env should be a valid jinja2 template")
+        raise LoadResourceError("template_env is not a valid jinja2 template")
 
     tmpl = template_env.from_string(stream if isinstance(stream, str) else stream.read())
     return tmpl.render(**context)
