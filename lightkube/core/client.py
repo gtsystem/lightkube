@@ -42,6 +42,11 @@ class Client:
         """Return the default namespace that will be used when a namespace has not been specified"""
         return self._client.namespace
 
+    @property
+    def config(self) -> SingleConfig:
+        """Return the kubernetes configuration used in this client"""
+        return self._client.config
+
     @overload
     def delete(self, res: Type[GlobalResource], name: str) -> None:
         ...
@@ -307,6 +312,11 @@ class AsyncClient:
     def namespace(self):
         """Return the default namespace that will be used when a namespace has not been specified"""
         return self._client.namespace
+
+    @property
+    def config(self) -> SingleConfig:
+        """Return the kubernetes configuration used in this client"""
+        return self._client.config
 
     @overload
     async def delete(self, res: Type[GlobalResource], name: str) -> None:

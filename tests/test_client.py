@@ -58,6 +58,16 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
     assert client.namespace == 'ns1'
 
 
+def test_client_config_attribute(kubeconfig):
+    config = KubeConfig.from_file(kubeconfig)
+    client = lightkube.Client(config=config)
+    assert client.config == config.get()
+
+    single_conf = config.get()
+    client = lightkube.Client(config=single_conf)
+    assert client.config is single_conf
+
+
 @respx.mock
 def test_get_namespaced(client: lightkube.Client):
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'metadata': {'name': 'xx'}})

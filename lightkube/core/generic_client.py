@@ -83,6 +83,8 @@ class GenericClient:
             config = KubeConfig.from_env().get()
         elif isinstance(config, KubeConfig):
             config = config.get()
+
+        self.config = config
         self._client = self.AdapterClient(config, timeout)
         self.namespace = namespace if namespace else config.namespace
 
