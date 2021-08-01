@@ -112,8 +112,6 @@ def user_auth(user: Optional[User]):
     if user.auth_provider:
         raise ConfigError("auth-provider not supported")
 
-    raise ConfigError("unknown user authentication")
-
 
 def user_cert(user: User, abs_file):
     """Extract user certificates"""

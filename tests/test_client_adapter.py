@@ -77,6 +77,10 @@ def test_user_auth_missing():
     assert client_adapter.user_auth(None) is None
 
 
+def test_user_auth_empty():
+    assert client_adapter.user_auth(models.User()) is None
+
+
 def test_user_auth_basic():
     auth = client_adapter.user_auth(models.User(username="user", password="psw"))
     assert isinstance(auth, httpx.BasicAuth)
