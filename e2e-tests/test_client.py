@@ -9,10 +9,13 @@ from lightkube.resources.core_v1 import Pod, Node, ConfigMap, Service, Namespace
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.models.core_v1 import PodSpec, Container, ServiceSpec, ServicePort
 
+uid_count = 0
 
 @pytest.fixture
 def obj_name():
-    return f'test-{datetime.utcnow().strftime("%Y%m%d-%H%M%S")}'
+    global uid_count
+    uid_count += 1
+    return f'test-{datetime.utcnow().strftime("%Y%m%d%H%M%S")}-{uid_count}'
 
 
 def names(obj_list):
