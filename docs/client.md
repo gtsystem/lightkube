@@ -11,8 +11,9 @@ By default the namespace provided in the kubeconfig file is used. This default
 can be overridden when instantiating the client class with a different value.
 You can also specify a specific namespace for a single call using the `namespace` parameter.
 
-The methods `create` or `replace` will respect the namespace defined in the object to be 
-created except if this is missing or explictly overriden using the method's `namespace` parameter.
+The methods `create` or `replace` will use the namespace defined in the object when it's present.
+Notice that if the object namespace and the method's `namespace` parameter are set, 
+both must have the same value.
 
 Override rules summary:
 

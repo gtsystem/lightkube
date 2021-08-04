@@ -134,13 +134,14 @@ class GenericClient:
             path = ["apis", base.group, base.version]
 
         if namespaced and namespace != ALL_NS:
-            if namespace is None and method in ('post', 'put'):
-                namespace = obj.metadata.namespace
+            if method in ('post', 'put') and obj.metadata.namespace is not None:
+                if namespace is None:
+                    namespace = obj.metadata.namespace
+                elif namespace != obj.metadata.namespace:
+                    raise ValueError(f"The namespace value '{namespace}' differ from the "
+                                     f"namespace in the object metadata '{obj.metadata.namespace}'")
             if namespace is None:
                 namespace = self.namespace
-            if method in ('post', 'put'):
-                # we ensure we send here the same namespace defined in the url
-                obj.metadata.namespace = namespace
             path.extend(["namespaces", namespace])
 
         if method in ('post', 'put', 'patch'):
