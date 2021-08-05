@@ -67,7 +67,8 @@ class ExecAuth(httpx.Auth):
         cmd_env_vars.update((var.name, var.value) for var in exec.env)
         # TODO: add support for passing KUBERNETES_EXEC_INFO env var
         # https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/kubectl-exec-plugins.md
-        return [exec.command] + exec.args, cmd_env_vars
+        args = exec.args if exec.args else []
+        return [exec.command] + args, cmd_env_vars
 
     def sync_auth_flow(self, request: httpx.Request):
         if self._last_bearer:

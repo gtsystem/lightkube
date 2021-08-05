@@ -104,11 +104,10 @@ def test_user_auth_provider():
 
 
 def test_user_auth_exec_sync():
+    auth_script = str(Path(__file__).parent.joinpath('data', 'auth_script.sh'))
     auth = client_adapter.user_auth(models.User(exec=models.UserExec(
         apiVersion="client.authentication.k8s.io/v1beta1",
-        command="echo",
-        args=['{"apiVersion":"client.authentication.k8s.io/v1beta1",'
-              '"kind":"ExecCredential","status":{"token":"my-bearer-token"}}']
+        command=auth_script,
     )))
     assert isinstance(auth, client_adapter.ExecAuth)
     m = Mock(headers={})
@@ -127,6 +126,19 @@ def test_user_auth_exec_sync():
     assert m.headers["Authorization"] == "Bearer my-bearer-token"
 
 
+def test_user_auth_exec_sync_with_args():
+    auth = client_adapter.user_auth(models.User(exec=models.UserExec(
+        apiVersion="client.authentication.k8s.io/v1beta1",
+        args=['{"apiVersion":"client.authentication.k8s.io/v1beta1",'
+              '"kind":"ExecCredential","status":{"token":"my-bearer-token"}}'],
+        command='echo',
+    )))
+    assert isinstance(auth, client_adapter.ExecAuth)
+    m = Mock(headers={})
+    next(auth.sync_auth_flow(m))
+    assert m.headers["Authorization"] == "Bearer my-bearer-token"
+
+
 def test_user_auth_exec_sync_fail():
     auth = client_adapter.user_auth(models.User(exec=models.UserExec(
         apiVersion="client.authentication.k8s.io/v1beta1",
@@ -138,12 +150,12 @@ def test_user_auth_exec_sync_fail():
 
 @pytest.mark.asyncio
 async def test_user_auth_exec_async():
+    auth_script = str(Path(__file__).parent.joinpath('data', 'auth_script.sh'))
     auth = client_adapter.user_auth(models.User(exec=models.UserExec(
         apiVersion="client.authentication.k8s.io/v1beta1",
-        command="echo",
-        args=['{"apiVersion":"client.authentication.k8s.io/v1beta1",'
-              '"kind":"ExecCredential","status":{"token":"my-bearer-token"}}']
+        command=auth_script,
     )))
+
     assert isinstance(auth, client_adapter.ExecAuth)
     m = Mock(headers={})
     await auth.async_auth_flow(m).__anext__()
