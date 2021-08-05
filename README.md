@@ -15,11 +15,10 @@ Modern lightweight kubernetes module for python
 * Models and resources generated from the swagger specifications using standard dataclasses.
 * Load/Dump resource objects from YAML.
 * Support for async/await
-* Support for installing a specific version of the kubernetes models (1.15 to 1.21)
+* Support for installing a specific version of the kubernetes models (1.15 to 1.22)
 * Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
-* Customizable handling of errors when watching resources.
 
 This module is powered by [httpx](https://github.com/encode/httpx/tree/master/httpx). 
 
