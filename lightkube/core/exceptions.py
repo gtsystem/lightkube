@@ -14,6 +14,8 @@ class ConfigError(Exception):
 
 
 class ApiError(httpx.HTTPStatusError):
+    status: 'meta_v1.Status'
+
     def __init__(
             self, request: httpx.Request = None, response: httpx.Response = None) -> None:
         self.status = meta_v1.Status.from_dict(response.json())

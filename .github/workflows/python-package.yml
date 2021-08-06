@@ -11,7 +11,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -48,3 +47,26 @@ jobs:
         name: dist
         path: |
           dist
+  e2e-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s: [ 1.19, 1.21 ]
+    name: E2E test in K8s ${{ matrix.k8s }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio jinja2 wheel
+          pip install . "lightkube-models==${{ matrix.k8s }}.*"
+      - uses: nolar/setup-k3d-k3s@v1
+        with:
+          version: v${{ matrix.k8s }}
+      - run: kubectl version
+      - run: pytest e2e-tests/
