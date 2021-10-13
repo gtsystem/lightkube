@@ -201,7 +201,7 @@ class GenericClient:
 
 class GenericSyncClient(GenericClient):
     def send(self, req, stream=False):
-        return self._client.send(req, stream=stream, timeout=self._watch_timeout if stream else None)
+        return self._client.send(req, stream=stream)
 
     def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
@@ -245,7 +245,7 @@ class GenericAsyncClient(GenericClient):
     AdapterClient = staticmethod(client_adapter.AsyncClient)
 
     async def send(self, req, stream=False):
-        return await self._client.send(req, stream=stream, timeout=self._watch_timeout if stream else None)
+        return await self._client.send(req, stream=stream)
 
     async def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
