@@ -55,11 +55,11 @@ class WatchDriver:
         self._build_request = build_request
         self._lazy = lazy
 
-    def get_request(self):
+    def get_request(self, timeout):
         br = self._br
         if self._version is not None:
             br.params['resourceVersion'] = self._version
-        return self._build_request(br.method, br.url, params=br.params)
+        return self._build_request(br.method, br.url, params=br.params, timeout=timeout)
 
     def process_one_line(self, line):
         line = json.loads(line)
@@ -207,7 +207,7 @@ class GenericSyncClient(GenericClient):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
         err_count = 0
         while True:
-            req = wd.get_request()
+            req = wd.get_request(timeout=self._watch_timeout)
             resp = self.send(req, stream=True)
             try:
                 resp.raise_for_status()
@@ -251,7 +251,7 @@ class GenericAsyncClient(GenericClient):
         wd = WatchDriver(br, self._client.build_request, self._lazy)
         err_count = 0
         while True:
-            req = wd.get_request()
+            req = wd.get_request(timeout=self._watch_timeout)
             resp = await self.send(req, stream=True)
             try:
                 resp.raise_for_status()
