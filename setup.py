@@ -12,6 +12,7 @@ setup(
     license='MIT',
     url='https://github.com/gtsystem/lightkube',
     packages=['lightkube', 'lightkube.config', 'lightkube.core'],
+    package_data={'lightkube': ['py.typed']},
     install_requires=[
         'lightkube-models >= 1.15.12.0',
         'httpx >= 0.20.0',
