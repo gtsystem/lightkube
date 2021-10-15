@@ -38,9 +38,12 @@ jobs:
       run: |
         coverage run --source=lightkube -m pytest tests/
         GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} coveralls --service=github
-    - name: Package
+    - name: Package (bdist_wheel)
       run: |
         python setup.py bdist_wheel
+    - name: Package (sdist)
+      run: |
+        python setup.py sdist
     - name: Archive artifact
       uses: actions/upload-artifact@v2
       with:
