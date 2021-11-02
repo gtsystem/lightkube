@@ -4,6 +4,7 @@ from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
 from .generic_client import GenericSyncClient, GenericAsyncClient
+from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
@@ -175,6 +176,76 @@ class Client:
             }
         )
         return self._client.watch(br, on_error=on_error)
+
+    @overload
+    def wait(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        raise_for_conditions: Iterable[str] = (),
+    ) -> GlobalResource:
+        ...
+
+    @overload
+    def wait(
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        namespace: str = None,
+        raise_for_conditions: Iterable[str] = (),
+    ) -> AllNamespacedResource:
+        ...
+
+    def wait(
+        self,
+        res,
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        namespace=None,
+        raise_for_conditions: Iterable[str] = (),
+    ):
+        """Waits for specified conditions.
+
+        **parameters**
+
+        * **res** - Resource kind.
+        * **name** - Name of resource to wait for.
+        * **for_conditions** - Condition types that are considered a success and will end the wait.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **raise_for_conditions** - *(optional)* Condition types that are considered failures and will exit the wait early.
+        """
+
+        kind = r.api_info(res).plural
+        full_name = f'{kind}/{name}'
+
+        for_conditions = list(for_conditions)
+        raise_for_conditions = list(raise_for_conditions)
+
+        for op, obj in self.watch(res, namespace=namespace, fields={'metadata.name': name}):
+            if obj.status is None:
+                continue
+
+            if op == "DELETED":
+                raise ObjectDeleted(full_name)
+
+            try:
+                status = obj.status.to_dict()
+            except AttributeError:
+                status = obj.status
+
+            conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
+            if any(c['type'] in for_conditions for c in conditions):
+                return obj
+
+            failures = [c for c in conditions if c['type'] in raise_for_conditions]
+
+            if failures:
+                raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
 
     @overload
     def patch(self, res: Type[GlobalSubResource], name: str,
@@ -446,6 +517,76 @@ class AsyncClient:
             }
         )
         return self._client.watch(br, on_error=on_error)
+
+    @overload
+    async def wait(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        raise_for_conditions: Iterable[str] = (),
+    ) -> GlobalResource:
+        ...
+
+    @overload
+    async def wait(
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        namespace: str = None,
+        raise_for_conditions: Iterable[str] = (),
+    ) -> AllNamespacedResource:
+        ...
+
+    async def wait(
+        self,
+        res,
+        name: str,
+        *,
+        for_conditions: Iterable[str],
+        namespace=None,
+        raise_for_conditions: Iterable[str] = (),
+    ):
+        """Waits for specified conditions.
+
+        **parameters**
+
+        * **res** - Resource kind.
+        * **name** - Name of resource to wait for.
+        * **for_conditions** - Condition types that are considered a success and will end the wait.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **raise_for_conditions** - *(optional)* Condition types that are considered failures and will exit the wait early.
+        """
+
+        kind = r.api_info(res).plural
+        full_name = f'{kind}/{name}'
+
+        for_conditions = list(for_conditions)
+        raise_for_conditions = list(raise_for_conditions)
+
+        async for op, obj in self.watch(res, namespace=namespace, fields={'metadata.name': name}):
+            if obj.status is None:
+                continue
+
+            if op == "DELETED":
+                raise ObjectDeleted(full_name)
+
+            try:
+                status = obj.status.to_dict()
+            except AttributeError:
+                status = obj.status
+
+            conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
+            if any(c['type'] in for_conditions for c in conditions):
+                return obj
+
+            failures = [c for c in conditions if c['type'] in raise_for_conditions]
+
+            if failures:
+                raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
 
     @overload
     async def patch(self, res: Type[GlobalSubResource], name: str,

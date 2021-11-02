@@ -26,3 +26,29 @@ class LoadResourceError(Exception):
     """
     Error in loading a resource
     """
+
+
+class ObjectDeleted(Exception):
+    """
+    Object was unexpectedly deleted
+    """
+
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return f"{self.name} was unexpectedly deleted"
+
+
+class ConditionError(Exception):
+    """
+    Object is in specified bad condition
+    """
+
+    def __init__(self, name, messages):
+        self.name = name
+        self.messages = messages
+
+    def __str__(self):
+        messages = '; '.join(self.messages)
+        return f'{self.name} has failure condition(s): {messages}'

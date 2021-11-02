@@ -3,9 +3,10 @@ from datetime import datetime
 
 import pytest
 
-from lightkube import Client, ApiError
+from lightkube import Client, ApiError, AsyncClient
 from lightkube.types import PatchType
 from lightkube.resources.core_v1 import Pod, Node, ConfigMap, Service, Namespace
+from lightkube.resources.apps_v1 import Deployment
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.models.core_v1 import PodSpec, Container, ServiceSpec, ServicePort
 
@@ -247,3 +248,73 @@ def test_list_all_ns(obj_name):
     finally:
         client.delete(Namespace, name=ns1)
         client.delete(Namespace, name=ns2)
+
+
+@pytest.mark.parametrize("resource", [Node])
+def test_wait_global(resource):
+    client = Client()
+
+    for obj in client.list(resource):
+        client.wait(resource, obj.metadata.name, for_conditions=["Ready"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resource", [Node])
+async def test_wait_global_async(resource):
+    client = AsyncClient()
+
+    async for obj in client.list(resource):
+        await client.wait(resource, obj.metadata.name, for_conditions=["Ready"])
+
+    await client.close()
+
+
+WAIT_NAMESPACED_PARAMS = [
+    (Pod, "Ready", {"containers": [{"name": "nginx", "image": "nginx:1.21.4"}]}),
+    (
+        Deployment,
+        "Available",
+        {
+            "selector": {"matchLabels": {"foo": "bar"}},
+            "template": {
+                "metadata": {"labels": {"foo": "bar"}},
+                "spec": {"containers": [{"name": "nginx", "image": "nginx:1.21.4"}]},
+            },
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("resource,for_condition,spec", WAIT_NAMESPACED_PARAMS)
+def test_wait_namespaced(resource, for_condition, spec):
+    client = Client()
+
+    requested = resource.from_dict(
+        {"metadata": {"generateName": "e2e-test-"}, "spec": spec}
+    )
+    created = client.create(requested)
+    client.wait(
+        resource,
+        created.metadata.name,
+        for_conditions=[for_condition],
+    )
+    client.delete(resource, created.metadata.name)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resource,for_condition,spec", WAIT_NAMESPACED_PARAMS)
+async def test_wait_namespaced_async(resource, for_condition, spec):
+    client = AsyncClient()
+
+    requested = resource.from_dict(
+        {"metadata": {"generateName": "e2e-test-"}, "spec": spec}
+    )
+    created = await client.create(requested)
+    await client.wait(
+        resource,
+        created.metadata.name,
+        for_conditions=[for_condition],
+    )
+    await client.delete(resource, created.metadata.name)
+
+    await client.close()
