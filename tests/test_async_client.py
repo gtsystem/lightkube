@@ -9,8 +9,11 @@ import respx
 import lightkube
 from lightkube.config.kubeconfig import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
+from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
+
+from .test_client import make_wait_custom, make_wait_deleted, make_wait_failed, make_wait_success, make_watch_list
 
 KUBECONFIG = """
 apiVersion: v1
@@ -113,8 +116,6 @@ async def test_deletecollection_global(client: lightkube.AsyncClient):
     await client.deletecollection(Node)
     await client.close()
 
-from tests.test_client import make_watch_list
-
 
 @respx.mock
 @pytest.mark.asyncio
@@ -149,6 +150,67 @@ async def test_watch_version(client: lightkube.AsyncClient):
             assert op == 'ADDED'
     assert i == 9
     assert exi.value.response.status_code == 404
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_wait_success(client: lightkube.AsyncClient):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_success())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_success())
+
+    node = await client.wait(Node, "test-node", for_conditions=["TestCondition"])
+
+    assert node.to_dict()["metadata"]["name"] == "test-node"
+
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_wait_deleted(client: lightkube.AsyncClient):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_deleted())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_deleted())
+
+    message = "nodes/test-node was unexpectedly deleted"
+    with pytest.raises(lightkube.core.exceptions.ObjectDeleted, match=message):
+        await client.wait(Node, "test-node", for_conditions=["TestCondition"])
+
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_wait_failed(client: lightkube.AsyncClient):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_failed())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_failed())
+
+    message = r"nodes/test-node has failure condition\(s\): TestCondition"
+    with pytest.raises(lightkube.core.exceptions.ConditionError, match=message):
+        await client.wait(Node, "test-node", for_conditions=[], raise_for_conditions=["TestCondition"])
+
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_wait_custom(client: lightkube.AsyncClient):
+    base_url = "https://localhost:9443/apis/custom.org/v1/customs?fieldSelector=metadata.name%3Dcustom-resource&watch=true"
+
+    Custom = create_global_resource(
+        group="custom.org", version="v1", kind="Custom", plural="customs"
+    )
+    respx.get(base_url).respond(content=make_wait_custom())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_custom())
+
+    await client.wait(Custom, "custom-resource", for_conditions=["TestCondition"])
+
     await client.close()
 
 

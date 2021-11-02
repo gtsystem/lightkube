@@ -12,6 +12,7 @@ from lightkube.config.kubeconfig import KubeConfig
 from lightkube.resources.core_v1 import Pod, Node, Binding
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
+from lightkube.generic_resource import create_global_resource
 
 KUBECONFIG = """
 apiVersion: v1
@@ -228,6 +229,112 @@ def test_watch_stop_iter(client: lightkube.Client):
     for i, _ in enumerate(client.watch(Node, on_error=types.on_error_raise)):
         break
     assert i == 0
+
+
+def make_wait_success():
+    states = [
+        {
+            "type": "ADDED",
+            "object": {
+                "metadata": {"name": "test-node", "resourceVersion": "1"},
+                "status": None,
+            },
+        },
+        {
+            "type": "ADDED",
+            "object": {
+                "metadata": {"name": "test-node", "resourceVersion": "1"},
+                "status": {"conditions": [{"type": "TestCondition", "status": "True"}]},
+            },
+        },
+    ]
+
+    return "\n".join(map(json.dumps, states))
+
+
+def make_wait_deleted():
+    state = {
+        "type": "DELETED",
+        "object": {
+            "metadata": {"name": "test-node", "resourceVersion": "1"},
+            "status": {},
+        },
+    }
+
+    return json.dumps(state)
+
+
+def make_wait_failed():
+    state = {
+        "type": "ADDED",
+        "object": {
+            "metadata": {"name": "test-node", "resourceVersion": "1"},
+            "status": {"conditions": [{"type": "TestCondition", "status": "True"}]},
+        },
+    }
+
+    return json.dumps(state)
+
+
+def make_wait_custom():
+    state = {
+        "type": "ADDED",
+        "object": {
+            "metadata": {"name": "custom-resource", "resourceVersion": "1"},
+            "status": {"conditions": [{"type": "TestCondition", "status": "True"}]},
+        },
+    }
+
+    return json.dumps(state)
+
+
+@respx.mock
+def test_wait_success(client: lightkube.Client):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_success())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_success())
+
+    node = client.wait(Node, "test-node", for_conditions=["TestCondition"])
+
+    assert node.to_dict()["metadata"]["name"] == "test-node"
+
+
+@respx.mock
+def test_wait_deleted(client: lightkube.Client):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_deleted())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_deleted())
+
+    message = "nodes/test-node was unexpectedly deleted"
+    with pytest.raises(lightkube.core.exceptions.ObjectDeleted, match=message):
+        client.wait(Node, "test-node", for_conditions=["TestCondition"])
+
+
+@respx.mock
+def test_wait_failed(client: lightkube.Client):
+    base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
+
+    respx.get(base_url).respond(content=make_wait_failed())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_failed())
+
+    message = r"nodes/test-node has failure condition\(s\): TestCondition"
+    with pytest.raises(lightkube.core.exceptions.ConditionError, match=message):
+        client.wait(Node, "test-node", for_conditions=[], raise_for_conditions=["TestCondition"])
+
+
+@respx.mock
+def test_wait_custom(client: lightkube.Client):
+    base_url = "https://localhost:9443/apis/custom.org/v1/customs?fieldSelector=metadata.name%3Dcustom-resource&watch=true"
+
+    Custom = create_global_resource(
+        group="custom.org", version="v1", kind="Custom", plural="customs"
+    )
+    respx.get(base_url).respond(content=make_wait_custom())
+    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_custom())
+
+    client.wait(Custom, "custom-resource", for_conditions=["TestCondition"])
 
 
 @respx.mock
