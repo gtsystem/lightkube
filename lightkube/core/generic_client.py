@@ -73,9 +73,9 @@ class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
+                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True, field_manager: str = None):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
-        self._watch_timeout = httpx.Timeout(timeout)
+        self._watch_timeout = httpx.Timeout(self._timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
         if config is None and trust_env:
@@ -87,6 +87,7 @@ class GenericClient:
 
         self.config = config
         self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
+        self._field_manager = field_manager
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
@@ -146,6 +147,8 @@ class GenericClient:
             path.extend(["namespaces", namespace])
 
         if method in ('post', 'put', 'patch'):
+            if self._field_manager is not None and 'fieldManager' not in params:
+                params['fieldManager'] = self._field_manager
             if obj is None:
                 raise ValueError("obj is required for post, put or patch")
 

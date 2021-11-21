@@ -401,6 +401,22 @@ def test_patch_global(client: lightkube.Client):
 
 
 @respx.mock
+def test_field_manager(kubeconfig):
+    config = KubeConfig.from_file(str(kubeconfig))
+    client = lightkube.Client(config=config, field_manager='lightkube')
+    respx.patch("https://localhost:9443/api/v1/nodes/xx?fieldManager=lightkube").respond(json={'metadata': {'name': 'xx'}})
+    client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+                       patch_type=types.PatchType.JSON)
+
+    respx.post("https://localhost:9443/api/v1/namespaces/default/pods?fieldManager=lightkube").respond(json={'metadata': {'name': 'xx'}})
+    client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
+
+    respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=lightkube").respond(
+        json={'metadata': {'name': 'xy'}})
+    client.replace(Pod(metadata=ObjectMeta(name="xy")))
+
+
+@respx.mock
 def test_create_namespaced(client: lightkube.Client):
     req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods").respond(json={'metadata': {'name': 'xx'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
