@@ -68,6 +68,10 @@ def test_client_config_attribute(kubeconfig):
     client = lightkube.Client(config=single_conf)
     assert client.config is single_conf
 
+    with pytest.raises(TypeError) as ie:
+        lightkube.Client(config=single_conf, unsupported_kwarg=None)
+    assert "unexpected keyword argument 'unsupported_kwarg'" in str(ie.value)
+
 
 @respx.mock
 def test_get_namespaced(client: lightkube.Client):

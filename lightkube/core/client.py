@@ -34,9 +34,10 @@ class Client:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
+    * **kwargs** - Other keyword arguments not specified here are passed to the httpx.Client __init__ method.
     """
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, **kwargs):
+        self._client = GenericSyncClient(config, namespace=namespace, **kwargs)
 
     @property
     def namespace(self):
@@ -375,9 +376,10 @@ class AsyncClient:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
+    * **kwargs** - Other keyword arguments not specified here are passed to the httpx.AsyncClient __init__ method.
     """
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy)
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, **kwargs):
+        self._client = GenericAsyncClient(config, namespace=namespace, **kwargs)
 
     @property
     def namespace(self):
