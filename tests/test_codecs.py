@@ -59,19 +59,39 @@ def test_from_dict_wrong_model():
 
 
 def test_from_dict_generic_res():
-     Mydb = create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
-     db = codecs.from_dict({
-         'apiVersion': 'myapp.com/v1',
-         'kind': 'Mydb',
-         'metadata': {'name': 'db1'},
-         'key': {'a': 'b', 'c': 'd'}
-     })
-     assert isinstance(db, Mydb)
-     assert db.kind == 'Mydb'
-     assert db.apiVersion == 'myapp.com/v1'
-     assert db.metadata.name == 'db1'
-     assert 'key' in db
-     assert db['key'] == {'a': 'b', 'c': 'd'}
+    Mydb = create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
+    db = codecs.from_dict({
+        'apiVersion': 'myapp.com/v1',
+        'kind': 'Mydb',
+        'metadata': {'name': 'db1'},
+        'key': {'a': 'b', 'c': 'd'}
+    })
+    assert isinstance(db, Mydb)
+    assert db.kind == 'Mydb'
+    assert db.apiVersion == 'myapp.com/v1'
+    assert db.metadata.name == 'db1'
+    assert 'key' in db
+    assert db['key'] == {'a': 'b', 'c': 'd'}
+
+    # Try with a generic resource with .k8s.io version
+    # https://github.com/gtsystem/lightkube/issues/18
+    version = "testing.k8s.io/v1"
+    kind = "Testing"
+    group, version_n = version.split("/")
+    Testing = create_namespaced_resource(group=group, version=version_n, kind=kind,
+                                         plural=f"{kind.lower()}s")
+    testing = codecs.from_dict({
+        'apiVersion': version,
+        'kind': kind,
+        'metadata': {'name': 'testing1'},
+        'key': {'a': 'b', 'c': 'd'}
+    })
+    assert isinstance(testing, Testing)
+    assert testing.kind == kind
+    assert testing.apiVersion == version
+    assert testing.metadata.name == 'testing1'
+    assert 'key' in testing
+    assert testing['key'] == {'a': 'b', 'c': 'd'}
 
 
 def test_from_dict_not_found():
@@ -83,6 +103,11 @@ def test_from_dict_not_found():
 
     with pytest.raises(LoadResourceError):
         codecs.from_dict({'apiVersion': 'extra/v1', 'kind': 'Missing'})
+
+    # Try with an undefined generic resource with .k8s.io version
+    # https://github.com/gtsystem/lightkube/issues/18
+    with pytest.raises(LoadResourceError):
+        codecs.from_dict({'apiVersion': "undefined.k8s.io/v1", 'kind': 'Missing'})
 
 
 def test_load_all_yaml_static():
@@ -203,3 +228,4 @@ def test_dump_all_yaml():
             name: xyz
     """).lstrip()
     assert res == expected
+
