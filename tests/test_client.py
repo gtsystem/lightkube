@@ -1,3 +1,4 @@
+import unittest.mock
 import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -68,8 +69,21 @@ def test_client_config_attribute(kubeconfig):
     client = lightkube.Client(config=single_conf)
     assert client.config is single_conf
 
-    client = lightkube.Client(config=single_conf, trust_env=False)
-    assert client._client._client.trust_env is False
+
+@unittest.mock.patch('httpx.Client')
+@unittest.mock.patch('lightkube.config.client_adapter.user_auth')
+def test_client_httpx_attributes(user_auth, httpx_client, kubeconfig):
+    config = KubeConfig.from_file(kubeconfig)
+    single_conf = config.get()
+    lightkube.Client(config=single_conf, trust_env=False)
+    httpx_client.assert_called_once_with(
+        timeout=None,
+        base_url=single_conf.cluster.server,
+        verify=True,
+        cert=None,
+        auth=user_auth.return_value,
+        trust_env=False
+    )
 
 
 @respx.mock

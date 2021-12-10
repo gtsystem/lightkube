@@ -34,7 +34,7 @@ class Client:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
-    * **trust_env** - To ignore environment variables, set trust_env = False
+    * **trust_env** - passed through to httpx.client trust_env.  See its docs for further description
     """
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
                  timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
@@ -377,7 +377,7 @@ class AsyncClient:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
-    * **trust_env** - To ignore environment variables, set trust_env = False
+    * **trust_env** - passed through to httpx.client trust_env.  See its docs for further description
     """
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
                  timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):

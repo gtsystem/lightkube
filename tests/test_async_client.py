@@ -1,3 +1,4 @@
+import unittest.mock
 import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -58,6 +59,22 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
     config = KubeConfig.from_file(str(kubeconfig_ns))
     client = lightkube.AsyncClient(config=config)
     assert client.namespace == 'ns1'
+
+
+@unittest.mock.patch('httpx.AsyncClient')
+@unittest.mock.patch('lightkube.config.client_adapter.user_auth')
+def test_client_httpx_attributes(user_auth, httpx_async_client, kubeconfig):
+    config = KubeConfig.from_file(kubeconfig)
+    single_conf = config.get()
+    lightkube.AsyncClient(config=single_conf, trust_env=False)
+    httpx_async_client.assert_called_once_with(
+        timeout=None,
+        base_url=single_conf.cluster.server,
+        verify=True,
+        cert=None,
+        auth=user_auth.return_value,
+        trust_env=False
+    )
 
 
 @respx.mock
