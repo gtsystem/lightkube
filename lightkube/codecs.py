@@ -19,14 +19,14 @@ AnyResource = Union[GenericGlobalResource, GenericNamespacedResource]
 def _load_model(version, kind):
     if "/" in version:
         group, version_n = version.split("/")
+        # Check if a generic resource was defined
+        model = get_generic_resource(version, kind)
+        if model is not None:
+            return model
+
+        # Generic resource not defined, but it could be a k8s resource
         if group.endswith(".k8s.io"):
             group = group[:-7]
-        elif "." in group:     # CDR?
-            model = get_generic_resource(version, kind)
-            if model is not None:
-                return model
-            raise LoadResourceError(f"Resource with version='{version}' and kind='{kind}' undefined." 
-                                    "Did you define a generic resource?")
         group = group.replace(".", "_")
         version = "_".join([group, version_n])
     else:
@@ -35,7 +35,8 @@ def _load_model(version, kind):
     try:
         module = importlib.import_module(f'lightkube.resources.{version.lower()}')
     except ImportError as e:
-        raise LoadResourceError(str(e))
+        # It was not a k8s resource and a generic resource was not previously defined
+        raise LoadResourceError(f"{e}. If using a CRD, ensure you define a generic resource.")
     return getattr(module, kind)
 
 
