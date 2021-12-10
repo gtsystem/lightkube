@@ -72,11 +72,9 @@ class WatchDriver:
 class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, **kwargs):
-        lazy: bool = kwargs.get('lazy') or True
-        timeout: httpx.Timeout = kwargs.pop('timeout', None) or httpx.Timeout(10)
-
-        self._timeout = timeout
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
+                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
+        self._timeout = httpx.Timeout(10) if timeout is None else timeout
         self._watch_timeout = httpx.Timeout(timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
@@ -86,7 +84,7 @@ class GenericClient:
             config = config.get()
 
         self.config = config
-        self._client = self.AdapterClient(config, timeout, **kwargs)
+        self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,

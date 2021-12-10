@@ -11,23 +11,22 @@ from .models import Cluster, User, UserExec, FileStr
 from ..core.exceptions import ConfigError
 
 
-def Client(config: SingleConfig, timeout: httpx.Timeout, **kwargs) -> httpx.Client:
-    httpx_config = {**httpx_parameters(config, timeout), **kwargs}
-    return httpx.Client(**httpx_config)
+def Client(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True) -> httpx.Client:
+    return httpx.Client(**httpx_parameters(config, timeout, trust_env))
 
 
-def AsyncClient(config: SingleConfig, timeout: httpx.Timeout, **kwargs) -> httpx.AsyncClient:
-    httpx_config = {**httpx_parameters(config, timeout), **kwargs}
-    return httpx.AsyncClient(**httpx_config)
+def AsyncClient(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True) -> httpx.AsyncClient:
+    return httpx.AsyncClient(**httpx_parameters(config, timeout, trust_env))
 
 
-def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout):
+def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool):
     return dict(
         timeout=timeout,
         base_url=config.cluster.server,
         verify=verify_cluster(config.cluster, config.abs_file),
         cert=user_cert(config.user, config.abs_file),
-        auth=user_auth(config.user)
+        auth=user_auth(config.user),
+        trust_env=trust_env,
     )
 
 
