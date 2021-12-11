@@ -297,22 +297,23 @@ class Client:
 
 
     @overload
-    def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
+    def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def create(self, obj: GlobalResource) -> GlobalResource:
+    def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedResource) -> NamespacedResource:
+    def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def create(self, obj, name=None, *, namespace=None):
+    def create(self, obj, name=None, *, namespace=None, field_manager=None):
         """Creates a new object
 
         **parameters**
@@ -320,26 +321,30 @@ class Client:
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("post", name=name, namespace=namespace, obj=obj)
+        return self._client.request("post", name=name, namespace=namespace, obj=obj,
+                                    params={'fieldManager': field_manager})
 
     @overload
-    def replace(self, obj: GlobalSubResource, name: str) -> GlobalSubResource:
+    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def replace(self, obj: GlobalResource) -> GlobalResource:
+    def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedResource) -> NamespacedResource:
+    def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def replace(self, obj, name=None, *, namespace=None):
+    def replace(self, obj, name=None, *, namespace=None, field_manager=None):
         """Replace an existing resource.
 
         **parameters**
@@ -347,8 +352,11 @@ class Client:
         * **obj** - new object. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("put", name=name, namespace=namespace, obj=obj)
+        return self._client.request("put", name=name, namespace=namespace, obj=obj,
+                                    params={'fieldManager': field_manager})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
@@ -692,22 +700,23 @@ class AsyncClient:
                                           params={'force': force_param, 'fieldManager': field_manager})
 
     @overload
-    async def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
+    async def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    async def create(self, obj: GlobalResource) -> GlobalResource:
+    async def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedResource) -> NamespacedResource:
+    async def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    async def create(self, obj, name=None, *, namespace=None):
+    async def create(self, obj, name=None, *, namespace=None, field_manager=None):
         """Creates a new object
 
         **parameters**
@@ -715,26 +724,30 @@ class AsyncClient:
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return await self._client.request("post", name=name, namespace=namespace, obj=obj)
+        return await self._client.request("post", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
-    async def replace(self, obj: GlobalSubResource, name: str) -> GlobalSubResource:
+    async def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+                      field_manager: str = None) -> NamespacedSubResource:
         ...
 
     @overload
-    async def replace(self, obj: GlobalResource) -> GlobalResource:
+    async def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedResource) -> NamespacedResource:
+    async def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    async def replace(self, obj, name=None, *, namespace=None):
+    async def replace(self, obj, name=None, *, namespace=None, field_manager=None):
         """Replace an existing resource.
 
         **parameters**
@@ -742,8 +755,11 @@ class AsyncClient:
         * **obj** - new object. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return await self._client.request("put", name=name, namespace=namespace, obj=obj)
+        return await self._client.request("put", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
