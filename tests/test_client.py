@@ -447,6 +447,10 @@ def test_field_manager(kubeconfig):
         json={'metadata': {'name': 'xy'}})
     client.replace(Pod(metadata=ObjectMeta(name="xy")))
 
+    respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=override").respond(
+        json={'metadata': {'name': 'xy'}})
+    client.replace(Pod(metadata=ObjectMeta(name="xy")), field_manager='override')
+
 
 @respx.mock
 def test_create_namespaced(client: lightkube.Client):
