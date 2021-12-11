@@ -236,9 +236,18 @@ async def test_wait_custom(client: lightkube.AsyncClient):
 async def test_patch_global(client: lightkube.AsyncClient):
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
-                       patch_type=types.PatchType.JSON)
+                             patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
+
+    # PatchType.APPLY + force
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&force=true").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = await client.patch(Node, "xy", Pod(metadata=ObjectMeta(labels={'l': 'ok'})),
+                              patch_type=types.PatchType.APPLY, field_manager='test', force=True)
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
     await client.close()
 
 
