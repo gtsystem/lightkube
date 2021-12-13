@@ -8,7 +8,7 @@ import asyncio
 import httpx
 
 from . import resource as r
-from ..config.kubeconfig import KubeConfig, SingleConfig
+from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
 from .exceptions import ApiError
 from .selector import build_selector
@@ -78,8 +78,10 @@ class GenericClient:
         self._watch_timeout = httpx.Timeout(timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
-        if config is None:
+        if config is None and trust_env:
             config = KubeConfig.from_env().get()
+        elif config is None and not trust_env:
+            config = KubeConfig.from_file(DEFAULT_KUBECONFIG).get()
         elif isinstance(config, KubeConfig):
             config = config.get()
 
