@@ -1,3 +1,4 @@
+import unittest.mock
 import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -8,7 +9,7 @@ import httpx
 import respx
 
 import lightkube
-from lightkube.config.kubeconfig import KubeConfig
+from lightkube.config.kubeconfig import KubeConfig, SingleConfig, Context, Cluster, User
 from lightkube.resources.core_v1 import Pod, Node, Binding
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
@@ -67,6 +68,45 @@ def test_client_config_attribute(kubeconfig):
     single_conf = config.get()
     client = lightkube.Client(config=single_conf)
     assert client.config is single_conf
+
+
+@unittest.mock.patch('lightkube.core.generic_client.KubeConfig')
+def test_client_default_config_construction(mock_kube_config):
+    config = SingleConfig(
+        context_name="test",
+        context=Context(cluster='test', user="test"),
+        cluster=Cluster(server="https://localhost:9443"),
+        user=User(username="test"),
+    )
+
+    # config should be generated from environment without trust_env
+    mock_kube_config.from_env.return_value.get.return_value = config
+    lightkube.Client()
+    mock_kube_config.from_env.assert_called_once_with()
+    mock_kube_config.from_file.assert_not_called()
+
+    # trust_env=False should create from DEFAULT_KUBECONFIG
+    mock_kube_config.reset_mock()
+    mock_kube_config.from_file.return_value.get.return_value = config
+    lightkube.Client(trust_env=False)
+    mock_kube_config.from_file.assert_called_once_with('~/.kube/config')
+    mock_kube_config.from_env.assert_not_called()
+
+
+@unittest.mock.patch('httpx.Client')
+@unittest.mock.patch('lightkube.config.client_adapter.user_auth')
+def test_client_httpx_attributes(user_auth, httpx_client, kubeconfig):
+    config = KubeConfig.from_file(kubeconfig)
+    single_conf = config.get()
+    lightkube.Client(config=single_conf, trust_env=False)
+    httpx_client.assert_called_once_with(
+        timeout=None,
+        base_url=single_conf.cluster.server,
+        verify=True,
+        cert=None,
+        auth=user_auth.return_value,
+        trust_env=False
+    )
 
 
 @respx.mock

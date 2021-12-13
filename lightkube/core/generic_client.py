@@ -8,7 +8,7 @@ import asyncio
 import httpx
 
 from . import resource as r
-from ..config.kubeconfig import KubeConfig, SingleConfig
+from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
 from .exceptions import ApiError
 from .selector import build_selector
@@ -72,20 +72,21 @@ class WatchDriver:
 class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None, timeout: httpx.Timeout = None, lazy=True):
-        if timeout is None:
-            timeout = httpx.Timeout(10)
-        self._timeout = timeout
+    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
+                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
+        self._timeout = httpx.Timeout(10) if timeout is None else timeout
         self._watch_timeout = httpx.Timeout(timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
-        if config is None:
+        if config is None and trust_env:
             config = KubeConfig.from_env().get()
+        elif config is None and not trust_env:
+            config = KubeConfig.from_file(DEFAULT_KUBECONFIG).get()
         elif isinstance(config, KubeConfig):
             config = config.get()
 
         self.config = config
-        self._client = self.AdapterClient(config, timeout)
+        self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
@@ -224,7 +225,6 @@ class GenericSyncClient(GenericClient):
                 if handle_error.sleep > 0:
                     time.sleep(handle_error.sleep)
                 continue
-
 
     def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
         br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
