@@ -268,6 +268,45 @@ class Client:
               patch_type: PatchType = PatchType.STRATEGIC) -> AllNamespacedResource:
         ...
 
+    @overload
+    def server_side_apply(self, obj: GlobalSubResource, *, force_conflicts: bool = False,
+                          field_manager: str = 'lightkube') -> GlobalSubResource:
+        ...
+
+    @overload
+    def server_side_apply(self, obj: GlobalResource, *, force_conflicts: bool = False,
+                          field_manager: str = 'lightkube') -> GlobalResource:
+        ...
+
+    @overload
+    def server_side_apply(self, obj: AllNamespacedResource, *, namespace: str = None,
+                          force_conflicts: bool = False, field_manager: str = 'lightkube') -> AllNamespacedResource:
+        ...
+
+    def server_side_apply(self, obj, *, namespace=None, force_conflicts: bool = False,
+                          field_manager: str = 'lightkube'):
+        """Patch an object using server side apply.
+        **parameters**
+        * **obj** - object to create/patch
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **force_conflicts** - *(optional)* Force the apply operation to succeed in the event of conflicts
+        * **field_manager** - *(optional)* Name of the field manager (Defaults to 'lightkube')
+        """
+
+        if not obj.kind:
+            raise ValueError(f"kind must be specified when using server side apply.")
+
+        if not obj.apiVersion:
+            raise ValueError(f"apiVersion must be specified when using server side apply.")
+
+        name = obj.metadata.name
+        if not name:
+            raise ValueError(f"name is required to patch {obj.apiVersion}.{obj.kind}")
+
+        return self._client.request("patch", name=name, namespace=namespace, obj=obj,
+                                    force_conflicts=force_conflicts, field_manager=field_manager,
+                                    headers={'Content-Type': 'application/apply-patch+yaml'})
+
     def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC):
         """Patch an object.
 
@@ -625,6 +664,46 @@ class AsyncClient:
         """
         return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
                                           headers={'Content-Type': patch_type.value})
+
+    @overload
+    async def server_side_apply(self, obj: GlobalSubResource, *, force_conflicts: bool = False,
+                                field_manager: str = 'lightkube') -> GlobalSubResource:
+        ...
+
+    @overload
+    async def server_side_apply(self, obj: GlobalResource, *, force_conflicts: bool = False,
+                                field_manager: str = 'lightkube') -> GlobalResource:
+        ...
+
+    @overload
+    async def server_side_apply(self, obj: AllNamespacedResource, *, namespace: str = None,
+                                force_conflicts: bool = False,
+                                field_manager: str = 'lightkube') -> AllNamespacedResource:
+        ...
+
+    async def server_side_apply(self, obj, *, namespace=None, force_conflicts: bool = False,
+                                field_manager: str = 'lightkube'):
+        """Patch an object using server side apply.
+        **parameters**
+        * **obj** - object to create/patch
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **force_conflicts** - *(optional)* Force the apply operation to succeed in the event of conflicts
+        * **field_manager** - *(optional)* Name of the field manager (Defaults to 'lightkube')
+        """
+
+        if not obj.kind:
+            raise ValueError(f"kind must be specified when using server side apply.")
+
+        if not obj.apiVersion:
+            raise ValueError(f"apiVersion must be specified when using server side apply.")
+
+        name = obj.metadata.name
+        if not name:
+            raise ValueError(f"name is required to patch {obj.apiVersion}.{obj.kind}")
+
+        return await self._client.request("patch", name=name, namespace=namespace, obj=obj,
+                                          force_conflicts=force_conflicts, field_manager=field_manager,
+                                          headers={'Content-Type': 'application/apply-patch+yaml'})
 
     @overload
     async def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:

@@ -146,6 +146,39 @@ def test_namespaced_methods(obj_name):
         client.delete(ConfigMap, name=obj_name)
 
 
+def test_server_side_apply(obj_name):
+    client = Client()
+    # Note that apiVersion and kind must be present
+    config = ConfigMap(
+        metadata=ObjectMeta(name=obj_name, namespace='default', ),
+        data={'key1': 'value1', 'key2': 'value2'},
+        apiVersion="v1",
+        kind="ConfigMap"
+    )
+
+    # Create the object
+    config = client.server_side_apply(config)
+    try:
+        assert config.metadata.name == obj_name
+        assert config.data['key1'] == 'value1'
+        assert config.data['key2'] == 'value2'
+
+        # Update the existing object
+        config = ConfigMap(
+            metadata=ObjectMeta(name=obj_name, namespace='default', ),
+            data={'key1': 'new_value', 'key2': 'value2'},
+            apiVersion="v1",
+            kind="ConfigMap"
+        )
+        config = client.server_side_apply(config)
+        assert config.metadata.name == obj_name
+        assert config.data['key1'] == 'new_value'
+        assert config.data['key2'] == 'value2'
+
+    finally:
+        client.delete(ConfigMap, name=obj_name)
+
+
 def test_patching(obj_name):
     client = Client()
     service = Service(
@@ -318,3 +351,5 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
     await client.delete(resource, created.metadata.name)
 
     await client.close()
+
+

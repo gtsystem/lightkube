@@ -401,6 +401,59 @@ def test_patch_global(client: lightkube.Client):
 
 
 @respx.mock
+def test_server_side_apply_namespaced(client: lightkube.Client):
+    # For some reason using the params lookup in the route definition would not work
+    default_route = respx.route(method="PATCH", host="localhost", port=9443, path="/api/v1/namespaces/default/pods/xx")\
+        .respond(json={'metadata': {'name': 'xx'}})
+    pod = client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), apiVersion="v1", kind="Pod"))
+    assert default_route.called
+    assert pod.metadata.name == 'xx'
+    assert default_route.calls.last.request.headers['Content-Type'] == "application/apply-patch+yaml"
+    assert default_route.calls.last.request.url.params.get('fieldManager') == 'lightkube'
+
+    other_route = respx.route(method="PATCH", host="localhost", port=9443, path="/api/v1/namespaces/other/pods/xx")\
+        .respond(json={'metadata': {'name': 'xx'}})
+    pod = client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), apiVersion="v1", kind="Pod"),
+                                   namespace='other')
+    assert other_route.called
+
+    # Check query parameters
+    params_route = respx.route(method="PATCH", host="localhost", port=9443,
+                               path="/api/v1/namespaces/other/pods/xx").respond(json={'metadata': {'name': 'xx'}})
+    client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), apiVersion="v1", kind="Pod"),
+                             namespace='other', force_conflicts=True, field_manager='some_manager')
+    assert params_route.calls.last.request.url.params.get('fieldManager') == 'some_manager'
+    assert params_route.calls.last.request.url.params.get('force') == 'true'
+
+    # Try creating something without a name:
+    with pytest.raises(ValueError):
+        client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
+                                 force_conflicts=True, field_manager='some_manager')
+
+    # Try creating something without an apiVersion:
+    with pytest.raises(ValueError):
+        client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), kind='Pod'), namespace='other',
+                                 force_conflicts=True, field_manager='some_manager')
+
+    # Try creating something without a kind:
+    with pytest.raises(ValueError):
+        client.server_side_apply(Pod(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), apiVersion='v1'),
+                                 namespace='other', force_conflicts=True, field_manager='some_manager')
+
+
+@respx.mock
+def test_server_side_apply_global(client: lightkube.Client):
+    route = respx.route(method="PATCH", host="localhost", port=9443, path="/api/v1/nodes/xx")\
+        .respond(json={'metadata': {'name': 'xx'}})
+    node = client.server_side_apply(Node(metadata=ObjectMeta(labels={'l': 'ok'}, name='xx'), apiVersion="v1",
+                                         kind="Node"))
+    assert route.called
+    assert node.metadata.name == 'xx'
+    assert route.calls.last.request.headers['Content-Type'] == "application/apply-patch+yaml"
+    assert route.calls.last.request.url.params.get('fieldManager') == 'lightkube'
+
+
+@respx.mock
 def test_create_namespaced(client: lightkube.Client):
     req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods").respond(json={'metadata': {'name': 'xx'}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
