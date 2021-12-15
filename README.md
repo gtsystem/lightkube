@@ -114,6 +114,36 @@ obj = Deployment.Scale(
 client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
 
+Create and modify resources using [server side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
+
+*Note:* `field_manager` is required for server-side apply. You can specify it once in the client constructor
+or when calling `apply()`. Also `apiVersion` and `kind` need to be provided as part of
+the object definition.
+
+```python
+from lightkube.resources.core_v1 import ConfigMap
+from lightkube.models.meta_v1 import ObjectMeta
+
+client = Client(field_manager="my-manager")
+config = ConfigMap(
+    # note apiVersion and kind need to be specified for server-side apply
+    apiVersion='v1', kind='ConfigMap',
+    metadata=ObjectMeta(name='my-config', namespace='default'),
+    data={'key1': 'value1', 'key2': 'value2'}
+)
+
+res = client.apply(config)
+print(res.data)
+# prints {'key1': 'value1', 'key2': 'value2'}
+
+del config.data['key1']
+config.data['key3'] = 'value3'
+
+res = client.apply(config)
+print(res.data)
+# prints {'key2': 'value2', 'key3': 'value3'}
+```
+
 Stream pod logs
 ```python
 from lightkube import Client
