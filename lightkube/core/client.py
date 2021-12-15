@@ -34,12 +34,14 @@ class Client:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
+    * **field_manager** - Name associated with the actor or entity that is making these changes.
     * **trust_env** - Ignore environment variables, also passed through to httpx.Client trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
     """
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
-        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy, trust_env=trust_env)
+                 timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
+        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
+                                         field_manager=field_manager, trust_env=trust_env)
 
     @property
     def namespace(self):
@@ -253,22 +255,25 @@ class Client:
     @overload
     def patch(self, res: Type[GlobalSubResource], name: str,
               obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalSubResource:
+              patch_type: PatchType = PatchType.STRATEGIC,
+              field_manager: str = None, force: bool = False) -> GlobalSubResource:
         ...
 
     @overload
     def patch(self, res: Type[GlobalResource], name: str,
               obj: Union[GlobalResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalResource:
+              patch_type: PatchType = PatchType.STRATEGIC,
+              field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
     def patch(self, res: Type[AllNamespacedResource], name: str,
               obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: PatchType = PatchType.STRATEGIC) -> AllNamespacedResource:
+              patch_type: PatchType = PatchType.STRATEGIC,
+              field_manager: str = None, force: bool = False) -> AllNamespacedResource:
         ...
 
-    def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC):
+    def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC, field_manager=None, force=False):
         """Patch an object.
 
         **parameters**
@@ -278,27 +283,37 @@ class Client:
         * **obj** - patch object.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
+            **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
+        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
+          fields owned by other people. This parameter is ignored for non-apply patch types
         """
+        force_param = 'true' if force and patch_type == PatchType.APPLY else None
         return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
-                                    headers={'Content-Type': patch_type.value})
+                                    headers={'Content-Type': patch_type.value},
+                                    params={'force': force_param, 'fieldManager': field_manager})
+
+
 
     @overload
-    def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
+    def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def create(self, obj: GlobalResource) -> GlobalResource:
+    def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedResource) -> NamespacedResource:
+    def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def create(self, obj, name=None, *, namespace=None):
+    def create(self, obj, name=None, *, namespace=None, field_manager=None):
         """Creates a new object
 
         **parameters**
@@ -306,26 +321,30 @@ class Client:
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("post", name=name, namespace=namespace, obj=obj)
+        return self._client.request("post", name=name, namespace=namespace, obj=obj,
+                                    params={'fieldManager': field_manager})
 
     @overload
-    def replace(self, obj: GlobalSubResource, name: str) -> GlobalSubResource:
+    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def replace(self, obj: GlobalResource) -> GlobalResource:
+    def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedResource) -> NamespacedResource:
+    def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def replace(self, obj, name=None, *, namespace=None):
+    def replace(self, obj, name=None, *, namespace=None, field_manager=None):
         """Replace an existing resource.
 
         **parameters**
@@ -333,8 +352,11 @@ class Client:
         * **obj** - new object. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("put", name=name, namespace=namespace, obj=obj)
+        return self._client.request("put", name=name, namespace=namespace, obj=obj,
+                                    params={'fieldManager': field_manager})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
@@ -364,6 +386,44 @@ class Client:
         self._client.raise_for_status(resp)
         return resp.iter_lines()
 
+    @overload
+    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+            -> GlobalSubResource:
+        ...
+
+    @overload
+    def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
+        ...
+
+    @overload
+    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
+        ...
+
+    @overload
+    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
+        ...
+
+    def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
+        """Create or configure an object. This method uses the
+        [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
+
+        **parameters**
+
+        * **obj** - object to create. This need to be an instance of a resource kind.
+        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - Name associated with the actor or entity that is making these changes.
+        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
+          fields owned by other people.
+        """
+        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
+            namespace = obj.metadata.namespace
+        if name is None and obj.metadata.name:
+            name = obj.metadata.name
+        return self.patch(type(obj), name, obj, namespace=namespace,
+                          patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
+
 
 class AsyncClient:
     """Creates a new lightkube client
@@ -378,12 +438,14 @@ class AsyncClient:
       is ignored when watching changes.
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
+    * **field_manager** - Name associated with the actor or entity that is making these changes.
     * **trust_env** - Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
     """
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
-        self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy, trust_env=trust_env)
+                 timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
+        self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
+                                          field_manager=field_manager, trust_env=trust_env)
 
     @property
     def namespace(self):
@@ -596,23 +658,27 @@ class AsyncClient:
 
     @overload
     async def patch(self, res: Type[GlobalSubResource], name: str,
-              obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalSubResource:
+                    obj: Union[GlobalSubResource, Dict, List], *,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> GlobalSubResource:
         ...
 
     @overload
     async def patch(self, res: Type[GlobalResource], name: str,
-              obj: Union[GlobalResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC) -> GlobalResource:
+                    obj: Union[GlobalResource, Dict, List], *,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
     async def patch(self, res: Type[AllNamespacedResource], name: str,
-              obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: PatchType = PatchType.STRATEGIC) -> AllNamespacedResource:
+                    obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> AllNamespacedResource:
         ...
 
-    async def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC):
+    async def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC,
+                    field_manager=None, force=False):
         """Patch an object.
 
         **parameters**
@@ -622,27 +688,35 @@ class AsyncClient:
         * **obj** - patch object.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
+            **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
+        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
+          fields owned by other people. This parameter is ignored for non-apply patch types
         """
+        force_param = 'true' if force and patch_type == PatchType.APPLY else None
         return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
-                                          headers={'Content-Type': patch_type.value})
+                                          headers={'Content-Type': patch_type.value},
+                                          params={'force': force_param, 'fieldManager': field_manager})
 
     @overload
-    async def create(self, obj: GlobalSubResource,  name: str) -> GlobalSubResource:
+    async def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    async def create(self, obj: GlobalResource) -> GlobalResource:
+    async def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedResource) -> NamespacedResource:
+    async def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    async def create(self, obj, name=None, *, namespace=None):
+    async def create(self, obj, name=None, *, namespace=None, field_manager=None):
         """Creates a new object
 
         **parameters**
@@ -650,26 +724,30 @@ class AsyncClient:
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return await self._client.request("post", name=name, namespace=namespace, obj=obj)
+        return await self._client.request("post", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
-    async def replace(self, obj: GlobalSubResource, name: str) -> GlobalSubResource:
+    async def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None) -> NamespacedSubResource:
+    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+                      field_manager: str = None) -> NamespacedSubResource:
         ...
 
     @overload
-    async def replace(self, obj: GlobalResource) -> GlobalResource:
+    async def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedResource) -> NamespacedResource:
+    async def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    async def replace(self, obj, name=None, *, namespace=None):
+    async def replace(self, obj, name=None, *, namespace=None, field_manager=None):
         """Replace an existing resource.
 
         **parameters**
@@ -677,8 +755,11 @@ class AsyncClient:
         * **obj** - new object. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
+            This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return await self._client.request("put", name=name, namespace=namespace, obj=obj)
+        return await self._client.request("put", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
@@ -711,6 +792,44 @@ class AsyncClient:
             async for line in resp.aiter_lines():
                 yield line
         return stream_log()
+
+    @overload
+    async def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+            -> GlobalSubResource:
+        ...
+
+    @overload
+    async def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
+        ...
+
+    @overload
+    async def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
+        ...
+
+    @overload
+    async def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
+        ...
+
+    async def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
+        """Create or configure an object. This method uses the
+        [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
+
+        **parameters**
+
+        * **obj** - object to create. This need to be an instance of a resource kind.
+        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
+        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        * **field_manager** - Name associated with the actor or entity that is making these changes.
+        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
+          fields owned by other people.
+        """
+        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
+            namespace = obj.metadata.namespace
+        if name is None and obj.metadata.name:
+            name = obj.metadata.name
+        return await self.patch(type(obj), name, obj, namespace=namespace,
+                                patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
 
     async def close(self):
         """Close the underline httpx client"""

@@ -194,6 +194,45 @@ def test_patching(obj_name):
         client.delete(Service, name=obj_name)
 
 
+def test_apply(obj_name):
+    client = Client(field_manager='lightkube')
+    config = ConfigMap(
+        apiVersion='v1',  # apiVersion and kind are required for server-side apply
+        kind='ConfigMap',
+        metadata=ObjectMeta(name=obj_name, namespace='default'),
+        data={'key1': 'value1', 'key2': 'value2'}
+    )
+
+    # create with apply
+    c = client.apply(config)
+    try:
+        assert c.metadata.name == obj_name
+        assert c.data['key1'] == 'value1'
+        assert c.data['key2'] == 'value2'
+
+        # modify
+        config.data['key2'] = 'new value'
+        del config.data['key1']
+        config.data['key3'] = 'value3'
+        c = client.apply(config)
+        assert c.data['key2'] == 'new value'
+        assert c.data['key3'] == 'value3'
+        assert 'key1' not in c.data
+
+        # remove all keys
+        config.data.clear()
+        c = client.apply(config)
+        assert not c.data
+
+        # use the patch equivalent
+        config.data['key1'] = 'new value'
+        c = client.patch(ConfigMap, obj_name, config.to_dict(), patch_type=PatchType.APPLY)
+        assert c.data['key1'] == 'new value'
+
+    finally:
+        client.delete(ConfigMap, name=obj_name)
+
+
 def test_deletecollection(obj_name):
     client = Client()
 

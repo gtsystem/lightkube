@@ -236,9 +236,18 @@ async def test_wait_custom(client: lightkube.AsyncClient):
 async def test_patch_global(client: lightkube.AsyncClient):
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
-                       patch_type=types.PatchType.JSON)
+                             patch_type=types.PatchType.JSON)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
+
+    # PatchType.APPLY + force
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&force=true").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = await client.patch(Node, "xy", Pod(metadata=ObjectMeta(labels={'l': 'ok'})),
+                              patch_type=types.PatchType.APPLY, field_manager='test', force=True)
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
     await client.close()
 
 
@@ -285,4 +294,46 @@ async def test_pod_log(client: lightkube.AsyncClient):
         content=content)
     lines = await alist(client.log('test', container="bla"))
     assert lines == result
+    await client.close()
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_apply_namespaced(client: lightkube.AsyncClient):
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=test").respond(
+        json={'metadata': {'name': 'xy'}})
+    pod = await client.apply(Pod(metadata=ObjectMeta(name='xy')), field_manager='test')
+    assert pod.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # custom namespace, force
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=a&force=true").respond(
+        json={'metadata': {'name': 'xz'}})
+    pod = await client.apply(Pod(metadata=ObjectMeta(name='xz', namespace='other')), field_manager='a', force=True)
+    assert pod.metadata.name == 'xz'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # sub-resource
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx/status?fieldManager=a").respond(
+        json={'metadata': {'name': 'xx'}})
+    pod = await client.apply(Pod.Status(), name='xx', field_manager='a')
+    assert pod.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_apply_global(client: lightkube.AsyncClient):
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = await client.apply(Node(metadata=ObjectMeta(name='xy')), field_manager='test')
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # sub-resource + force
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xx/status?fieldManager=a&force=true").respond(
+        json={'metadata': {'name': 'xx'}})
+    node = await client.apply(Node.Status(), name='xx', field_manager='a', force=True)
+    assert node.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
     await client.close()

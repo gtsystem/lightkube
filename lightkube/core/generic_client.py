@@ -73,9 +73,9 @@ class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True):
+                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True, field_manager: str = None):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
-        self._watch_timeout = httpx.Timeout(timeout)
+        self._watch_timeout = httpx.Timeout(self._timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
         if config is None and trust_env:
@@ -87,6 +87,7 @@ class GenericClient:
 
         self.config = config
         self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
+        self._field_manager = field_manager
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
@@ -146,6 +147,10 @@ class GenericClient:
             path.extend(["namespaces", namespace])
 
         if method in ('post', 'put', 'patch'):
+            if self._field_manager is not None and 'fieldManager' not in params:
+                params['fieldManager'] = self._field_manager
+            if method == 'patch' and headers['Content-Type'] == PatchType.APPLY.value and 'fieldManager' not in params:
+                raise ValueError('Parameter "field_manager" is required for PatchType.APPLY')
             if obj is None:
                 raise ValueError("obj is required for post, put or patch")
 
@@ -226,8 +231,9 @@ class GenericSyncClient(GenericClient):
                     time.sleep(handle_error.sleep)
                 continue
 
-    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
+    def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False,
+                headers: dict = None, params: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers, params=params)
         req = self.build_adapter_request(br)
         resp = self.send(req)
         return self.handle_response(method, resp, br)
@@ -269,8 +275,9 @@ class GenericAsyncClient(GenericClient):
                     await asyncio.sleep(handle_error.sleep)
                 continue
 
-    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None, watch: bool = False, headers: dict = None) -> Any:
-        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers)
+    async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
+                      watch: bool = False, headers: dict = None, params: dict = None) -> Any:
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers, params=params)
         req = self.build_adapter_request(br)
         resp = await self.send(req)
         return self.handle_response(method, resp, br)

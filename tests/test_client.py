@@ -379,25 +379,77 @@ def test_wait_custom(client: lightkube.Client):
 
 @respx.mock
 def test_patch_namespaced(client: lightkube.Client):
+    # Default PatchType.STRATEGIC
     req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})))
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/strategic-merge-patch+json"
 
+    # PatchType.MERGE
     req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
-                       patch_type=types.PatchType.MERGE)
+                       patch_type=types.PatchType.MERGE, force=True)
     assert pod.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/merge-patch+json"
+    assert 'force' not in str(req.calls[0][0].url)  # force is ignored for non APPLY patch types
+
+    # PatchType.APPLY
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xy?fieldManager=test").respond(
+        json={'metadata': {'name': 'xy'}})
+    pod = client.patch(Pod, "xy", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
+                       patch_type=types.PatchType.APPLY, field_manager='test')
+    assert pod.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # PatchType.APPLY + force
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=test&force=true").respond(
+        json={'metadata': {'name': 'xz'}})
+    pod = client.patch(Pod, "xz", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
+                       patch_type=types.PatchType.APPLY, field_manager='test', force=True)
+    assert pod.metadata.name == 'xz'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # PatchType.APPLY without field_manager
+    with pytest.raises(ValueError, match="field_manager"):
+        client.patch(Pod, "xz", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
+                     patch_type=types.PatchType.APPLY)
 
 
 @respx.mock
 def test_patch_global(client: lightkube.Client):
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
-    pod = client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
-                       patch_type=types.PatchType.JSON)
-    assert pod.metadata.name == 'xx'
+    node = client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+                        patch_type=types.PatchType.JSON)
+    assert node.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/json-patch+json"
+
+    # PatchType.APPLY + force
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&force=true").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = client.patch(Node, "xy", Pod(metadata=ObjectMeta(labels={'l': 'ok'})),
+                        patch_type=types.PatchType.APPLY, field_manager='test', force=True)
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+
+@respx.mock
+def test_field_manager(kubeconfig):
+    config = KubeConfig.from_file(str(kubeconfig))
+    client = lightkube.Client(config=config, field_manager='lightkube')
+    respx.patch("https://localhost:9443/api/v1/nodes/xx?fieldManager=lightkube").respond(json={'metadata': {'name': 'xx'}})
+    client.patch(Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+                       patch_type=types.PatchType.JSON)
+
+    respx.post("https://localhost:9443/api/v1/namespaces/default/pods?fieldManager=lightkube").respond(json={'metadata': {'name': 'xx'}})
+    client.create(Pod(metadata=ObjectMeta(name="xx", labels={'l': 'ok'})))
+
+    respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=lightkube").respond(
+        json={'metadata': {'name': 'xy'}})
+    client.replace(Pod(metadata=ObjectMeta(name="xy")))
+
+    respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=override").respond(
+        json={'metadata': {'name': 'xy'}})
+    client.replace(Pod(metadata=ObjectMeta(name="xy")), field_manager='override')
 
 
 @respx.mock
@@ -453,6 +505,7 @@ def test_replace_global(client: lightkube.Client):
     assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
     assert pod.metadata.name == 'xx'
 
+
 @respx.mock
 def test_pod_log(client: lightkube.Client):
     result = ['line1\n', 'line2\n', 'line3\n']
@@ -481,3 +534,42 @@ def test_pod_log(client: lightkube.Client):
         content=content)
     lines = list(client.log('test', container="bla"))
     assert lines == result
+
+
+@respx.mock
+def test_apply_namespaced(client: lightkube.Client):
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=test").respond(
+        json={'metadata': {'name': 'xy'}})
+    pod = client.apply(Pod(metadata=ObjectMeta(name='xy')), field_manager='test')
+    assert pod.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # custom namespace, force
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=a&force=true").respond(
+        json={'metadata': {'name': 'xz'}})
+    pod = client.apply(Pod(metadata=ObjectMeta(name='xz', namespace='other')), field_manager='a', force=True)
+    assert pod.metadata.name == 'xz'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # sub-resource
+    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx/status?fieldManager=a").respond(
+        json={'metadata': {'name': 'xx'}})
+    pod = client.apply(Pod.Status(), name='xx', field_manager='a')
+    assert pod.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+
+@respx.mock
+def test_apply_global(client: lightkube.Client):
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = client.apply(Node(metadata=ObjectMeta(name='xy')), field_manager='test')
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # sub-resource + force
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xx/status?fieldManager=a&force=true").respond(
+        json={'metadata': {'name': 'xx'}})
+    node = client.apply(Node.Status(), name='xx', field_manager='a', force=True)
+    assert node.metadata.name == 'xx'
+    assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"

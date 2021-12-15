@@ -2,10 +2,12 @@ import enum
 from dataclasses import dataclass
 import typing
 
+
 class PatchType(enum.Enum):
     JSON = 'application/json-patch+json'
     MERGE = 'application/merge-patch+json'
     STRATEGIC = 'application/strategic-merge-patch+json'
+    APPLY = 'application/apply-patch+yaml'
 
 
 class OnErrorAction(enum.Enum):
