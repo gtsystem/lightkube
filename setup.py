@@ -3,7 +3,7 @@ from pathlib import Path
 
 setup(
     name='lightkube',
-    version="0.9.0",
+    version="0.10.0",
     description='Lightweight kubernetes client library',
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
@@ -28,6 +28,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9'
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10'
     ]
 )
