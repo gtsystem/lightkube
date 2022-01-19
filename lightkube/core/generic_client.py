@@ -194,7 +194,7 @@ class GenericClient:
             return
         data = resp.json()
         if method == 'list':
-            if 'metadata' in data and 'continue' in data['metadata']:
+            if 'metadata' in data and data['metadata'].get('continue'):
                 cont = True
                 br.params['continue'] = data['metadata']['continue']
             else:

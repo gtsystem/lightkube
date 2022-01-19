@@ -144,6 +144,15 @@ def test_list_namespaced(client: lightkube.Client):
 
 
 @respx.mock
+def test_list_crd(client: lightkube.Client):
+    """CRD list seems to return always the 'continue' metadata attribute"""
+    resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], 'metadata': {'continue': ''}}
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
+    pods = client.list(Pod)
+    assert [pod.metadata.name for pod in pods] == ['xx', 'yy']
+
+
+@respx.mock
 def test_list_global(client: lightkube.Client):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
     respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
