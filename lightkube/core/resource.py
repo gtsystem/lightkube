@@ -7,6 +7,10 @@ class ResourceDef(NamedTuple):
     version: str
     kind: str
 
+    @property
+    def api_version(self):
+        return f"{self.group}/{self.version}" if self.group else self.version
+
 
 @dataclass
 class ApiInfo:

@@ -14,7 +14,8 @@ from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
 
-from .test_client import make_wait_custom, make_wait_deleted, make_wait_failed, make_wait_success, make_watch_list
+from .test_client import make_wait_custom, make_wait_deleted, make_wait_failed, make_wait_success, make_watch_list, \
+    json_contains
 
 KUBECONFIG = """
 apiVersion: v1
@@ -256,7 +257,7 @@ async def test_patch_global(client: lightkube.AsyncClient):
 async def test_create_global(client: lightkube.AsyncClient):
     req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
-    assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
+    json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
     assert pod.metadata.name == 'xx'
     await client.close()
 
@@ -266,7 +267,7 @@ async def test_create_global(client: lightkube.AsyncClient):
 async def test_replace_global(client: lightkube.AsyncClient):
     req = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={'metadata': {'name': 'xx'}})
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))
-    assert req.calls[0][0].read() == b'{"metadata": {"name": "xx"}}'
+    json_contains(req.calls[0][0].read() , {"metadata": {"name": "xx"}})
     assert pod.metadata.name == 'xx'
     await client.close()
 

@@ -158,6 +158,12 @@ class GenericClient:
                 data = obj
             else:
                 data = obj.to_dict()
+                # The following block, ensures that apiVersion and kind are always set.
+                # this is needed as k8s fails if this data are not provided for objects derived by CRDs (Issue #27)
+                if 'apiVersion' not in data:
+                    data['apiVersion'] = api_info.resource.api_version
+                if 'kind' not in data:
+                    data['kind'] = api_info.resource.kind
 
         path.append(api_info.plural)
         if method in ('delete', 'get', 'patch', 'put') or api_info.action:
