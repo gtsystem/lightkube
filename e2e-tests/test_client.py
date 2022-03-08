@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
@@ -9,8 +10,11 @@ from lightkube.resources.core_v1 import Pod, Node, ConfigMap, Service, Namespace
 from lightkube.resources.apps_v1 import Deployment
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.models.core_v1 import PodSpec, Container, ServiceSpec, ServicePort
+from lightkube.codecs import load_all_yaml
+from lightkube.generic_resource import create_namespaced_resource
 
 uid_count = 0
+
 
 @pytest.fixture
 def obj_name():
@@ -287,6 +291,36 @@ def test_list_all_ns(obj_name):
     finally:
         client.delete(Namespace, name=ns1)
         client.delete(Namespace, name=ns2)
+
+
+def test_crd():
+    client = Client()
+    fname = Path(__file__).parent.joinpath('test-crd.yaml')
+    with fname.open() as f:
+        crd = list(load_all_yaml(f))[0]
+
+    CronTab = create_namespaced_resource(
+        group="stable.example.com",
+        version="v1",
+        kind="CronTab",
+        plural="crontabs",
+        verbs=None
+    )
+
+    client.create(crd)
+    # CRD endpoints are not ready immediately, we need to wait for condition `Established`
+    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=['Established'])
+    try:
+        client.create(CronTab(
+            metadata={'name': 'my-cron'},
+            spec={'cronSpec': '* * * * */5', 'image': 'my-awesome-cron-image'},
+        ))
+
+        ct = client.get(CronTab, name='my-cron')
+        assert ct.metadata.name == 'my-cron'
+        assert ct.spec['cronSpec'] == '* * * * */5'
+    finally:
+        client.delete(crd.__class__, name=crd.metadata.name)
 
 
 @pytest.mark.parametrize("resource", [Node])

@@ -4,9 +4,11 @@ from lightkube import generic_resource as gr
 from lightkube.core.generic_client import GenericClient
 from lightkube.models.meta_v1 import ObjectMeta
 
+
 class MockedClient(GenericClient):
     def __init__(self):
         self.namespace = 'default'
+        self._field_manager = None
 
 
 def test_create_namespaced_resource():
@@ -21,6 +23,11 @@ def test_create_namespaced_resource():
     pr = c.prepare_request('list', Test, namespace='myns')
     assert pr.method == 'GET'
     assert pr.url == 'apis/test.eu/v1/namespaces/myns/tests'
+
+    pr = c.prepare_request('post', obj=Test(metadata={'namespace': 'myns'}, spec={'a': 1}))
+    assert pr.method == 'POST'
+    assert pr.url == 'apis/test.eu/v1/namespaces/myns/tests'
+    assert pr.data == {'apiVersion': 'test.eu/v1', 'kind': 'TestN', 'spec': {'a': 1}, 'metadata': {'namespace': 'myns'}}
 
     pr = c.prepare_request('get', Test.Scale, name='xx', namespace='myns')
     assert pr.method == 'GET'
@@ -43,6 +50,11 @@ def test_create_global_resource():
     pr = c.prepare_request('list', Test)
     assert pr.method == 'GET'
     assert pr.url == 'apis/test.eu/v1/tests'
+
+    pr = c.prepare_request('post', obj=Test(spec={'a': 1}))
+    assert pr.method == 'POST'
+    assert pr.url == 'apis/test.eu/v1/tests'
+    assert pr.data == {'apiVersion': 'test.eu/v1', 'kind': 'TestG', 'spec': {'a': 1}}
 
     pr = c.prepare_request('get', Test.Scale, name='xx')
     assert pr.method == 'GET'
