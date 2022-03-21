@@ -280,6 +280,8 @@ class GenericAsyncClient(GenericClient):
                 if handle_error.sleep > 0:
                     await asyncio.sleep(handle_error.sleep)
                 continue
+            finally:
+                await resp.aclose()
 
     async def request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
                       watch: bool = False, headers: dict = None, params: dict = None) -> Any:
