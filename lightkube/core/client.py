@@ -635,26 +635,32 @@ class AsyncClient:
         for_conditions = list(for_conditions)
         raise_for_conditions = list(raise_for_conditions)
 
-        async for op, obj in self.watch(res, namespace=namespace, fields={'metadata.name': name}):
-            if obj.status is None:
-                continue
+        watch = self.watch(res, namespace=namespace, fields={'metadata.name': name})
+        try:
+            async for op, obj in watch:
 
-            if op == "DELETED":
-                raise ObjectDeleted(full_name)
+                if obj.status is None:
+                    continue
 
-            try:
-                status = obj.status.to_dict()
-            except AttributeError:
-                status = obj.status
+                if op == "DELETED":
+                    raise ObjectDeleted(full_name)
 
-            conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
-            if any(c['type'] in for_conditions for c in conditions):
-                return obj
+                try:
+                    status = obj.status.to_dict()
+                except AttributeError:
+                    status = obj.status
 
-            failures = [c for c in conditions if c['type'] in raise_for_conditions]
+                conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
+                if any(c['type'] in for_conditions for c in conditions):
+                    return obj
 
-            if failures:
-                raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+                failures = [c for c in conditions if c['type'] in raise_for_conditions]
+
+                if failures:
+                    raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+        finally:
+            # we ensure the async generator is closed before returning
+            await watch.aclose()
 
     @overload
     async def patch(self, res: Type[GlobalSubResource], name: str,
