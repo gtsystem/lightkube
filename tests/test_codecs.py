@@ -118,9 +118,15 @@ def test_from_dict_not_found():
     with pytest.raises(LoadResourceError):
         codecs.from_dict({'apiVersion': "undefined.k8s.io/v1", 'kind': 'Missing'})
 
-
-def test_load_all_yaml_static():
-    objs = list(codecs.load_all_yaml(data_dir.joinpath('example-def.yaml').read_text()))
+@pytest.mark.parametrize(
+    "yaml_file",
+    (
+            "example-def.yaml",
+            "example-def-with-nulls.yaml",
+    )
+)
+def test_load_all_yaml_static(yaml_file):
+    objs = list(codecs.load_all_yaml(data_dir.joinpath(yaml_file).read_text()))
     kinds = [o.kind for o in objs]
 
     assert kinds == ['Secret', 'Mydb', 'Service', 'Deployment']
@@ -179,6 +185,12 @@ def test_load_all_yaml_template_env():
             context={},
             template_env={}
         )
+
+
+def test_load_all_yaml_all_null():
+    yaml_file = "example-def-null.yaml"
+    objs = list(codecs.load_all_yaml(data_dir.joinpath(yaml_file).read_text()))
+    assert len(objs) == 0
 
 
 @mock.patch('lightkube.codecs.jinja2', new=None)

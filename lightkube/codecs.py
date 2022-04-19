@@ -63,7 +63,8 @@ def from_dict(d: dict) -> AnyResource:
 
 def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env = None, create_resources_for_crds: bool = False) -> List[AnyResource]:
     """Load kubernetes resource objects defined as YAML. See `from_dict` regarding how resource types are detected.
-    Returns a list of resource objects or raise a `LoadResourceError`.
+    Returns a list of resource objects or raise a `LoadResourceError`.  Skips any empty YAML documents in the
+    stream, returning an empty list if all YAML documents are empty.
 
     **parameters**
 
@@ -83,11 +84,12 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
         stream = _template(stream, context=context, template_env=template_env)
     resources = []
     for obj in yaml.safe_load_all(stream):
-        res = from_dict(obj)
-        resources.append(res)
+        if obj is not None:
+            res = from_dict(obj)
+            resources.append(res)
 
-        if create_resources_for_crds is True and isinstance(res, CustomResourceDefinition):
-            create_resources_from_crd(res)
+            if create_resources_for_crds is True and isinstance(res, CustomResourceDefinition):
+                create_resources_from_crd(res)
     return resources
 
 
