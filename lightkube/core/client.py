@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
 import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
@@ -8,6 +9,7 @@ from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
+from .resource import NamespacedResource, GlobalResource
 
 NamespacedResourceTypeVar = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResourceTypeVar = TypeVar('GlobalResource', bound=r.GlobalResource)
@@ -424,6 +426,99 @@ class Client:
         return self.patch(type(obj), name, obj, namespace=namespace,
                           patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
 
+    def apply_many(self, objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
+                   field_manager: str = None, force: bool = False) -> None:
+        """Create or configure an iterable of objects using client.apply()
+
+        To avoid referencing objects before they are created, resources are applied in the following order:
+        * CRDs
+        * Namespaces
+        * Things that might be referenced by pods (Secret, ServiceAccount, PVs/PVCs, ConfigMap)
+        * RBAC
+            * Roles and ClusterRoles
+            * RoleBindings and ClusterRoleBindings
+        * Everything else (Pod, Deployment, ...)
+
+        **parameters**
+
+        * **objs** - iterable of objects to create. This need to be instances of a resource kind and have
+          resource.metadata.namespaced defined if they are namespaced resources
+        * **field_manager** - Name associated with the actor or entity that is making these changes.
+        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
+          fields owned by other people.
+        """
+        objs = _sort_for_apply(objs)
+        returns = [None] * len(objs)
+
+        for i, obj in enumerate(objs):
+            if isinstance(obj, NamespacedResource):
+                returns[i] = self.apply(obj, namespace=obj.metadata.namespace, field_manager=field_manager, force=force)
+            elif isinstance(obj, GlobalResource):
+                returns[i] = self.apply(obj, field_manager=field_manager, force=force)
+            else:
+                raise TypeError("apply_many only supports objects of types NamespacedResource or GlobalResource")
+        return returns
+
+def _sort_for_apply(
+        objs: List[
+            Union[
+                GlobalSubResourceTypeVar,
+                NamespacedSubResourceTypeVar,
+                GlobalResourceTypeVar,
+                NamespacedResourceTypeVar,
+            ]
+        ]
+) -> List[
+    Union[
+        GlobalSubResourceTypeVar,
+        NamespacedSubResourceTypeVar,
+        GlobalResourceTypeVar,
+        NamespacedResourceTypeVar,
+    ]
+]:
+    """
+    Returns a list of Resource types, sorted into an order that is safe to apply
+
+    See _kind_rank_function for sorting order
+    """
+    return sorted(objs, key=_kind_rank_function)
+
+unknown_item_sort_value = 1000
+apply_order = defaultdict(lambda: unknown_item_sort_value)
+apply_order["CustomResourceDefinition"] = 10
+apply_order["Namespace"] = 20
+apply_order["Secret"] = 31
+apply_order["ServiceAccount"] = 32
+apply_order["PersistentVolume"] = 33
+apply_order["PersistentVolumeClaim"] = 34
+apply_order["ConfigMap"] = 35
+apply_order["Role"] = 41
+apply_order["ClusterRole"] = 42
+apply_order["RoleBinding"] = 43
+apply_order["ClusterRoleBinding"] = 44
+# apply_order[anything_else] = unknown_item_sort_value
+
+def _kind_rank_function(
+        obj: Union[
+            GlobalSubResourceTypeVar,
+            NamespacedSubResourceTypeVar,
+            GlobalResourceTypeVar,
+            NamespacedResourceTypeVar,
+        ]
+) -> int:
+    """
+    Returns an integer rank based on an objects .kind
+
+    Ranking is set to order kinds by:
+    * CRDs
+    * Namespaces
+    * Things that might be referenced by pods (Secret, ServiceAccount, PVs/PVCs, ConfigMap)
+    * RBAC
+        * Roles and ClusterRoles
+        * RoleBindings and ClusterRoleBindings
+    * Everything else (Pod, Deployment, ...)
+    """
+    return apply_order[obj.kind]
 
 class AsyncClient:
     """Creates a new lightkube client

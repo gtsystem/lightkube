@@ -1,5 +1,10 @@
 import unittest.mock
 import warnings
+from collections import namedtuple
+from unittest.mock import call
+
+from lightkube.core.resource import NamespacedResource
+from lightkube.resources.rbac_authorization_v1 import Role
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -10,7 +15,8 @@ import respx
 
 import lightkube
 from lightkube.config.kubeconfig import KubeConfig, SingleConfig, Context, Cluster, User
-from lightkube.resources.core_v1 import Pod, Node, Binding
+from lightkube.core.client import _sort_for_apply
+from lightkube.resources.core_v1 import Pod, Node, Binding, Namespace
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
 from lightkube.generic_resource import create_global_resource
@@ -589,3 +595,61 @@ def test_apply_global(client: lightkube.Client):
     node = client.apply(Node.Status(), name='xx', field_manager='a', force=True)
     assert node.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+
+@pytest.fixture
+def apply_client(client: lightkube.Client):
+    mocked_apply = unittest.mock.MagicMock()
+    client.apply = mocked_apply
+    return client
+
+
+def test_apply_many(apply_client: lightkube.Client):
+    field_manager = "someone"
+    force = True
+
+    resources = [
+        Namespace(kind="CustomResourceDefinition"),
+        Role(kind="ConfigMap", metadata=ObjectMeta(namespace="some-namespace")),
+        Pod(kind="Pod", metadata=ObjectMeta(namespace="some-namespace")),
+    ]
+
+    expected_calls = [
+        call(r, namespace=r.metadata.namespace, field_manager=field_manager, force=force)
+        if isinstance(r, NamespacedResource)
+        else call(r, field_manager=field_manager, force=force)
+        for r in resources
+    ]
+
+    # Execute with resources out of order
+    resources_reversed = reversed(resources)
+    apply_client.apply_many(resources_reversed, field_manager=field_manager, force=force)
+
+    # Assert that apply has been called for the expected resources in the expected order
+    apply_client.apply.assert_has_calls(expected_calls)
+
+
+def test_sort_for_apply():
+    mock_resource = namedtuple("resource", ("kind",))
+    resources = [
+        mock_resource(kind="CustomResourceDefinition"),
+        mock_resource(kind="Namespace"),
+        mock_resource(kind="Secret"),
+        mock_resource(kind="ServiceAccount"),
+        mock_resource(kind="PersistentVolume"),
+        mock_resource(kind="PersistentVolumeClaim"),
+        mock_resource(kind="ConfigMap"),
+        mock_resource(kind="Role"),
+        mock_resource(kind="ClusterRole"),
+        mock_resource(kind="RoleBinding"),
+        mock_resource(kind="ClusterRoleBinding"),
+        mock_resource(kind="something-else"),
+    ]
+
+    # Execute with resources out of order so that we know that we've ordered them
+    resources_reversed = list(reversed(resources))
+
+    result = _sort_for_apply(resources_reversed)
+    assert result == resources
+
+
