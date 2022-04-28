@@ -90,6 +90,29 @@ class Client:
         """
         return self._client.request("deletecollection", res=res, namespace=namespace)
 
+    def delete_many(self, objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]]) -> None:
+        """Delete an iterable of objects using client.delete()
+
+        To avoid deleting objects that are being used by others in the list (eg: deleting a CRD before deleting the CRs),
+        resources are deleted in the reverse order as defined in apply_many
+
+        **parameters**
+
+        * **objs** - iterable of objects to delete. This need to be instances of a resource kind and have
+          resource.metadata.namespaced defined if they are namespaced resources
+        """
+        objs = _sort_for_delete(objs)
+
+        for i, obj in enumerate(objs):
+            if isinstance(obj, NamespacedResource):
+                namespace = obj.metadata.namespace
+            elif isinstance(obj, GlobalResource):
+                namespace = None
+            else:
+                raise TypeError("delete_many only supports objects of types NamespacedResource or GlobalResource")
+
+            self.delete(obj, name=obj.metadata.name, namespace=namespace)
+
     @overload
     def get(self, res: Type[GlobalResourceTypeVar], name: str) -> GlobalResourceTypeVar:
         ...
@@ -483,6 +506,30 @@ def _sort_for_apply(
     See _kind_rank_function for sorting order
     """
     return sorted(objs, key=_kind_rank_function)
+
+def _sort_for_delete(
+        objs: Iterable[
+            Union[
+                GlobalSubResourceTypeVar,
+                NamespacedSubResourceTypeVar,
+                GlobalResourceTypeVar,
+                NamespacedResourceTypeVar,
+            ]
+        ]
+) -> List[
+    Union[
+        GlobalSubResourceTypeVar,
+        NamespacedSubResourceTypeVar,
+        GlobalResourceTypeVar,
+        NamespacedResourceTypeVar,
+    ]
+]:
+    """
+    Returns a list of Resource types, sorted into an order that is safe to delete with
+
+    See _kind_rank_function for sorting order of apply.  Sorting here is the reverse
+    """
+    return list(reversed(_sort_for_apply(objs)))
 
 unknown_item_sort_value = 1000
 apply_order = defaultdict(lambda: unknown_item_sort_value)

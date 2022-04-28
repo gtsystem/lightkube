@@ -15,7 +15,7 @@ import respx
 
 import lightkube
 from lightkube.config.kubeconfig import KubeConfig, SingleConfig, Context, Cluster, User
-from lightkube.core.client import _sort_for_apply
+from lightkube.core.client import _sort_for_apply, _sort_for_delete
 from lightkube.resources.core_v1 import Pod, Node, Binding, Namespace
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
@@ -609,7 +609,7 @@ def test_apply_many(mocked_apply_client: lightkube.Client):
     field_manager = "someone"
     force = True
 
-    resources = [
+    resources_in_order = [
         Namespace(kind="CustomResourceDefinition"),
         Role(kind="ConfigMap", metadata=ObjectMeta(namespace="some-namespace")),
         Pod(kind="Pod", metadata=ObjectMeta(namespace="some-namespace")),
@@ -619,11 +619,11 @@ def test_apply_many(mocked_apply_client: lightkube.Client):
         call(r, namespace=r.metadata.namespace, field_manager=field_manager, force=force)
         if isinstance(r, NamespacedResource)
         else call(r, namespace=None, field_manager=field_manager, force=force)
-        for r in resources
+        for r in resources_in_order
     ]
 
     # Execute with resources out of order
-    resources_reversed = reversed(resources)
+    resources_reversed = reversed(resources_in_order)
     client.apply_many(resources_reversed, field_manager=field_manager, force=force)
 
     # Assert that apply has been called for the expected resources in the expected order
@@ -651,6 +651,60 @@ def test_sort_for_apply():
     resources_out_of_order = list(reversed(resources_in_order))
 
     result = _sort_for_apply(resources_out_of_order)
+    assert result == resources_in_order
+
+
+@pytest.fixture
+def mocked_delete_client(client: lightkube.Client):
+    mocked_delete = unittest.mock.MagicMock()
+    client.delete = mocked_delete
+    return client
+
+
+def test_delete_many(mocked_delete_client: lightkube.Client):
+    client = mocked_delete_client
+    resource_in_order = [
+        Pod(kind="Pod", metadata=ObjectMeta(name="some-pod", namespace="some-namespace")),
+        Role(kind="ConfigMap", metadata=ObjectMeta(name="some-configmap", namespace="some-namespace")),
+        Namespace(kind="CustomResourceDefinition", metadata=ObjectMeta(name="some-namespace")),
+    ]
+
+    expected_calls = [
+        call(r, name=r.metadata.name, namespace=r.metadata.namespace)
+        if isinstance(r, NamespacedResource)
+        else call(r, name=r.metadata.name, namespace=None)
+        for r in resource_in_order
+    ]
+
+    # Execute with resources out of order
+    resources_out_of_order = reversed(resource_in_order)
+    client.delete_many(resources_out_of_order)
+
+    # Assert that delete has been called for the expected resources in the expected order
+    client.delete.assert_has_calls(expected_calls)
+
+
+def test_sort_for_delete():
+    mock_resource = namedtuple("resource", ("kind",))
+    resources_out_of_order = [
+        mock_resource(kind="CustomResourceDefinition"),
+        mock_resource(kind="Namespace"),
+        mock_resource(kind="Secret"),
+        mock_resource(kind="ServiceAccount"),
+        mock_resource(kind="PersistentVolume"),
+        mock_resource(kind="PersistentVolumeClaim"),
+        mock_resource(kind="ConfigMap"),
+        mock_resource(kind="Role"),
+        mock_resource(kind="ClusterRole"),
+        mock_resource(kind="RoleBinding"),
+        mock_resource(kind="ClusterRoleBinding"),
+        mock_resource(kind="something-else"),
+    ]
+
+    # Execute with resources out of order so that we know that we've ordered them
+    resources_in_order = list(reversed(resources_out_of_order))
+
+    result = _sort_for_delete(resources_out_of_order)
     assert result == resources_in_order
 
 
