@@ -452,15 +452,16 @@ class Client:
 
         for i, obj in enumerate(objs):
             if isinstance(obj, NamespacedResource):
-                returns[i] = self.apply(obj, namespace=obj.metadata.namespace, field_manager=field_manager, force=force)
+                namespace = obj.metadata.namespace
             elif isinstance(obj, GlobalResource):
-                returns[i] = self.apply(obj, field_manager=field_manager, force=force)
+                namespace = None
             else:
                 raise TypeError("apply_many only supports objects of types NamespacedResource or GlobalResource")
+            returns[i] = self.apply(obj, namespace=namespace, field_manager=field_manager, force=force)
         return returns
 
 def _sort_for_apply(
-        objs: List[
+        objs: Iterable[
             Union[
                 GlobalSubResourceTypeVar,
                 NamespacedSubResourceTypeVar,
@@ -477,7 +478,7 @@ def _sort_for_apply(
     ]
 ]:
     """
-    Returns a list of Resource types, sorted into an order that is safe to apply
+    Returns a list of Resource types, sorted into an order that is safe to apply with
 
     See _kind_rank_function for sorting order
     """
