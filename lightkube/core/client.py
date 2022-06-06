@@ -9,10 +9,10 @@ from ..types import OnErrorHandler, PatchType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
 
-NamespacedResourceTypeVar = TypeVar('NamespacedResource', bound=r.NamespacedResource)
-GlobalResourceTypeVar = TypeVar('GlobalResource', bound=r.GlobalResource)
-GlobalSubResourceTypeVar = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
-NamespacedSubResourceTypeVar = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
+NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
+GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
+GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
+NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
 AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
 Resource = TypeVar('Resource', bound=r.Resource)
 LabelValue = Union[str, None, operators.Operator, Iterable]
@@ -54,11 +54,11 @@ class Client:
         return self._client.config
 
     @overload
-    def delete(self, res: Type[GlobalResourceTypeVar], name: str) -> None:
+    def delete(self, res: Type[GlobalResource], name: str) -> None:
         ...
 
     @overload
-    def delete(self, res: Type[NamespacedResourceTypeVar], name: str, *, namespace: str = None) -> None:
+    def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None) -> None:
         ...
 
     def delete(self, res, name: str, *, namespace: str = None):
@@ -73,11 +73,11 @@ class Client:
         return self._client.request("delete", res=res, name=name, namespace=namespace)
 
     @overload
-    def deletecollection(self, res: Type[GlobalResourceTypeVar]) -> None:
+    def deletecollection(self, res: Type[GlobalResource]) -> None:
         ...
 
     @overload
-    def deletecollection(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None) -> None:
+    def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None) -> None:
         ...
 
     def deletecollection(self, res, *, namespace: str = None):
@@ -89,7 +89,7 @@ class Client:
         return self._client.request("deletecollection", res=res, namespace=namespace)
 
     @overload
-    def get(self, res: Type[GlobalResourceTypeVar], name: str) -> GlobalResourceTypeVar:
+    def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
         ...
 
     @overload
@@ -108,14 +108,14 @@ class Client:
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResourceTypeVar], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[GlobalResourceTypeVar]:
+    def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
+            Iterator[GlobalResource]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None, chunk_size: int = None,
+    def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[NamespacedResourceTypeVar]:
+            Iterator[NamespacedResource]:
         ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
@@ -142,18 +142,18 @@ class Client:
         return self._client.list(br)
 
     @overload
-    def watch(self, res: Type[GlobalResourceTypeVar], *, labels: LabelSelector = None, fields: FieldSelector = None,
+    def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
               resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, GlobalResourceTypeVar]]:
+            Iterator[Tuple[str, GlobalResource]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None,
+    def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
               labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, NamespacedResourceTypeVar]]:
+            Iterator[Tuple[str, NamespacedResource]]:
         ...
 
     def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
@@ -185,12 +185,12 @@ class Client:
     @overload
     def wait(
         self,
-        res: Type[GlobalResourceTypeVar],
+        res: Type[GlobalResource],
         name: str,
         *,
         for_conditions: Iterable[str],
         raise_for_conditions: Iterable[str] = (),
-    ) -> GlobalResourceTypeVar:
+    ) -> GlobalResource:
         ...
 
     @overload
@@ -253,17 +253,17 @@ class Client:
                 raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
 
     @overload
-    def patch(self, res: Type[GlobalSubResourceTypeVar], name: str,
-              obj: Union[GlobalSubResourceTypeVar, Dict, List], *,
+    def patch(self, res: Type[GlobalSubResource], name: str,
+              obj: Union[GlobalSubResource, Dict, List], *,
               patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalSubResourceTypeVar:
+              field_manager: str = None, force: bool = False) -> GlobalSubResource:
         ...
 
     @overload
-    def patch(self, res: Type[GlobalResourceTypeVar], name: str,
-              obj: Union[GlobalResourceTypeVar, Dict, List], *,
+    def patch(self, res: Type[GlobalResource], name: str,
+              obj: Union[GlobalResource, Dict, List], *,
               patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalResourceTypeVar:
+              field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
@@ -297,20 +297,20 @@ class Client:
 
 
     @overload
-    def create(self, obj: GlobalSubResourceTypeVar, name: str, field_manager: str = None) -> GlobalSubResourceTypeVar:
+    def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResourceTypeVar:
+    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def create(self, obj: GlobalResourceTypeVar, field_manager: str = None) -> GlobalResourceTypeVar:
+    def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedResourceTypeVar, field_manager: str = None) -> NamespacedResourceTypeVar:
+    def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
     def create(self, obj, name=None, *, namespace=None, field_manager=None):
@@ -328,20 +328,20 @@ class Client:
                                     params={'fieldManager': field_manager})
 
     @overload
-    def replace(self, obj: GlobalSubResourceTypeVar, name: str, field_manager: str = None) -> GlobalSubResourceTypeVar:
+    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResourceTypeVar:
+    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    def replace(self, obj: GlobalResourceTypeVar, field_manager: str = None) -> GlobalResourceTypeVar:
+    def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedResourceTypeVar, field_manager: str = None) -> NamespacedResourceTypeVar:
+    def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
     def replace(self, obj, name=None, *, namespace=None, field_manager=None):
@@ -387,21 +387,21 @@ class Client:
         return resp.iter_lines()
 
     @overload
-    def apply(self, obj: GlobalSubResourceTypeVar, name: str, *, field_manager: str = None, force: bool = False) \
-            -> GlobalSubResourceTypeVar:
+    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+            -> GlobalSubResource:
         ...
 
     @overload
-    def apply(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None,
-              field_manager: str = None, force: bool = False) -> NamespacedSubResourceTypeVar:
+    def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
         ...
 
     @overload
-    def apply(self, obj: GlobalResourceTypeVar, field_manager: str = None, force: bool = False) -> GlobalResourceTypeVar:
+    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
-    def apply(self, obj: NamespacedResourceTypeVar, field_manager: str = None, force: bool = False) -> NamespacedResourceTypeVar:
+    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
         ...
 
     def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
@@ -458,11 +458,11 @@ class AsyncClient:
         return self._client.config
 
     @overload
-    async def delete(self, res: Type[GlobalResourceTypeVar], name: str) -> None:
+    async def delete(self, res: Type[GlobalResource], name: str) -> None:
         ...
 
     @overload
-    async def delete(self, res: Type[NamespacedResourceTypeVar], name: str, *, namespace: str = None) -> None:
+    async def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None) -> None:
         ...
 
     async def delete(self, res, name: str, *, namespace: str = None):
@@ -477,11 +477,11 @@ class AsyncClient:
         return await self._client.request("delete", res=res, name=name, namespace=namespace)
 
     @overload
-    async def deletecollection(self, res: Type[GlobalResourceTypeVar]) -> None:
+    async def deletecollection(self, res: Type[GlobalResource]) -> None:
         ...
 
     @overload
-    async def deletecollection(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None) -> None:
+    async def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None) -> None:
         ...
 
     async def deletecollection(self, res, *, namespace: str = None):
@@ -493,7 +493,7 @@ class AsyncClient:
         return await self._client.request("deletecollection", res=res, namespace=namespace)
 
     @overload
-    async def get(self, res: Type[GlobalResourceTypeVar], name: str) -> GlobalResourceTypeVar:
+    async def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
         ...
 
     @overload
@@ -512,14 +512,14 @@ class AsyncClient:
         return await self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResourceTypeVar], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            AsyncIterable[GlobalResourceTypeVar]:
+    def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
+            AsyncIterable[GlobalResource]:
         ...
 
     @overload
-    def list(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None, chunk_size: int = None,
+    def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            AsyncIterable[NamespacedResourceTypeVar]:
+            AsyncIterable[NamespacedResource]:
         ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
@@ -546,18 +546,18 @@ class AsyncClient:
         return self._client.list(br)
 
     @overload
-    def watch(self, res: Type[GlobalResourceTypeVar], *, labels: LabelSelector = None, fields: FieldSelector = None,
+    def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
               resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
-            AsyncIterable[Tuple[str, GlobalResourceTypeVar]]:
+            AsyncIterable[Tuple[str, GlobalResource]]:
         ...
 
     @overload
-    def watch(self, res: Type[NamespacedResourceTypeVar], *, namespace: str = None,
+    def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
               labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: OnErrorHandler = on_error_raise) -> \
-            AsyncIterable[Tuple[str, NamespacedResourceTypeVar]]:
+            AsyncIterable[Tuple[str, NamespacedResource]]:
         ...
 
     def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
@@ -589,12 +589,12 @@ class AsyncClient:
     @overload
     async def wait(
         self,
-        res: Type[GlobalResourceTypeVar],
+        res: Type[GlobalResource],
         name: str,
         *,
         for_conditions: Iterable[str],
         raise_for_conditions: Iterable[str] = (),
-    ) -> GlobalResourceTypeVar:
+    ) -> GlobalResource:
         ...
 
     @overload
@@ -663,17 +663,17 @@ class AsyncClient:
             await watch.aclose()
 
     @overload
-    async def patch(self, res: Type[GlobalSubResourceTypeVar], name: str,
-                    obj: Union[GlobalSubResourceTypeVar, Dict, List], *,
+    async def patch(self, res: Type[GlobalSubResource], name: str,
+                    obj: Union[GlobalSubResource, Dict, List], *,
                     patch_type: PatchType = PatchType.STRATEGIC,
-                    field_manager: str = None, force: bool = False) -> GlobalSubResourceTypeVar:
+                    field_manager: str = None, force: bool = False) -> GlobalSubResource:
         ...
 
     @overload
-    async def patch(self, res: Type[GlobalResourceTypeVar], name: str,
-                    obj: Union[GlobalResourceTypeVar, Dict, List], *,
+    async def patch(self, res: Type[GlobalResource], name: str,
+                    obj: Union[GlobalResource, Dict, List], *,
                     patch_type: PatchType = PatchType.STRATEGIC,
-                    field_manager: str = None, force: bool = False) -> GlobalResourceTypeVar:
+                    field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
@@ -706,20 +706,20 @@ class AsyncClient:
                                           params={'force': force_param, 'fieldManager': field_manager})
 
     @overload
-    async def create(self, obj: GlobalSubResourceTypeVar, name: str, field_manager: str = None) -> GlobalSubResourceTypeVar:
+    async def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResourceTypeVar:
+    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+            -> NamespacedSubResource:
         ...
 
     @overload
-    async def create(self, obj: GlobalResourceTypeVar, field_manager: str = None) -> GlobalResourceTypeVar:
+    async def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def create(self, obj: NamespacedResourceTypeVar, field_manager: str = None) -> NamespacedResourceTypeVar:
+    async def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
     async def create(self, obj, name=None, *, namespace=None, field_manager=None):
@@ -737,20 +737,20 @@ class AsyncClient:
                                           params={'fieldManager': field_manager})
 
     @overload
-    async def replace(self, obj: GlobalSubResourceTypeVar, name: str, field_manager: str = None) -> GlobalSubResourceTypeVar:
+    async def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None,
-                      field_manager: str = None) -> NamespacedSubResourceTypeVar:
+    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+                      field_manager: str = None) -> NamespacedSubResource:
         ...
 
     @overload
-    async def replace(self, obj: GlobalResourceTypeVar, field_manager: str = None) -> GlobalResourceTypeVar:
+    async def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    async def replace(self, obj: NamespacedResourceTypeVar, field_manager: str = None) -> NamespacedResourceTypeVar:
+    async def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
     async def replace(self, obj, name=None, *, namespace=None, field_manager=None):
@@ -800,21 +800,21 @@ class AsyncClient:
         return stream_log()
 
     @overload
-    async def apply(self, obj: GlobalSubResourceTypeVar, name: str, *, field_manager: str = None, force: bool = False) \
-            -> GlobalSubResourceTypeVar:
+    async def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+            -> GlobalSubResource:
         ...
 
     @overload
-    async def apply(self, obj: NamespacedSubResourceTypeVar, name: str, *, namespace: str = None,
-                    field_manager: str = None, force: bool = False) -> NamespacedSubResourceTypeVar:
+    async def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
         ...
 
     @overload
-    async def apply(self, obj: GlobalResourceTypeVar, field_manager: str = None, force: bool = False) -> GlobalResourceTypeVar:
+    async def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
-    async def apply(self, obj: NamespacedResourceTypeVar, field_manager: str = None, force: bool = False) -> NamespacedResourceTypeVar:
+    async def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
         ...
 
     async def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
