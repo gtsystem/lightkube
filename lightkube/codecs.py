@@ -22,35 +22,33 @@ AnyResource = Union[GenericGlobalResource, GenericNamespacedResource]
 def _load_model(version, kind, client=None):
     if "/" in version:
         group, version_n = version.split("/")
-        # Check if a generic resource was defined
-        model = get_generic_resource(version, kind)
-        if model is not None:
-            return model
-
-        # Generic resource not defined, but it could be a k8s resource
         if group.endswith(".k8s.io"):
+            # k8s resource
             group = group[:-7]
-        group = group.replace(".", "_")
-        version = "_".join([group, version_n])
+            group = group.replace(".", "_")
+            version = "_".join([group, version_n])
+        else:
+            # Generic resource.  Check if it has been defined, and define it if not.
+            # Check if a generic resource was defined
+            model = get_generic_resource(version, kind)
+            if model is not None:
+                return model
+            if client is not None:
+                try:
+                    model = _create_model_from_client(kind, version_n, client)
+                except KeyError as e:
+                    raise LoadResourceError(
+                        f"Unable to implicitly load resource {kind}."
+                        f"  Got error: '{e}'"
+                    )
+                return model
     else:
         version = f'core_{version}'
 
     try:
         module = importlib.import_module(f'lightkube.resources.{version.lower()}')
     except ImportError as e:
-        # It was not a k8s resource and a generic resource was not previously defined
-        if client is not None:
-            # If we have a client, try to create a generic resource from it
-            try:
-                model = _create_model_from_client(kind, version_n, client)
-            except KeyError as e:
-                raise LoadResourceError(
-                    f"Unable to implicitly load resource {kind}."
-                    f"  Got error: '{e}'"
-                )
-            return model
-        else:
-            raise LoadResourceError(f"{e}. If using a CRD, ensure you define a generic resource.")
+        raise LoadResourceError(f"{e}. If using a CRD, ensure you define a generic resource.")
     return getattr(module, kind)
 
 
