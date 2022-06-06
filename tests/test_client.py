@@ -598,14 +598,13 @@ def test_apply_global(client: lightkube.Client):
 
 
 @pytest.fixture
-def mocked_apply_client(client: lightkube.Client):
+def apply_client(client: lightkube.Client):
     mocked_apply = unittest.mock.MagicMock()
     client.apply = mocked_apply
     return client
 
 
-def test_apply_many(mocked_apply_client: lightkube.Client):
-    client = mocked_apply_client
+def test_apply_many(apply_client: lightkube.Client):
     field_manager = "someone"
     force = True
 
@@ -618,21 +617,21 @@ def test_apply_many(mocked_apply_client: lightkube.Client):
     expected_calls = [
         call(r, namespace=r.metadata.namespace, field_manager=field_manager, force=force)
         if isinstance(r, NamespacedResource)
-        else call(r, namespace=None, field_manager=field_manager, force=force)
+        else call(r, field_manager=field_manager, force=force)
         for r in resources
     ]
 
     # Execute with resources out of order
     resources_reversed = reversed(resources)
-    client.apply_many(resources_reversed, field_manager=field_manager, force=force)
+    apply_client.apply_many(resources_reversed, field_manager=field_manager, force=force)
 
     # Assert that apply has been called for the expected resources in the expected order
-    client.apply.assert_has_calls(expected_calls)
+    apply_client.apply.assert_has_calls(expected_calls)
 
 
 def test_sort_for_apply():
     mock_resource = namedtuple("resource", ("kind",))
-    resources_in_order = [
+    resources = [
         mock_resource(kind="CustomResourceDefinition"),
         mock_resource(kind="Namespace"),
         mock_resource(kind="Secret"),
@@ -648,9 +647,9 @@ def test_sort_for_apply():
     ]
 
     # Execute with resources out of order so that we know that we've ordered them
-    resources_out_of_order = list(reversed(resources_in_order))
+    resources_reversed = list(reversed(resources))
 
-    result = _sort_for_apply(resources_out_of_order)
-    assert result == resources_in_order
+    result = _sort_for_apply(resources_reversed)
+    assert result == resources
 
 
