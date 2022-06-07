@@ -196,7 +196,7 @@ def _create_resources_from_crd(crd: CustomResourceDefinition):
         creator = create_global_resource
     else:
         raise ValueError(
-            f"Unexpected scope for resource of kind {kind}.  Expected 'Namespaced' or 'Cluster',"
+            f"Unexpected scope for resource.  Expected 'Namespaced' or 'Cluster',"
             f" got {crd.spec.scope}"
         )
 
