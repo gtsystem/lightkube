@@ -8,7 +8,8 @@ The kubernetes configuration is represented by the class [lightkube.KubeConfig](
 
 ## Load the configuration from a file
 
-The constructor `KubeConfig.from_file()` is used to load a specific configuration from the filesystem.
+The constructor `KubeConfig.from_file()` is used to load a specific configuration from the filesystem (which need to follow
+the standard YAML kubeconfig format).
 
 Example:
 

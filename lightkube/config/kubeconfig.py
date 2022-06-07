@@ -131,7 +131,7 @@ class KubeConfig:
 
     @classmethod
     def from_file(cls, fname):
-        """Creates an instance of the KubeConfig class from a kubeconfig file.
+        """Creates an instance of the KubeConfig class from a kubeconfig file in YAML format.
 
         **Parameters**
 
