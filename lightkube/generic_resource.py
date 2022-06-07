@@ -1,7 +1,9 @@
 from typing import Type, Any, Optional, overload
 
 from .core import resource as res
+from .core.client import Client
 from .core.internal_models import meta_v1, autoscaling_v1
+from .resources.apiextensions_v1 import CustomResourceDefinition
 
 __all__ = ['create_global_resource', 'create_namespaced_resource']
 
@@ -169,3 +171,43 @@ def create_namespaced_resource(group: str, version: str, kind: str, plural: str,
     """
     return _create_resource(
         True, group, version, kind, plural, verbs=verbs)
+
+
+def load_in_cluster_generic_resources(client: Client):
+    """Loads all in-cluster CustomResourceDefinitions as generic resources.
+
+    Once loaded, generic resources can be obtained from `generic_resource.get_generic_resource()`,
+    or used implicitly such as when using `codecs.load_all_yaml()`.
+
+    **Parameters**
+
+    * **client** `Client` - Lightkube Client to use to load the CRDs.
+    """
+    crds = client.list(CustomResourceDefinition)
+    for crd in crds:
+        _create_resources_from_crd(crd)
+
+
+def _create_resources_from_crd(crd: CustomResourceDefinition):
+    """Creates a generic resource for each version in a CustomResourceDefinition."""
+    if crd.spec.scope == "Namespaced":
+        creator = create_namespaced_resource
+    elif crd.spec.scope == "Cluster":
+        creator = create_global_resource
+    else:
+        raise ValueError(
+            f"Unexpected scope for resource of kind {kind}.  Expected 'Namespaced' or 'Cluster',"
+            f" got {crd.spec.scope}"
+        )
+
+    for version in crd.spec.versions:
+        creator(**_crd_to_dict(crd, version.name))
+
+
+def _crd_to_dict(crd, version_name):
+    return {
+        "group": crd.spec.group,
+        "version": version_name,
+        "kind": crd.spec.names.kind,
+        "plural": crd.spec.names.plural,
+    }
