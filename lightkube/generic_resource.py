@@ -185,10 +185,10 @@ def load_in_cluster_generic_resources(client: Client):
     """
     crds = client.list(CustomResourceDefinition)
     for crd in crds:
-        _create_resources_from_crd(crd)
+        create_resources_from_crd(crd)
 
 
-def _create_resources_from_crd(crd: CustomResourceDefinition):
+def create_resources_from_crd(crd: CustomResourceDefinition):
     """Creates a generic resource for each version in a CustomResourceDefinition."""
     if crd.spec.scope == "Namespaced":
         creator = create_namespaced_resource

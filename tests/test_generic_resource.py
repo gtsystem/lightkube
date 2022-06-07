@@ -133,7 +133,7 @@ def test_create_global_resource():
         "Cluster",
     ]
 )
-def test__create_resources_from_crd(crd_scope, mocked_created_resources):
+def test_create_resources_from_crd(crd_scope, mocked_created_resources):
     version_names = ['v1alpha1', 'v1', 'v2']
     crd = create_dummy_crd(scope=crd_scope, versions=version_names)
 
@@ -141,7 +141,7 @@ def test__create_resources_from_crd(crd_scope, mocked_created_resources):
     assert len(gr._created_resources) == 0
 
     # Test the function
-    gr._create_resources_from_crd(crd)
+    gr.create_resources_from_crd(crd)
 
     # Confirm expected number of resources created
     assert len(gr._created_resources) == len(version_names)
