@@ -3,15 +3,24 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import yaml
 
 from lightkube import codecs
 from lightkube.resources.core_v1 import ConfigMap
 from lightkube.resources.rbac_authorization_v1 import Role
 from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.generic_resource import create_namespaced_resource
+from lightkube import generic_resource as gr
 from lightkube import LoadResourceError
 
 data_dir = Path(__file__).parent.joinpath('data')
+
+
+@pytest.fixture()
+def mocked_created_resources():
+    """Isolates the module variable generic_resource._created_resources to avoid test spillover"""
+    created_resources_dict = {}
+    with mock.patch("lightkube.generic_resource._created_resources", created_resources_dict) as mocked_created_resources:
+        yield mocked_created_resources
 
 
 def test_from_dict():
@@ -59,7 +68,7 @@ def test_from_dict_wrong_model():
 
 
 def test_from_dict_generic_res():
-    Mydb = create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
+    Mydb = gr.create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
     db = codecs.from_dict({
         'apiVersion': 'myapp.com/v1',
         'kind': 'Mydb',
@@ -78,7 +87,7 @@ def test_from_dict_generic_res():
     version = "testing.k8s.io/v1"
     kind = "Testing"
     group, version_n = version.split("/")
-    Testing = create_namespaced_resource(group=group, version=version_n, kind=kind,
+    Testing = gr.create_namespaced_resource(group=group, version=version_n, kind=kind,
                                          plural=f"{kind.lower()}s")
     testing = codecs.from_dict({
         'apiVersion': version,
@@ -181,12 +190,49 @@ def test_load_all_yaml_missing_dependency():
         )
 
 
+@pytest.mark.parametrize(
+    "create_resources_for_crds",
+    [
+        True,   # generic resources should be created
+        False,  # no generic resources should be created
+    ]
+)
+def test_load_all_yaml_creating_generic_resources(create_resources_for_crds, mocked_created_resources):
+    template_yaml = data_dir.joinpath('example-multi-version-crd.yaml').read_text()
+    template_dict = list(yaml.safe_load_all(template_yaml))[0]
+
+    expected_group = template_dict["spec"]["group"]
+    expected_kind = template_dict["spec"]["names"]["kind"]
+
+    # Confirm no generic resources exist before testing
+    assert len(gr._created_resources) == 0
+
+    objs = list(codecs.load_all_yaml(
+        template_yaml,
+        create_resources_for_crds=create_resources_for_crds,
+    ))
+
+    # Confirm expected resources exist
+    if create_resources_for_crds:
+        for version in template_dict["spec"]["versions"]:
+            resource = gr.get_generic_resource(f"{expected_group}/{version['name']}", expected_kind)
+            assert resource is not None
+
+        # Confirm we did not make any extra resources
+        assert len(gr._created_resources) == len(template_dict["spec"]["versions"])
+    else:
+        # Confirm we did not make any resources
+        assert len(gr._created_resources) == 0
+
+    assert len(objs) == 1
+
+
 def test_dump_all_yaml():
     cm = ConfigMap(
         apiVersion='v1', kind='ConfigMap',
         metadata=ObjectMeta(name='xyz', labels={'x': 'y'})
     )
-    Mydb = create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
+    Mydb = gr.create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
 
     db = Mydb(
         apiVersion='myapp.com/v1', kind='Mydb',
