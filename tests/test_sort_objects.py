@@ -1,6 +1,5 @@
 from collections import namedtuple
 import pytest
-from lightkube.core import sort_objects
 
 from lightkube import sort_objects
 
