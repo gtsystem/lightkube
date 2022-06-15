@@ -840,3 +840,5 @@ class AsyncClient:
     async def close(self):
         """Close the underline httpx client"""
         await self._client.close()
+
+

@@ -1,3 +1,4 @@
+from collections import namedtuple
 import unittest.mock
 import warnings
 
@@ -589,3 +590,4 @@ def test_apply_global(client: lightkube.Client):
     node = client.apply(Node.Status(), name='xx', field_manager='a', force=True)
     assert node.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
