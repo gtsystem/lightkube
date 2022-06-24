@@ -1,11 +1,17 @@
 from typing import Type, Any, Optional, overload
 
 from .core import resource as res
-from .core.client import Client
-from .core.internal_models import meta_v1, autoscaling_v1
-from .resources.apiextensions_v1 import CustomResourceDefinition
+from .core.client import Client, AsyncClient
+from .core.internal_models import meta_v1, autoscaling_v1, apiextensions_v1
 
-__all__ = ['create_global_resource', 'create_namespaced_resource']
+
+__all__ = [
+    'async_load_in_cluster_generic_resources',
+    'create_global_resource',
+    'create_namespaced_resource',
+    'create_resources_from_crd',
+    'load_in_cluster_generic_resources',
+]
 
 _created_resources = {}
 
@@ -183,12 +189,27 @@ def load_in_cluster_generic_resources(client: Client):
 
     * **client** `Client` - Lightkube Client to use to load the CRDs.
     """
-    crds = client.list(CustomResourceDefinition)
+    crds = client.list(apiextensions_v1.CustomResourceDefinition)
     for crd in crds:
         create_resources_from_crd(crd)
 
 
-def create_resources_from_crd(crd: CustomResourceDefinition):
+async def async_load_in_cluster_generic_resources(client: AsyncClient):
+    """Loads all in-cluster CustomResourceDefinitions as generic resources.
+
+    Once loaded, generic resources can be obtained from `generic_resource.get_generic_resource()`,
+    or used implicitly such as when using `codecs.load_all_yaml()`.
+
+    **Parameters**
+
+    * **client** `AsyncClient` - Lightkube AsyncClient to use to load the CRDs.
+    """
+    crds = await client.list(apiextensions_v1.CustomResourceDefinition)
+    for crd in crds:
+        create_resources_from_crd(crd)
+
+
+def create_resources_from_crd(crd: apiextensions_v1.CustomResourceDefinition):
     """Creates a generic resource for each version in a CustomResourceDefinition."""
     if crd.spec.scope == "Namespaced":
         creator = create_namespaced_resource

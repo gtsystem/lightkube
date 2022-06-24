@@ -72,6 +72,26 @@ def mocked_client_list_crds():
         yield mocked_client, crds, expected_n_resources
 
 
+@pytest.fixture()
+def mocked_asyncclient_list_crds():
+    """Yields an AsyncClient with a mocked .list which returns a fixed list of CRDs
+
+    **returns**  Tuple of: mocked `AsyncClient`, list of CRDs, integer number of resources defined by
+                 CRDs
+    """
+    scopes = ["Namespaced", "Cluster"]
+    version_names = ['v2', 'v3']
+
+    crds = [create_dummy_crd(scope=scope, kind=scope, versions=version_names) for scope in scopes]
+    expected_n_resources = len(version_names) * len(crds)
+
+    with mock.patch("lightkube.AsyncClient") as client_maker:
+        mocked_client = mock.AsyncMock()
+        mocked_client.list.return_value = crds
+        client_maker.return_value = mocked_client
+        yield mocked_client, crds, expected_n_resources
+
+
 def test_create_namespaced_resource():
     c = MockedClient()
     Test = gr.create_namespaced_resource('test.eu', 'v1', 'TestN', 'tests')
@@ -186,6 +206,28 @@ def test_load_in_cluster_generic_resources(mocked_created_resources, mocked_clie
 
     # Test the function
     gr.load_in_cluster_generic_resources(mocked_client)
+
+    # Confirm the expected resources and no others were created
+    assert len(gr._created_resources) == expected_n_resources
+    for crd in expected_crds:
+        for version in crd.spec.versions:
+            resource = gr.get_generic_resource(f"{crd.spec.group}/{version.name}", crd.spec.names.kind)
+            assert resource is not None
+
+    mocked_client.list.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_load_in_cluster_generic_resources(mocked_created_resources, mocked_asyncclient_list_crds):
+    """Test that async_load_in_cluster_generic_resources creates generic resources for crds in cluster"""
+    # Set up environment
+    mocked_client, expected_crds, expected_n_resources = mocked_asyncclient_list_crds
+
+    # Confirm no generic resources exist before testing
+    assert len(gr._created_resources) == 0
+
+    # Test the function
+    await gr.async_load_in_cluster_generic_resources(mocked_client)
 
     # Confirm the expected resources and no others were created
     assert len(gr._created_resources) == expected_n_resources

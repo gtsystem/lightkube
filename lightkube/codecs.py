@@ -5,7 +5,6 @@ import yaml
 
 from .generic_resource import get_generic_resource, GenericGlobalResource, GenericNamespacedResource, create_resources_from_crd
 from .core.exceptions import LoadResourceError
-from .resources.apiextensions_v1 import CustomResourceDefinition
 
 
 try:
@@ -75,7 +74,9 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
     * **template_env** - `jinja2` template environment to be used for templating. When absent a standard
         environment is used.
     * **create_resources_for_crds** - If True, a generic resource will be created for every version
-        of every CRD found.  Else, no generic resources will be created.  Default is False
+        of every CRD found that does not already have a generic resource.  There will be no side
+        effect for any CRD that already has a generic resource.  Else if False, no generic resources
+         will be created.  Default is False.
 
     **NOTE**: When using the template functionality (setting the context parameter), the dependency
         module `jinja2` need to be installed.
@@ -88,7 +89,7 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
             res = from_dict(obj)
             resources.append(res)
 
-            if create_resources_for_crds is True and isinstance(res, CustomResourceDefinition):
+            if create_resources_for_crds is True and res.kind == "CustomResourceDefinition":
                 create_resources_from_crd(res)
     return resources
 
