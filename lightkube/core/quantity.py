@@ -27,6 +27,7 @@ multipliers = {
 
 
 def parse_quantity(quantity: str) -> decimal.Decimal:
+    """Parse a quantity string into bytes."""
     pat = re.compile(r"([+-]?\d+(?:[.]\d*)?(?:e[+-]?\d+)?|[.]\d+(?:e[+-]?\d+)?)(.*)")
     match = pat.match(quantity)
 
@@ -45,5 +46,5 @@ def parse_quantity(quantity: str) -> decimal.Decimal:
     except KeyError:
         raise ValueError("Invalid unit suffix: {}".format(unit))
 
-    bibytes = value * base ** exp
-    return bibytes.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP)
+    as_bytes = value * base ** exp
+    return as_bytes.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP)

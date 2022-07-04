@@ -14,7 +14,7 @@ def test_unitless():
 
 
 def test_binary_notation():
-    assert parse_quantity("1.5Gi") == decimal.Decimal("1610612736")
+    assert parse_quantity("1.5Gi") == parse_quantity("1536Mi") == decimal.Decimal("1610612736")
     assert parse_quantity("0.9Gi") == decimal.Decimal("966367641.6")
 
 
