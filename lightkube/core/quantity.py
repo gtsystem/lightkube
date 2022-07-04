@@ -27,7 +27,10 @@ multipliers = {
 
 
 def parse_quantity(quantity: str) -> decimal.Decimal:
-    """Parse a quantity string into bytes."""
+    """Parse a quantity string into bytes.
+
+    Reference: https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
+    """
     pat = re.compile(r"([+-]?\d+(?:[.]\d*)?(?:e[+-]?\d+)?|[.]\d+(?:e[+-]?\d+)?)(.*)")
     match = pat.match(quantity)
 
