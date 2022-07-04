@@ -35,3 +35,12 @@ def test_invalid_unit():
         parse_quantity("1kb")
     with pytest.raises(ValueError):
         parse_quantity("1GGi")
+
+
+def test_whitespace():
+    with pytest.raises(ValueError):
+        parse_quantity("1 ")
+    with pytest.raises(ValueError):
+        parse_quantity(" 1")
+    with pytest.raises(ValueError):
+        parse_quantity("1 Gi")
