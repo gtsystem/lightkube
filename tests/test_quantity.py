@@ -7,6 +7,7 @@ from lightkube.core.quantity import parse_quantity
 def test_unitless():
     """Unitless values must be interpreted as decimal notation."""
     assert parse_quantity("1.5") == decimal.Decimal("1.5")
+    assert parse_quantity("-1.5") == decimal.Decimal("-1.5")
     assert parse_quantity("0.30000000000000004") == decimal.Decimal("0.301")
     assert parse_quantity("0.09999999999999998") == decimal.Decimal("0.1")
     assert parse_quantity("3.141592653") == decimal.Decimal("3.142")
