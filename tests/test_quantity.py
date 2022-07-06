@@ -133,3 +133,10 @@ def test_canonical_equality_for_resource_requirements_with_both():
     first = ResourceRequirements(limits={"cpu": "0.6", "memory": "1.5Gi"}, requests={"cpu": "0.5"})
     second = ResourceRequirements(limits={"cpu": "600m", "memory": "1536Mi"}, requests={"cpu": "500m"})
     assert equals_canonically(first, second)
+
+
+def test_invalid_canonical_equality():
+    with pytest.raises(TypeError):
+        equals_canonically({}, ResourceRequirements())
+    with pytest.raises(TypeError):
+        equals_canonically(None, ResourceRequirements())
