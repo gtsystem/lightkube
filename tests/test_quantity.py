@@ -95,6 +95,12 @@ def test_canonical_equality_with_cpu():
     assert equals_canonically(first, second)
 
 
+def test_canonical_equality_with_memory():
+    first = ResourceRequirements(limits={"memory": "1G"})
+    second = ResourceRequirements(limits={"memory": "1Gi"})
+    assert not equals_canonically(first, second)
+
+
 def test_canonical_equality_with_both():
     first = ResourceRequirements(limits={"cpu": "0.6", "memory": "1.5Gi"}, requests={"cpu": "0.5"})
     second = ResourceRequirements(limits={"cpu": "600m", "memory": "1536Mi"}, requests={"cpu": "500m"})
