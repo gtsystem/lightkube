@@ -1,7 +1,9 @@
 import decimal
 import pytest
 
+from lightkube.models.core_v1 import ResourceRequirements
 from lightkube.utils.quantity import parse_quantity
+from lightkube.utils.quantity import equals_canonically
 
 
 def test_unitless():
@@ -59,3 +61,41 @@ def test_whitespace():
         parse_quantity(" 1")
     with pytest.raises(ValueError):
         parse_quantity("1 Gi")
+
+
+def test_canonical_equality_with_blanks():
+    first = ResourceRequirements()
+    second = ResourceRequirements()
+    assert equals_canonically(first, second)
+
+    first = ResourceRequirements(limits={})
+    second = ResourceRequirements(limits={})
+    assert equals_canonically(first, second)
+
+    first = ResourceRequirements(limits={})
+    second = ResourceRequirements(requests={})
+    assert equals_canonically(first, second)
+
+
+def test_canonical_equality_with_cpu():
+    first = ResourceRequirements(limits={"cpu": "0.5"})
+    second = ResourceRequirements(limits={"cpu": "500m"})
+    assert equals_canonically(first, second)
+
+    first = ResourceRequirements(requests={"cpu": "0.5"})
+    second = ResourceRequirements(requests={"cpu": "500m"})
+    assert equals_canonically(first, second)
+
+    first = ResourceRequirements(limits={"cpu": "0.5"})
+    second = ResourceRequirements(requests={"cpu": "500m"})
+    assert not equals_canonically(first, second)
+
+    first = ResourceRequirements(limits={"cpu": "0.6"}, requests={"cpu": "0.5"})
+    second = ResourceRequirements(limits={"cpu": "600m"}, requests={"cpu": "500m"})
+    assert equals_canonically(first, second)
+
+
+def test_canonical_equality_with_both():
+    first = ResourceRequirements(limits={"cpu": "0.6", "memory": "1.5Gi"}, requests={"cpu": "0.5"})
+    second = ResourceRequirements(limits={"cpu": "600m", "memory": "1536Mi"}, requests={"cpu": "500m"})
+    assert equals_canonically(first, second)

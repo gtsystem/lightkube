@@ -1,6 +1,9 @@
 import decimal
 import re
 from typing import Optional
+from dataclasses import fields
+
+from ..models.core_v1 import ResourceRequirements
 
 
 MULTIPLIERS = {
@@ -76,3 +79,29 @@ def parse_quantity(quantity: Optional[str]) -> Optional[decimal.Decimal]:
         return as_decimal.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP)
     except ArithmeticError as e:
         raise ValueError("Invalid numerical value") from e
+
+
+def equals_canonically(first: ResourceRequirements, second: ResourceRequirements) -> bool:
+    """Compare two resource requirements for numerical equality.
+
+    **Parameters**
+
+    * **first** `ResourceRequirements` - The first ResourceRequirements to compare.
+    * **second** `ResourceRequirements` - The second ResourceRequirements to compare.
+
+    **returns**  True, if both arguments are numerically equal; False otherwise.
+    """
+    def is_eq(first_dict: Optional[dict], second_dict: Optional[dict]) -> bool:
+        if first_dict == second_dict:
+            # This covers two cases: (1) both args are None; (2) both args are identical dicts.
+            return True
+        if first_dict and second_dict:
+            ks = ("cpu", "memory")
+            return all(parse_quantity(first_dict.get(k)) == parse_quantity(second_dict.get(k)) for k in ks)
+        if not first_dict and not second_dict:
+            # This covers cases such as first=None and second={}
+            return True
+        return False
+
+    ks = [f.name for f in fields(ResourceRequirements)]  # limits, requests
+    return all(is_eq(getattr(first, k), getattr(second, k)) for k in ks)

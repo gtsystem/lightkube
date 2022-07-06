@@ -28,6 +28,9 @@ You may need to compare different quantities when interacting with K8s.
 ::: lightkube.utils.quantity.parse_quantity
     :docstring:
 
+::: lightkube.utils.quantity.equals_canonically
+    :docstring:
+
 ## Examples
 
 After patching a statefulset's resource limits you may want to compare
@@ -86,5 +89,9 @@ ResourceRequirements(limits={'cpu': '800m', 'memory': '966367641600m'}, requests
 >>> parse_quantity(pod.spec.containers[1].resources.requests["memory"])
 Decimal('536870912.000')
 >>> parse_quantity(pod.spec.containers[1].resources.requests["memory"]) == parse_quantity(resource_reqs.requests["memory"])
+True
+>>>
+>>> from lightkube.utils.quantity import equals_canonically
+>>> equals_canonically(pod.spec.containers[1].resources, resource_reqs)
 True
 ```
