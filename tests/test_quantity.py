@@ -63,7 +63,35 @@ def test_whitespace():
         parse_quantity("1 Gi")
 
 
-def test_canonical_equality_with_blanks():
+def test_canonical_equality_for_dicts_with_blanks():
+    first = {}
+    second = {}
+    assert equals_canonically(first, second)
+
+    first = {}
+    second = None
+    assert equals_canonically(first, second)
+
+
+def test_canonical_equality_for_dicts_with_cpu():
+    first = {"cpu": "0.5"}
+    second = {"cpu": "500m"}
+    assert equals_canonically(first, second)
+
+
+def test_canonical_equality_for_dicts_with_memory():
+    first = {"memory": "1G"}
+    second = {"memory": "1Gi"}
+    assert not equals_canonically(first, second)
+
+
+def test_canonical_equality_for_dicts_with_both():
+    first = {"cpu": "0.6", "memory": "1.5Gi"}
+    second = {"cpu": "600m", "memory": "1536Mi"}
+    assert equals_canonically(first, second)
+
+
+def test_canonical_equality_for_resource_requirements_with_blanks():
     first = ResourceRequirements()
     second = ResourceRequirements()
     assert equals_canonically(first, second)
@@ -77,7 +105,7 @@ def test_canonical_equality_with_blanks():
     assert equals_canonically(first, second)
 
 
-def test_canonical_equality_with_cpu():
+def test_canonical_equality_for_resource_requirements_with_cpu():
     first = ResourceRequirements(limits={"cpu": "0.5"})
     second = ResourceRequirements(limits={"cpu": "500m"})
     assert equals_canonically(first, second)
@@ -95,13 +123,13 @@ def test_canonical_equality_with_cpu():
     assert equals_canonically(first, second)
 
 
-def test_canonical_equality_with_memory():
+def test_canonical_equality_for_resource_requirements_with_memory():
     first = ResourceRequirements(limits={"memory": "1G"})
     second = ResourceRequirements(limits={"memory": "1Gi"})
     assert not equals_canonically(first, second)
 
 
-def test_canonical_equality_with_both():
+def test_canonical_equality_for_resource_requirements_with_both():
     first = ResourceRequirements(limits={"cpu": "0.6", "memory": "1.5Gi"}, requests={"cpu": "0.5"})
     second = ResourceRequirements(limits={"cpu": "600m", "memory": "1536Mi"}, requests={"cpu": "500m"})
     assert equals_canonically(first, second)

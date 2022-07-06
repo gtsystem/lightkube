@@ -92,6 +92,8 @@ Decimal('536870912.000')
 True
 >>>
 >>> from lightkube.utils.quantity import equals_canonically
+>>> equals_canonically(pod.spec.containers[1].resources.limits, resource_reqs.limits)
+True
 >>> equals_canonically(pod.spec.containers[1].resources, resource_reqs)
 True
 ```

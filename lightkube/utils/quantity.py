@@ -1,6 +1,6 @@
 import decimal
 import re
-from typing import Optional
+from typing import Optional, overload
 from dataclasses import fields
 
 from ..models.core_v1 import ResourceRequirements
@@ -81,13 +81,23 @@ def parse_quantity(quantity: Optional[str]) -> Optional[decimal.Decimal]:
         raise ValueError("Invalid numerical value") from e
 
 
+@overload
 def equals_canonically(first: ResourceRequirements, second: ResourceRequirements) -> bool:
+    ...
+
+
+@overload
+def equals_canonically(first: Optional[dict], second: Optional[dict]) -> bool:
+    ...
+
+
+def equals_canonically(first, second):
     """Compare two resource requirements for numerical equality.
 
     **Parameters**
 
-    * **first** `ResourceRequirements` - The first ResourceRequirements to compare.
-    * **second** `ResourceRequirements` - The second ResourceRequirements to compare.
+    * **first** `ResourceRequirements` or `dict` - The first item to compare.
+    * **second** `ResourceRequirements` or `dict` - The second item to compare.
 
     **returns**  True, if both arguments are numerically equal; False otherwise.
     """
@@ -103,5 +113,12 @@ def equals_canonically(first: ResourceRequirements, second: ResourceRequirements
             return True
         return False
 
-    ks = [f.name for f in fields(ResourceRequirements)]  # limits, requests
-    return all(is_eq(getattr(first, k), getattr(second, k)) for k in ks)
+    if isinstance(first, Optional[dict]) and isinstance(second, Optional[dict]):
+        return is_eq(first, second)
+    elif isinstance(first, ResourceRequirements) and isinstance(second, ResourceRequirements):
+        ks = [f.name for f in fields(ResourceRequirements)]  # limits, requests
+        return all(is_eq(getattr(first, k), getattr(second, k)) for k in ks)
+    else:
+        raise TypeError("unsupported operand type(s) for canonical comparison: '{}' and '{}'".format(
+            first.__class__.__name__, second.__class__.__name__,
+        ))
