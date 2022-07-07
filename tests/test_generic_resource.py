@@ -86,7 +86,12 @@ def mocked_asyncclient_list_crds():
     expected_n_resources = len(version_names) * len(crds)
 
     with mock.patch("lightkube.AsyncClient") as client_maker:
-        mocked_client = mock.AsyncMock()
+        # This can be removed when python < 3.8 is not supported
+        try:
+            mocked_client = mock.AsyncMock()
+        except AttributeError:
+            import asyncmock
+            mocked_client = asyncmock.AsyncMock()
         mocked_client.list.return_value = crds
         client_maker.return_value = mocked_client
         yield mocked_client, crds, expected_n_resources
