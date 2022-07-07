@@ -19,3 +19,10 @@ except:
 
     autoscaling_v1 = mock.Mock()
     autoscaling_v1.Scale = Scale
+
+
+    class ResourceRequirements:
+        pass
+
+    core_v1 = mock.Mock()
+    core_v1.ResourceRequirements = ResourceRequirements

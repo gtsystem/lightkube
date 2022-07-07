@@ -113,6 +113,15 @@ def equals_canonically(first: Optional[dict], second: Optional[dict]) -> bool:
 def equals_canonically(first, second):
     """Compare two resource requirements for numerical equality.
 
+    Both arguments must be of the same type and can be either:
+    - `ResourceRequirements`; or
+    - Optional[dict], representing the "limits" or the "requests" portion of `ResourceRequirements`.
+
+    >>> equals_canonically({"cpu": "0.6"}, {"cpu": "600m"})
+    True
+    >>> equals_canonically(ResourceRequirements(limits={"cpu": "0.6"}), ResourceRequirements(limits={"cpu": "600m"}))
+    True
+
     **Parameters**
 
     * **first** `ResourceRequirements` or `dict` - The first item to compare.
