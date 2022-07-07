@@ -2,7 +2,7 @@ from typing import Type, Any, Optional, overload
 
 from .core import resource as res
 from .core.client import Client, AsyncClient
-from .core.internal_models import meta_v1, autoscaling_v1, apiextensions_v1
+from .core.internal_models import meta_v1, autoscaling_v1, apiextensions
 
 
 __all__ = [
@@ -189,7 +189,7 @@ def load_in_cluster_generic_resources(client: Client):
 
     * **client** `Client` - Lightkube Client to use to load the CRDs.
     """
-    crds = client.list(apiextensions_v1.CustomResourceDefinition)
+    crds = client.list(apiextensions.CustomResourceDefinition)
     for crd in crds:
         create_resources_from_crd(crd)
 
@@ -204,12 +204,12 @@ async def async_load_in_cluster_generic_resources(client: AsyncClient):
 
     * **client** `AsyncClient` - Lightkube AsyncClient to use to load the CRDs.
     """
-    crds = await client.list(apiextensions_v1.CustomResourceDefinition)
+    crds = await client.list(apiextensions.CustomResourceDefinition)
     for crd in crds:
         create_resources_from_crd(crd)
 
 
-def create_resources_from_crd(crd: apiextensions_v1.CustomResourceDefinition):
+def create_resources_from_crd(crd: apiextensions.CustomResourceDefinition):
     """Creates a generic resource for each version in a CustomResourceDefinition."""
     if crd.spec.scope == "Namespaced":
         creator = create_namespaced_resource
