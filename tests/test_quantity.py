@@ -91,6 +91,20 @@ def test_canonical_equality_for_dicts_with_both():
     assert equals_canonically(first, second)
 
 
+def test_canonical_equality_for_extended_resources():
+    first = {"cpu": "0.6", "example.com/foo": "1"}
+    second = {"cpu": "600m", "example.com/foo": "1"}
+    assert equals_canonically(first, second)
+
+    first = {"cpu": "0.6", "example.com/foo": "1"}
+    second = {"cpu": "600m", "example.com/foo": "2"}
+    assert not equals_canonically(first, second)
+
+    first = {"cpu": "0.6", "example.com/foo": "1"}
+    second = {"cpu": "600m"}
+    assert not equals_canonically(first, second)
+
+
 def test_canonical_equality_for_resource_requirements_with_blanks():
     first = ResourceRequirements()
     second = ResourceRequirements()
