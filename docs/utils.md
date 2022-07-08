@@ -1,6 +1,8 @@
 # Utils
 
-## Convert quantity string to decimal
+## Quantity
+
+### Convert quantity string to decimal
 
 K8s converts user input
 [quantities](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/)
@@ -23,7 +25,7 @@ Additional examples:
 
 You may need to compare different quantities when interacting with K8s.
 
-## Interface
+### Interface
 
 ::: lightkube.utils.quantity.parse_quantity
     :docstring:
@@ -31,7 +33,31 @@ You may need to compare different quantities when interacting with K8s.
 ::: lightkube.utils.quantity.equals_canonically
     :docstring:
 
-## Examples
+### Examples
+
+#### Compare container memory request with limit
+
+```python
+from lightkube.utils.quantity import parse_quantity
+
+pod = client.get(Pod, name='my-pod')
+container_res = pod.spec.containers[0].resources
+if parse_quantity(container_res.requests['memory']) < parse_quantity(container_res.limits['memory']):
+    ... # request is less than limit, do something ...
+```
+
+#### Compare container request with limit
+
+```python
+from lightkube.utils.quantity import equals_canonically
+
+pod = client.get(Pod, name='my-pod')
+container_res = pod.spec.containers[0].resources
+if equals_canonically(container_res.requests, container_res.limits):
+    ... # requests and limits are the same ...
+```
+
+#### Complete example
 
 After patching a statefulset's resource limits you may want to compare
 user's input to the statefulset's template to the active podspec:
@@ -39,12 +65,7 @@ user's input to the statefulset's template to the active podspec:
 ```python
 >>> from lightkube import Client
 >>> from lightkube.models.apps_v1 import StatefulSetSpec
->>> from lightkube.models.core_v1 import (
-...     Container,
-...     PodSpec,
-...     PodTemplateSpec,
-...     ResourceRequirements,
-... )
+>>> from lightkube.models.core_v1 import (Container, PodSpec, PodTemplateSpec, ResourceRequirements)
 >>> from lightkube.resources.apps_v1 import StatefulSet
 >>> from lightkube.resources.core_v1 import Pod
 >>> from lightkube.types import PatchType
@@ -55,7 +76,7 @@ user's input to the statefulset's template to the active podspec:
 ... )
 >>>
 >>> client = Client()
->>> statefulset = client.get(StatefulSet, name="prom", namespace="mdl")
+>>> statefulset = client.get(StatefulSet, name="prom")
 >>>
 >>> delta = StatefulSet(
 ...     spec=StatefulSetSpec(
@@ -65,23 +86,15 @@ user's input to the statefulset's template to the active podspec:
 ...             spec=PodSpec(
 ...                 containers=[Container(name="prometheus", resources=resource_reqs)]
 ...             )
-...         ),
+...         )
 ...     )
 ... )
 >>>
->>> client.patch(
-...     StatefulSet,
-...     "prom",
-...     delta,
-...     namespace="mdl",
-...     patch_type=PatchType.APPLY,
-...     field_manager="just me",
-... )
->>>
->>> client.get(StatefulSet, name="prom", namespace="mdl").spec.template.spec.containers[1].resources
+>>> client.patch(StatefulSet, "prom", delta, patch_type=PatchType.APPLY, field_manager="just me")
+>>> client.get(StatefulSet, name="prom").spec.template.spec.containers[1].resources
 ResourceRequirements(limits={'cpu': '800m', 'memory': '966367641600m'}, requests={'cpu': '400m', 'memory': '512Mi'})
 >>>
->>> pod = client.get(Pod, name="prom-0", namespace="mdl")
+>>> pod = client.get(Pod, name="prom-0")
 >>> pod.spec.containers[1].resources
 ResourceRequirements(limits={'cpu': '800m', 'memory': '966367641600m'}, requests={'cpu': '400m', 'memory': '512Mi'})
 >>>

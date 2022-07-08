@@ -37,12 +37,12 @@ MULTIPLIERS = {k: decimal.Decimal(v[0])**v[1] for k, v in MULTIPLIERS.items()}
 def parse_quantity(quantity: Optional[str]) -> Optional[decimal.Decimal]:
     """Parse a quantity string into a bare (suffix-less) decimal.
 
-    K8s converts user input to a canonical representation. For example, "0.9Gi" would be converted
+    Kubernetes converts user input to a canonical representation. For example, "0.9Gi" would be converted
     to "966367641600m".
     This function can be useful for comparing user input to actual values, for example comparing
-    resource limits between a statefulset's template
-    (statefulset.spec.template.spec.containers[i].resources) and a scheduled pod
-    (pod.spec.containers[i].resources) after patching the statefulset.
+    resource limits between a StatefulSet's template
+    (`statefulset.spec.template.spec.containers[i].resources`) and a scheduled pod
+    (`pod.spec.containers[i].resources`) after patching the StatefulSet.
 
     **Parameters**
 
@@ -114,13 +114,20 @@ def equals_canonically(first, second):
     """Compare two resource requirements for numerical equality.
 
     Both arguments must be of the same type and can be either:
-    - `ResourceRequirements`; or
-    - Optional[dict], representing the "limits" or the "requests" portion of `ResourceRequirements`.
 
+    - An instance of `core_v1.ResourceRequirements`
+    - `Optional[dict]`: representing the "limits" or the "requests" portion of `ResourceRequirements`.
+
+    ```python
     >>> equals_canonically({"cpu": "0.6"}, {"cpu": "600m"})
     True
-    >>> equals_canonically(ResourceRequirements(limits={"cpu": "0.6"}), ResourceRequirements(limits={"cpu": "600m"}))
+
+    >>> equals_canonically(
+            ResourceRequirements(limits={"cpu": "0.6"}),
+            ResourceRequirements(limits={"cpu": "600m"})
+        )
     True
+    ```
 
     **Parameters**
 
