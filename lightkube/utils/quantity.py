@@ -129,7 +129,7 @@ def equals_canonically(first, second):
 
     **returns**  True, if both arguments are numerically equal; False otherwise.
     """
-    if isinstance(first, Optional[dict]) and isinstance(second, Optional[dict]):
+    if isinstance(first, (dict, type(None))) and isinstance(second, (dict, type(None))):
         # Args are 'limits' or 'requests' dicts
         return _equals_canonically(first, second)
     elif isinstance(first, ResourceRequirements) and isinstance(second, ResourceRequirements):
