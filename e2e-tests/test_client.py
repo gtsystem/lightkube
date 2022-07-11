@@ -397,7 +397,7 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
 @pytest.fixture()
 def sample_crd():
     client = Client()
-    fname = Path(__file__).parent.joinpath('test-crd.yaml')
+    fname = Path(__file__).parent.joinpath('test-crd-2.yaml')
     with fname.open() as f:
         crd = list(load_all_yaml(f))[0]
 
