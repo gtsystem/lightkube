@@ -65,6 +65,18 @@ with open('deployment.yaml') as f:
     Only defined resources can be loaded. These are either kubernetes [standard resources](resources-and-models.md) 
     or [generic resources](generic-resources.md) manually defined.
 
+If we have a YAML file that both defines a CRD and loads an instance of it, we can use `create_resources_for_crds=True`, like:
+
+```python
+from lightkube import Client, codecs
+
+client = Client()
+with open('file-with-crd-and-instance.yaml') as f:
+    for obj in codecs.load_all_yaml(f, create_resources_for_crds=True):
+        client.create(obj)
+```
+
+This results in a generic resource being created for any CustomResourceDefinition in the YAML file.  
 
 It is also possible to create resources from a [jinja2](https://jinja.palletsprojects.com) template 
 passing the parameter `context`.
