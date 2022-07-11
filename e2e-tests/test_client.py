@@ -394,6 +394,31 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
     await client.close()
 
 
+def delete_and_wait(client, res, name, *, namespace=None):
+    """Deletes a resource and waits for it to fully delete before returning
+
+    Raises a ValueError exception if deletion cannot be confirmed
+    """
+    client.delete(res, name=name, namespace=namespace)
+
+    max_attempts = 10
+    wait_time = 3
+    for i in range(max_attempts):
+        try:
+            cluster_res = client.get(res, name=name, namespace=namespace)
+        except ApiError as e:
+            if e.status.code == 404:
+                # Object does not exist - delete is successful
+                return
+
+        if i < max_attempts - 1:
+            print("Resource still exists - sleeping and trying again")
+            time.sleep(wait_time)
+
+    # If we get here, we've run out of attempts
+    raise ValueError("Resource not cleaned up successfully after max attempts")
+
+
 @pytest.fixture()
 def sample_crd():
     client = Client()
@@ -407,7 +432,7 @@ def sample_crd():
 
     yield crd
 
-    client.delete(crd.__class__, name=crd.metadata.name)
+    delete_and_wait(client, crd.__class__, name=crd.metadata.name)
 
 
 def test_load_in_cluster_generic_resources(sample_crd):
