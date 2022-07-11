@@ -396,7 +396,7 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
     await client.close()
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def sample_crd():
     client = Client()
     fname = Path(__file__).parent.joinpath('test-crd.yaml')
@@ -405,9 +405,12 @@ def sample_crd():
 
     # modify the crd to be unique, avoiding collision with other tests
     prefix = "".join(choices(ascii_lowercase, k=5))
-    crd.metadata.name = f"{prefix}{crd.metadata.name}"
+    crd.spec.group = f"{prefix}{crd.spec.group}"
     crd.spec.names.plural = f"{prefix}{crd.spec.names.plural}"
     crd.spec.names.singular = f"{prefix}{crd.spec.names.singular}"
+    crd.spec.names.kind = f"{prefix}{crd.spec.names.kind}"
+    crd.spec.names.shortnames = [f"{prefix}{shortname}" for shortname in crd.spec.names.shortNames]
+    crd.metadata.name = f"{crd.spec.names.plural}.{crd.spec.group}"
 
     client.create(crd)
     # CRD endpoints are not ready immediately, we need to wait for condition `Established`
