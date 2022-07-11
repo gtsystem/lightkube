@@ -72,6 +72,25 @@ def mocked_client_list_crds():
         yield mocked_client, crds, expected_n_resources
 
 
+class AsyncIterator:
+    """Provides a `async for` compatible iterator
+
+    Pattern taken from https://stackoverflow.com/a/36724229/5394584
+    """
+    def __init__(self, seq):
+        self.iter = iter(seq)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self.iter)
+        except StopIteration:
+            raise StopAsyncIteration
+
+
+@pytest.mark.asyncio
 @pytest.fixture()
 def mocked_asyncclient_list_crds():
     """Yields an AsyncClient with a mocked .list which returns a fixed list of CRDs
@@ -83,6 +102,7 @@ def mocked_asyncclient_list_crds():
     version_names = ['v2', 'v3']
 
     crds = [create_dummy_crd(scope=scope, kind=scope, versions=version_names) for scope in scopes]
+    asynccrds = AsyncIterator(crds)
     expected_n_resources = len(version_names) * len(crds)
 
     with mock.patch("lightkube.AsyncClient") as client_maker:
@@ -92,7 +112,12 @@ def mocked_asyncclient_list_crds():
         except AttributeError:
             import asyncmock
             mocked_client = asyncmock.AsyncMock()
-        mocked_client.list.return_value = crds
+
+        # AsyncClient.list is not async, but AsyncMock will automatically generate it as async.
+        # Instead, mock it explicitly with a regular MagicMock
+        mocked_list = mock.MagicMock()
+        mocked_list.return_value = asynccrds
+        mocked_client.list = mocked_list
         client_maker.return_value = mocked_client
         yield mocked_client, crds, expected_n_resources
 
