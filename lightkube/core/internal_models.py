@@ -12,6 +12,14 @@ except:
         raise
     from unittest import mock
 
+
+    class CustomResourceDefinition:
+        pass
+
+    apiextensions = mock.Mock()
+    apiextensions.CustomResourceDefinition = CustomResourceDefinition
+
+
     class ObjectMeta:
         pass
 
