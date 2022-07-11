@@ -2,7 +2,8 @@ from typing import Type, Any, Optional, overload
 
 from .core import resource as res
 from .core.client import Client, AsyncClient
-from .core.internal_models import meta_v1, autoscaling_v1, apiextensions
+from .core.internal_models import meta_v1, autoscaling_v1
+from .core.internal_resources import apiextensions
 
 
 __all__ = [
@@ -204,8 +205,8 @@ async def async_load_in_cluster_generic_resources(client: AsyncClient):
 
     * **client** `AsyncClient` - Lightkube AsyncClient to use to load the CRDs.
     """
-    crds = await client.list(apiextensions.CustomResourceDefinition)
-    for crd in crds:
+    crds = client.list(apiextensions.CustomResourceDefinition)
+    async for crd in crds:
         create_resources_from_crd(crd)
 
 
