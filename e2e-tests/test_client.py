@@ -404,12 +404,16 @@ def delete_and_wait(client, res, name, *, namespace=None):
     max_attempts = 10
     wait_time = 3
     for i in range(max_attempts):
+        print(f"Confirming that resource {res} of {name} in namespace {namespace} "
+              f"has finished deleting (attempt {i+1} of {max_attempts})")
         try:
-            cluster_res = client.get(res, name=name, namespace=namespace)
+            client.get(res, name=name, namespace=namespace)
         except ApiError as e:
             if e.status.code == 404:
                 # Object does not exist - delete is successful
                 return
+            else:
+                raise e
 
         if i < max_attempts - 1:
             print("Resource still exists - sleeping and trying again")
