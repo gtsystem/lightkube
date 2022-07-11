@@ -1,7 +1,7 @@
 import sys
 
 try:
-    from ..models import meta_v1, autoscaling_v1
+    from ..models import meta_v1, autoscaling_v1, core_v1
 
     try:
         from ..models import apiextensions_v1 as apiextensions
@@ -24,3 +24,10 @@ except:
 
     autoscaling_v1 = mock.Mock()
     autoscaling_v1.Scale = Scale
+
+
+    class ResourceRequirements:
+        pass
+
+    core_v1 = mock.Mock()
+    core_v1.ResourceRequirements = ResourceRequirements

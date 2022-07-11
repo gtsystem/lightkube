@@ -15,6 +15,7 @@ nav:
   - Client Interface: client.md
   - Resources & Models: resources-and-models.md
   - Async Usage: async-usage.md
+  - Utils: utils.md
   - Advanced:
       - Exceptions: exceptions.md
       - Selectors: selectors.md
