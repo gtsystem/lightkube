@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from string import ascii_lowercase
+from random import choices
 
 import pytest
 
@@ -394,41 +396,18 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
     await client.close()
 
 
-def delete_and_wait(client, res, name, *, namespace=None):
-    """Deletes a resource and waits for it to fully delete before returning
-
-    Raises a ValueError exception if deletion cannot be confirmed
-    """
-    client.delete(res, name=name, namespace=namespace)
-
-    max_attempts = 10
-    wait_time = 3
-    for i in range(max_attempts):
-        print(f"Confirming that resource {res} of {name} in namespace {namespace} "
-              f"has finished deleting (attempt {i+1} of {max_attempts})")
-        try:
-            client.get(res, name=name, namespace=namespace)
-        except ApiError as e:
-            if e.status.code == 404:
-                # Object does not exist - delete is successful
-                return
-            else:
-                raise e
-
-        if i < max_attempts - 1:
-            print("Resource still exists - sleeping and trying again")
-            time.sleep(wait_time)
-
-    # If we get here, we've run out of attempts
-    raise ValueError("Resource not cleaned up successfully after max attempts")
-
-
 @pytest.fixture()
 def sample_crd():
     client = Client()
-    fname = Path(__file__).parent.joinpath('test-crd-2.yaml')
+    fname = Path(__file__).parent.joinpath('test-crd.yaml')
     with fname.open() as f:
         crd = list(load_all_yaml(f))[0]
+
+    # modify the crd to be unique, avoiding collision with other tests
+    prefix = "".join(choices(ascii_lowercase, k=5))
+    crd.metadata.name = f"{prefix}{crd.metadata.name}"
+    crd.spec.names.plural = f"{prefix}{crd.spec.names.plural}"
+    crd.spec.names.singular = f"{prefix}{crd.spec.names.singular}"
 
     client.create(crd)
     # CRD endpoints are not ready immediately, we need to wait for condition `Established`
@@ -436,7 +415,7 @@ def sample_crd():
 
     yield crd
 
-    delete_and_wait(client, crd.__class__, name=crd.metadata.name)
+    client.delete(crd.__class__, name=crd.metadata.name)
 
 
 def test_load_in_cluster_generic_resources(sample_crd):
