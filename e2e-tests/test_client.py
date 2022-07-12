@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from string import ascii_lowercase
+from random import choices
 
 import pytest
 
@@ -11,7 +13,8 @@ from lightkube.resources.apps_v1 import Deployment
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.models.core_v1 import PodSpec, Container, ServiceSpec, ServicePort
 from lightkube.codecs import load_all_yaml
-from lightkube.generic_resource import create_namespaced_resource
+from lightkube.generic_resource import create_namespaced_resource, get_generic_resource, \
+    load_in_cluster_generic_resources, async_load_in_cluster_generic_resources
 
 uid_count = 0
 
@@ -391,3 +394,61 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
     await client.delete(resource, created.metadata.name)
 
     await client.close()
+
+
+@pytest.fixture(scope="function")
+def sample_crd():
+    client = Client()
+    fname = Path(__file__).parent.joinpath('test-crd.yaml')
+    with fname.open() as f:
+        crd = list(load_all_yaml(f))[0]
+
+    # modify the crd to be unique, avoiding collision with other tests
+    prefix = "".join(choices(ascii_lowercase, k=5))
+    crd.spec.group = f"{prefix}{crd.spec.group}"
+    crd.spec.names.plural = f"{prefix}{crd.spec.names.plural}"
+    crd.spec.names.singular = f"{prefix}{crd.spec.names.singular}"
+    crd.spec.names.kind = f"{prefix}{crd.spec.names.kind}"
+    crd.spec.names.shortnames = [f"{prefix}{shortname}" for shortname in crd.spec.names.shortNames]
+    crd.metadata.name = f"{crd.spec.names.plural}.{crd.spec.group}"
+
+    client.create(crd)
+    # CRD endpoints are not ready immediately, we need to wait for condition `Established`
+    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=['Established'])
+
+    yield crd
+
+    client.delete(crd.__class__, name=crd.metadata.name)
+
+
+def test_load_in_cluster_generic_resources(sample_crd):
+    client = Client()
+
+    # Assert that we do not yet have a generic resource for this CR
+    cr_version = f"{sample_crd.spec.group}/{sample_crd.spec.versions[0].name}"
+    cr_kind = sample_crd.spec.names.kind
+    gr = get_generic_resource(cr_version, cr_kind)
+    assert gr is None
+
+    load_in_cluster_generic_resources(client)
+
+    # Assert that we now have a generic resource for this CR
+    gr = get_generic_resource(cr_version, cr_kind)
+    assert gr is not None
+
+
+@pytest.mark.asyncio
+async def test_load_in_cluster_generic_resources_async(sample_crd):
+    client = AsyncClient()
+
+    # Assert that we do not yet have a generic resource for this CR
+    cr_version = f"{sample_crd.spec.group}/{sample_crd.spec.versions[0].name}"
+    cr_kind = sample_crd.spec.names.kind
+    gr = get_generic_resource(cr_version, cr_kind)
+    assert gr is None
+
+    await async_load_in_cluster_generic_resources(client)
+
+    # Assert that we now have a generic resource for this CR
+    gr = get_generic_resource(cr_version, cr_kind)
+    assert gr is not None

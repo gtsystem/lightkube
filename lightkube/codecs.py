@@ -3,8 +3,9 @@ from typing import Union, TextIO, List
 
 import yaml
 
-from .generic_resource import get_generic_resource, GenericGlobalResource, GenericNamespacedResource
+from .generic_resource import get_generic_resource, GenericGlobalResource, GenericNamespacedResource, create_resources_from_crd
 from .core.exceptions import LoadResourceError
+
 
 try:
     import jinja2
@@ -59,7 +60,7 @@ def from_dict(d: dict) -> AnyResource:
     return model.from_dict(d)
 
 
-def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env = None) -> List[AnyResource]:
+def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env = None, create_resources_for_crds: bool = False) -> List[AnyResource]:
     """Load kubernetes resource objects defined as YAML. See `from_dict` regarding how resource types are detected.
     Returns a list of resource objects or raise a `LoadResourceError`.  Skips any empty YAML documents in the
     stream, returning an empty list if all YAML documents are empty.
@@ -72,17 +73,25 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
         will be used during templating.
     * **template_env** - `jinja2` template environment to be used for templating. When absent a standard
         environment is used.
+    * **create_resources_for_crds** - If True, a generic resource will be created for every version
+        of every CRD found that does not already have a generic resource.  There will be no side
+        effect for any CRD that already has a generic resource.  Else if False, no generic resources
+         will be created.  Default is False.
 
     **NOTE**: When using the template functionality (setting the context parameter), the dependency
         module `jinja2` need to be installed.
     """
     if context is not None:
         stream = _template(stream, context=context, template_env=template_env)
-    res = []
+    resources = []
     for obj in yaml.safe_load_all(stream):
         if obj is not None:
-            res.append(from_dict(obj))
-    return res
+            res = from_dict(obj)
+            resources.append(res)
+
+            if create_resources_for_crds is True and res.kind == "CustomResourceDefinition":
+                create_resources_from_crd(res)
+    return resources
 
 
 def dump_all_yaml(resources: List[AnyResource], stream: TextIO = None, indent=2):

@@ -1,14 +1,125 @@
 import pytest
+from unittest import mock
 
 from lightkube import generic_resource as gr
 from lightkube.core.generic_client import GenericClient
 from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
+from lightkube.models.apiextensions_v1 import (
+    CustomResourceDefinitionNames,
+    CustomResourceDefinitionSpec,
+    CustomResourceDefinitionVersion,
+)
+
+
+def create_dummy_crd(group="thisgroup", kind="thiskind", plural="thiskinds", scope="Namespaced",
+                     versions=None):
+    if versions is None:
+        versions = ['v1alpha1', 'v1']
+
+    crd = CustomResourceDefinition(
+        spec=CustomResourceDefinitionSpec(
+            group=group,
+            names=CustomResourceDefinitionNames(
+                kind=kind,
+                plural=plural,
+            ),
+            scope=scope,
+            versions=[
+                CustomResourceDefinitionVersion(
+                    name=version,
+                    served=True,
+                    storage=True,
+                ) for version in versions
+            ],
+        )
+    )
+
+    return crd
+
+
+@pytest.fixture()
+def mocked_created_resources():
+    """Isolates the module variable generic_resource._created_resources to avoid test spillover"""
+    created_resources_dict = {}
+    with mock.patch("lightkube.generic_resource._created_resources", created_resources_dict) as mocked_created_resources:
+        yield mocked_created_resources
 
 
 class MockedClient(GenericClient):
     def __init__(self):
         self.namespace = 'default'
         self._field_manager = None
+
+
+@pytest.fixture()
+def mocked_client_list_crds():
+    """Yields a Client with a mocked .list which returns a fixed list of CRDs
+
+    **returns**  Tuple of: mocked `Client`, list of CRDs, integer number of resources defined by
+                 CRDs
+    """
+    scopes = ["Namespaced", "Cluster"]
+    version_names = ['v2', 'v3']
+
+    crds = [create_dummy_crd(scope=scope, kind=scope, versions=version_names) for scope in scopes]
+    expected_n_resources = len(version_names) * len(crds)
+
+    with mock.patch("lightkube.Client") as client_maker:
+        mocked_client = mock.MagicMock()
+        mocked_client.list.return_value = crds
+        client_maker.return_value = mocked_client
+        yield mocked_client, crds, expected_n_resources
+
+
+class AsyncIterator:
+    """Provides a `async for` compatible iterator
+
+    Pattern taken from https://stackoverflow.com/a/36724229/5394584
+    """
+    def __init__(self, seq):
+        self.iter = iter(seq)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self.iter)
+        except StopIteration:
+            raise StopAsyncIteration
+
+
+@pytest.mark.asyncio
+@pytest.fixture()
+def mocked_asyncclient_list_crds():
+    """Yields an AsyncClient with a mocked .list which returns a fixed list of CRDs
+
+    **returns**  Tuple of: mocked `AsyncClient`, list of CRDs, integer number of resources defined by
+                 CRDs
+    """
+    scopes = ["Namespaced", "Cluster"]
+    version_names = ['v2', 'v3']
+
+    crds = [create_dummy_crd(scope=scope, kind=scope, versions=version_names) for scope in scopes]
+    asynccrds = AsyncIterator(crds)
+    expected_n_resources = len(version_names) * len(crds)
+
+    with mock.patch("lightkube.AsyncClient") as client_maker:
+        # This can be removed when python < 3.8 is not supported
+        try:
+            mocked_client = mock.AsyncMock()
+        except AttributeError:
+            import asyncmock
+            mocked_client = asyncmock.AsyncMock()
+
+        # AsyncClient.list is not async, but AsyncMock will automatically generate it as async.
+        # Instead, mock it explicitly with a regular MagicMock
+        mocked_list = mock.MagicMock()
+        mocked_list.return_value = asynccrds
+        mocked_client.list = mocked_list
+        client_maker.return_value = mocked_client
+        yield mocked_client, crds, expected_n_resources
 
 
 def test_create_namespaced_resource():
@@ -65,6 +176,32 @@ def test_create_global_resource():
     assert pr.url == 'apis/test.eu/v1/tests/xx/status'
 
 
+@pytest.mark.parametrize(
+    "crd_scope",
+    [
+        "Namespaced",
+        "Cluster",
+    ]
+)
+def test_create_resources_from_crd(crd_scope, mocked_created_resources):
+    version_names = ['v1alpha1', 'v1', 'v2']
+    crd = create_dummy_crd(scope=crd_scope, versions=version_names)
+
+    # Confirm no generic resources exist before testing
+    assert len(gr._created_resources) == 0
+
+    # Test the function
+    gr.create_resources_from_crd(crd)
+
+    # Confirm expected number of resources created
+    assert len(gr._created_resources) == len(version_names)
+
+    # Confirm expected resources exist
+    for version in version_names:
+        resource = gr.get_generic_resource(f"{crd.spec.group}/{version}", crd.spec.names.kind)
+        assert resource is not None
+
+
 def test_generic_model():
     mod = gr.Generic.from_dict({'metadata': {'name': 'bla'}, 'test': {'ok': 4}})
     assert mod.metadata.name == 'bla'
@@ -87,6 +224,50 @@ def test_generic_model():
 
     with pytest.raises(AttributeError):
         mod._a
+
+
+def test_load_in_cluster_generic_resources(mocked_created_resources, mocked_client_list_crds):
+    """Test that load_in_cluster_generic_resources creates generic resources for crds in cluster"""
+    # Set up environment
+    mocked_client, expected_crds, expected_n_resources = mocked_client_list_crds
+
+    # Confirm no generic resources exist before testing
+    assert len(gr._created_resources) == 0
+
+    # Test the function
+    gr.load_in_cluster_generic_resources(mocked_client)
+
+    # Confirm the expected resources and no others were created
+    assert len(gr._created_resources) == expected_n_resources
+    for crd in expected_crds:
+        for version in crd.spec.versions:
+            resource = gr.get_generic_resource(f"{crd.spec.group}/{version.name}", crd.spec.names.kind)
+            assert resource is not None
+
+    mocked_client.list.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_load_in_cluster_generic_resources(mocked_created_resources, mocked_asyncclient_list_crds):
+    """Test that async_load_in_cluster_generic_resources creates generic resources for crds in cluster"""
+    # Set up environment
+    mocked_client, expected_crds, expected_n_resources = mocked_asyncclient_list_crds
+
+    # Confirm no generic resources exist before testing
+    assert len(gr._created_resources) == 0
+
+    # Test the function
+    await gr.async_load_in_cluster_generic_resources(mocked_client)
+
+    # Confirm the expected resources and no others were created
+    assert len(gr._created_resources) == expected_n_resources
+    for crd in expected_crds:
+        for version in crd.spec.versions:
+            resource = gr.get_generic_resource(f"{crd.spec.group}/{version.name}", crd.spec.names.kind)
+            assert resource is not None
+
+    # This only works for python >3.8, not for the asyncmock package needed in <3.8
+    # mocked_client.list.assert_called_once()
 
 
 def test_scale_model():

@@ -1,9 +1,18 @@
 from typing import Type, Any, Optional, overload
 
 from .core import resource as res
+from .core.client import Client, AsyncClient
 from .core.internal_models import meta_v1, autoscaling_v1
+from .core.internal_resources import apiextensions
 
-__all__ = ['create_global_resource', 'create_namespaced_resource']
+
+__all__ = [
+    'async_load_in_cluster_generic_resources',
+    'create_global_resource',
+    'create_namespaced_resource',
+    'create_resources_from_crd',
+    'load_in_cluster_generic_resources',
+]
 
 _created_resources = {}
 
@@ -169,3 +178,58 @@ def create_namespaced_resource(group: str, version: str, kind: str, plural: str,
     """
     return _create_resource(
         True, group, version, kind, plural, verbs=verbs)
+
+
+def load_in_cluster_generic_resources(client: Client):
+    """Loads all in-cluster CustomResourceDefinitions as generic resources.
+
+    Once loaded, generic resources can be obtained from `generic_resource.get_generic_resource()`,
+    or used implicitly such as when using `codecs.load_all_yaml()`.
+
+    **Parameters**
+
+    * **client** `Client` - Lightkube Client to use to load the CRDs.
+    """
+    crds = client.list(apiextensions.CustomResourceDefinition)
+    for crd in crds:
+        create_resources_from_crd(crd)
+
+
+async def async_load_in_cluster_generic_resources(client: AsyncClient):
+    """Loads all in-cluster CustomResourceDefinitions as generic resources.
+
+    Once loaded, generic resources can be obtained from `generic_resource.get_generic_resource()`,
+    or used implicitly such as when using `codecs.load_all_yaml()`.
+
+    **Parameters**
+
+    * **client** `AsyncClient` - Lightkube AsyncClient to use to load the CRDs.
+    """
+    crds = client.list(apiextensions.CustomResourceDefinition)
+    async for crd in crds:
+        create_resources_from_crd(crd)
+
+
+def create_resources_from_crd(crd: apiextensions.CustomResourceDefinition):
+    """Creates a generic resource for each version in a CustomResourceDefinition."""
+    if crd.spec.scope == "Namespaced":
+        creator = create_namespaced_resource
+    elif crd.spec.scope == "Cluster":
+        creator = create_global_resource
+    else:
+        raise ValueError(
+            f"Unexpected scope for resource.  Expected 'Namespaced' or 'Cluster',"
+            f" got {crd.spec.scope}"
+        )
+
+    for version in crd.spec.versions:
+        creator(**_crd_to_dict(crd, version.name))
+
+
+def _crd_to_dict(crd, version_name):
+    return {
+        "group": crd.spec.group,
+        "version": version_name,
+        "kind": crd.spec.names.kind,
+        "plural": crd.spec.names.plural,
+    }
