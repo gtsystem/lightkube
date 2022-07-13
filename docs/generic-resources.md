@@ -67,11 +67,17 @@ job = client.get(Job.Status, name="job1", namespace="my-namespace")
 
 Some helper functions are also included to make using generic resources easier:
 
+::: lightkube.generic_resource.get_generic_resource
+    :docstring:
+
 ::: lightkube.generic_resource.load_in_cluster_generic_resources
-:docstring:
+    :docstring:
+
+::: lightkube.generic_resource.async_load_in_cluster_generic_resources
+    :docstring:
 
 ::: lightkube.generic_resource.create_resources_from_crd
-:docstring:
+    :docstring:
 
 `load_in_cluster_generic_resources` loads all CRDs in the cluster as generic resources, removing the need for explicitly defining each resource needed.  This is especially helpful for scripting around YAML files that may use unknown custom resources.  For example, using the [Kubernetes example of the CronTab CRD](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/):
 

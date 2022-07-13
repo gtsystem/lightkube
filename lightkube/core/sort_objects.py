@@ -7,9 +7,10 @@ def sort_objects(objs: List[r.Resource], by: str = "kind", reverse: bool = False
     """Sorts a list of resource objects by a sorting schema, returning a new list
 
     **parameters**
+
     * **objs** - list of resource objects to be sorted
     * **by** - *(optional)* sorting schema. Possible values:
-        * **kind** - sorts by kind, ranking objects in an order that is suitable for batch-applying
+        * `'kind'` - sorts by kind, ranking objects in an order that is suitable for batch-applying
           many resources.  For example, Namespaces and ServiceAccounts are sorted ahead of
           ClusterRoleBindings or Pods that might use them.  The reverse of this order is suitable
           for batch-deleting.

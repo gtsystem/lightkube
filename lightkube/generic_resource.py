@@ -11,6 +11,7 @@ __all__ = [
     'create_global_resource',
     'create_namespaced_resource',
     'create_resources_from_crd',
+    'get_generic_resource',
     'load_in_cluster_generic_resources',
 ]
 
@@ -18,6 +19,16 @@ _created_resources = {}
 
 
 def get_generic_resource(version, kind):
+    """Query generic resources already defined using one of the other methods described in this module or via
+    `codecs.load_all_yaml(..., create_resources_for_crds=True)`
+
+    **Parameters**
+
+    * **version** `str` - Resource version including the API group. Example `stable.example.com/v1`
+    * **kind** `str` - Resource kind. Example: `CronTab`
+
+    **returns** class representing the generic resource or `None` if it's not found
+    """
     global _created_resources
     model = _created_resources.get((version, kind))
     return model[0] if model is not None else None
