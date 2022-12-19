@@ -24,7 +24,7 @@ This module is powered by [httpx](https://github.com/encode/httpx/tree/master/ht
 
 ## Installation
 
-This module requires python >= 3.6 
+This module requires python >= 3.7 
 
     pip install lightkube
 
