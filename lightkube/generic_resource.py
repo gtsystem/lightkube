@@ -1,7 +1,8 @@
 from typing import Type, Any, Optional, overload
 
 from .core import resource as res
-from .core.client import Client, AsyncClient
+from .core.client import Client
+from .core.async_client import AsyncClient
 from .core.internal_models import meta_v1, autoscaling_v1
 from .core.internal_resources import apiextensions
 

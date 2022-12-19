@@ -1,5 +1,6 @@
 from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
 import httpx
+
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
@@ -8,20 +9,11 @@ from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
-
-NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
-GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
-GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
-NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
-AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
-Resource = TypeVar('Resource', bound=r.Resource)
-LabelValue = Union[str, None, operators.Operator, Iterable]
-FieldValue = Union[str, operators.BinaryOperator, operators.SequenceOperator]
-LabelSelector = Dict[str, LabelValue]
-FieldSelector = Dict[str, FieldValue]
+from .client import NamespacedResource, GlobalResource, GlobalSubResource, NamespacedSubResource, \
+    AllNamespacedResource, Resource, LabelValue, FieldValue, LabelSelector, FieldSelector
 
 
-class Client:
+class AsyncClient:
     """Creates a new lightkube client
 
     **parameters**
@@ -35,13 +27,13 @@ class Client:
     * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
       accessed.
     * **field_manager** - Name associated with the actor or entity that is making these changes.
-    * **trust_env** - Ignore environment variables, also passed through to httpx.Client trust_env.  See its
+    * **trust_env** - Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
     """
     def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
                  timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
-        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
-                                         field_manager=field_manager, trust_env=trust_env)
+        self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
+                                          field_manager=field_manager, trust_env=trust_env)
 
     @property
     def namespace(self):
@@ -54,16 +46,16 @@ class Client:
         return self._client.config
 
     @overload
-    def delete(self, res: Type[GlobalResource], name: str, grace_period: int = None,
+    async def delete(self, res: Type[GlobalResource], name: str, grace_period: int = None,
                cascade: CascadeType = None) -> None:
         ...
 
     @overload
-    def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None, grace_period: int = None,
+    async def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None, grace_period: int = None,
                cascade: CascadeType = None) -> None:
         ...
 
-    def delete(self, res, name: str, *, namespace: str = None, grace_period: int = None,
+    async def delete(self, res, name: str, *, namespace: str = None, grace_period: int = None,
                cascade: CascadeType = None):
         """Delete an object
 
@@ -83,28 +75,28 @@ class Client:
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
         """
-        return self._client.request("delete", res=res, name=name, namespace=namespace, params={
+        return await self._client.request("delete", res=res, name=name, namespace=namespace, params={
             'gracePeriodSeconds': grace_period,
             'propagationPolicy': cascade.value if cascade else None
         })
 
     @overload
-    def deletecollection(self, res: Type[GlobalResource], grace_period: int = None,
-                         cascade: CascadeType = None) -> None:
+    async def deletecollection(self, res: Type[GlobalResource], grace_period: int = None,
+               cascade: CascadeType = None) -> None:
         ...
 
     @overload
-    def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None, grace_period: int = None,
-                         cascade: CascadeType = None) -> None:
+    async def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None, grace_period: int = None,
+               cascade: CascadeType = None) -> None:
         ...
 
-    def deletecollection(self, res, *, namespace: str = None, grace_period: int = None,
-                         cascade: CascadeType = None):
+    async def deletecollection(self, res, *, namespace: str = None, grace_period: int = None,
+               cascade: CascadeType = None):
         """Delete all objects of the given kind
 
         * **res** - Resource kind.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **grace_period** - *(optional)* The duration in seconds before the objects should be deleted.
+        * **grace_period** - *(optional)* The duration in seconds before the object should be deleted.
             Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
             (default), the default grace period for the specified type will be used. Defaults to a per object value if
             not specified. Zero means delete immediately.
@@ -115,20 +107,20 @@ class Client:
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
         """
-        return self._client.request("deletecollection", res=res, namespace=namespace, params={
+        return await self._client.request("deletecollection", res=res, namespace=namespace, params={
             'gracePeriodSeconds': grace_period,
             'propagationPolicy': cascade.value if cascade else None
         })
 
     @overload
-    def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
+    async def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
         ...
 
     @overload
-    def get(self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None) -> AllNamespacedResource:
+    async def get(self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None) -> AllNamespacedResource:
         ...
 
-    def get(self, res, name, *, namespace=None):
+    async def get(self, res, name, *, namespace=None):
         """Return an object
 
         **parameters**
@@ -137,17 +129,17 @@ class Client:
         * **name** - Name of the object to fetch.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         """
-        return self._client.request("get", res=res, name=name, namespace=namespace)
+        return await self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
     def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[GlobalResource]:
+            AsyncIterable[GlobalResource]:
         ...
 
     @overload
     def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
              labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[NamespacedResource]:
+            AsyncIterable[NamespacedResource]:
         ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
@@ -177,7 +169,7 @@ class Client:
     def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None,
               resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, GlobalResource]]:
+            AsyncIterable[Tuple[str, GlobalResource]]:
         ...
 
     @overload
@@ -185,7 +177,7 @@ class Client:
               labels: LabelSelector = None, fields: FieldSelector = None,
               server_timeout: int = None, resource_version: str = None,
               on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, NamespacedResource]]:
+            AsyncIterable[Tuple[str, NamespacedResource]]:
         ...
 
     def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
@@ -215,7 +207,7 @@ class Client:
         return self._client.watch(br, on_error=on_error)
 
     @overload
-    def wait(
+    async def wait(
         self,
         res: Type[GlobalResource],
         name: str,
@@ -226,7 +218,7 @@ class Client:
         ...
 
     @overload
-    def wait(
+    async def wait(
         self,
         res: Type[AllNamespacedResource],
         name: str,
@@ -237,7 +229,7 @@ class Client:
     ) -> AllNamespacedResource:
         ...
 
-    def wait(
+    async def wait(
         self,
         res,
         name: str,
@@ -263,49 +255,56 @@ class Client:
         for_conditions = list(for_conditions)
         raise_for_conditions = list(raise_for_conditions)
 
-        for op, obj in self.watch(res, namespace=namespace, fields={'metadata.name': name}):
-            if obj.status is None:
-                continue
+        watch = self.watch(res, namespace=namespace, fields={'metadata.name': name})
+        try:
+            async for op, obj in watch:
 
-            if op == "DELETED":
-                raise ObjectDeleted(full_name)
+                if obj.status is None:
+                    continue
 
-            try:
-                status = obj.status.to_dict()
-            except AttributeError:
-                status = obj.status
+                if op == "DELETED":
+                    raise ObjectDeleted(full_name)
 
-            conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
-            if any(c['type'] in for_conditions for c in conditions):
-                return obj
+                try:
+                    status = obj.status.to_dict()
+                except AttributeError:
+                    status = obj.status
 
-            failures = [c for c in conditions if c['type'] in raise_for_conditions]
+                conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
+                if any(c['type'] in for_conditions for c in conditions):
+                    return obj
 
-            if failures:
-                raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+                failures = [c for c in conditions if c['type'] in raise_for_conditions]
+
+                if failures:
+                    raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+        finally:
+            # we ensure the async generator is closed before returning
+            await watch.aclose()
 
     @overload
-    def patch(self, res: Type[GlobalSubResource], name: str,
-              obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalSubResource:
+    async def patch(self, res: Type[GlobalSubResource], name: str,
+                    obj: Union[GlobalSubResource, Dict, List], *,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> GlobalSubResource:
         ...
 
     @overload
-    def patch(self, res: Type[GlobalResource], name: str,
-              obj: Union[GlobalResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalResource:
+    async def patch(self, res: Type[GlobalResource], name: str,
+                    obj: Union[GlobalResource, Dict, List], *,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
-    def patch(self, res: Type[AllNamespacedResource], name: str,
-              obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> AllNamespacedResource:
+    async def patch(self, res: Type[AllNamespacedResource], name: str,
+                    obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
+                    patch_type: PatchType = PatchType.STRATEGIC,
+                    field_manager: str = None, force: bool = False) -> AllNamespacedResource:
         ...
 
-    def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC, field_manager=None, force=False):
+    async def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC,
+                    field_manager=None, force=False):
         """Patch an object.
 
         **parameters**
@@ -322,30 +321,28 @@ class Client:
           fields owned by other people. This parameter is ignored for non-apply patch types
         """
         force_param = 'true' if force and patch_type == PatchType.APPLY else None
-        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
-                                    headers={'Content-Type': patch_type.value},
-                                    params={'force': force_param, 'fieldManager': field_manager})
-
-
+        return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
+                                          headers={'Content-Type': patch_type.value},
+                                          params={'force': force_param, 'fieldManager': field_manager})
 
     @overload
-    def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
+    async def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
             -> NamespacedSubResource:
         ...
 
     @overload
-    def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
+    async def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
+    async def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def create(self, obj, name=None, *, namespace=None, field_manager=None):
+    async def create(self, obj, name=None, *, namespace=None, field_manager=None):
         """Creates a new object
 
         **parameters**
@@ -356,27 +353,27 @@ class Client:
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("post", name=name, namespace=namespace, obj=obj,
-                                    params={'fieldManager': field_manager})
+        return await self._client.request("post", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
-    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
+    async def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResource:
+    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+                      field_manager: str = None) -> NamespacedSubResource:
         ...
 
     @overload
-    def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
+    async def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
+    async def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
         ...
 
-    def replace(self, obj, name=None, *, namespace=None, field_manager=None):
+    async def replace(self, obj, name=None, *, namespace=None, field_manager=None):
         """Replace an existing resource.
 
         **parameters**
@@ -387,12 +384,12 @@ class Client:
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
         """
-        return self._client.request("put", name=name, namespace=namespace, obj=obj,
-                                    params={'fieldManager': field_manager})
+        return await self._client.request("put", name=name, namespace=namespace, obj=obj,
+                                          params={'fieldManager': field_manager})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
-            since: int = None, tail_lines: int = None, timestamps: bool = False) -> Iterator[str]:
+            since: int = None, tail_lines: int = None, timestamps: bool = False) -> AsyncIterable[str]:
         ...
 
     def log(self, name, *, namespace=None, container=None, follow=False,
@@ -414,29 +411,33 @@ class Client:
             params={'timestamps': timestamps, 'tailLines': tail_lines, 'container': container,
                     'sinceSeconds': since, 'follow': follow})
         req = self._client.build_adapter_request(br)
-        resp = self._client.send(req, stream=follow)
-        self._client.raise_for_status(resp)
-        return resp.iter_lines()
+
+        async def stream_log():
+            resp = await self._client.send(req, stream=follow)
+            self._client.raise_for_status(resp)
+            async for line in resp.aiter_lines():
+                yield line
+        return stream_log()
 
     @overload
-    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+    async def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
             -> GlobalSubResource:
         ...
 
     @overload
-    def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
+    async def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
               field_manager: str = None, force: bool = False) -> NamespacedSubResource:
         ...
 
     @overload
-    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
+    async def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
         ...
 
     @overload
-    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
+    async def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
         ...
 
-    def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
+    async def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
         """Create or configure an object. This method uses the
         [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
 
@@ -453,6 +454,10 @@ class Client:
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
-        return self.patch(type(obj), name, obj, namespace=namespace,
-                          patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
+        return await self.patch(type(obj), name, obj, namespace=namespace,
+                                patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
+
+    async def close(self):
+        """Close the underline httpx client"""
+        await self._client.close()
 
