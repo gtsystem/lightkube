@@ -4,18 +4,10 @@ from typing import get_type_hints
 from datetime import datetime
 import dataclasses as dc
 
-try:
-    fromisoformat = datetime.fromisoformat
-except AttributeError:  # python 3.6
-    from backports._datetime_fromisoformat import datetime_fromisoformat as fromisoformat
+fromisoformat = datetime.fromisoformat
 
 
 from .typing_extra import get_args, get_origin
-
-if sys.version_info[:2] > (3, 6):
-    list_type = list
-else:
-    list_type = typing.List
 
 
 def to_datetime(string):
@@ -68,7 +60,7 @@ def extract_types(cls, is_to=True):
         k = field.name
         t = types[k]
 
-        if get_origin(t) is list_type:
+        if get_origin(t) is list:
             is_list = True
             t = get_args(t)[0]
         else:
