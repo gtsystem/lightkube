@@ -9,6 +9,10 @@ class PatchType(enum.Enum):
     STRATEGIC = 'application/strategic-merge-patch+json'
     APPLY = 'application/apply-patch+yaml'
 
+class CascadeType(enum.Enum):
+    ORPHAN = 'Orphan'
+    BACKGROUND = 'Background'
+    FOREGROUND = 'Foreground'
 
 class OnErrorAction(enum.Enum):
     RETRY = 0       # retry to perform the API call again from the last version

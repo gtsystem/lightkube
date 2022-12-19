@@ -194,6 +194,14 @@ def test_delete_namespaced(client: lightkube.Client):
     respx.delete("https://localhost:9443/api/v1/namespaces/other/pods/xx")
     client.delete(Pod, name="xx", namespace="other")
 
+    # test grace_period parameter
+    respx.delete("https://localhost:9443/api/v1/namespaces/default/pods/x_grace?gracePeriodSeconds=30")
+    client.delete(Pod, name="x_grace", grace_period=30)
+
+    # test cascade parameter
+    respx.delete("https://localhost:9443/api/v1/namespaces/default/pods/x_cascade?propagationPolicy=Background")
+    client.delete(Pod, name="x_cascade", cascade=types.CascadeType.BACKGROUND)
+
 
 @respx.mock
 def test_delete_global(client: lightkube.Client):
@@ -208,6 +216,14 @@ def test_delete_collection_namespaced(client: lightkube.Client):
 
     respx.delete("https://localhost:9443/api/v1/namespaces/other/pods")
     client.deletecollection(Pod, namespace="other")
+
+    # test grace_period parameter
+    respx.delete("https://localhost:9443/api/v1/namespaces/grace/pods?gracePeriodSeconds=30")
+    client.deletecollection(Pod, namespace="grace", grace_period=30)
+
+    # test cascade parameter
+    respx.delete("https://localhost:9443/api/v1/namespaces/cascade/pods?propagationPolicy=Orphan")
+    client.deletecollection(Pod, namespace="cascade", cascade=types.CascadeType.ORPHAN)
 
 
 @respx.mock

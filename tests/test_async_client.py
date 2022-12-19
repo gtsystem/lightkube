@@ -125,6 +125,10 @@ async def test_list_chunk_size(client: lightkube.AsyncClient):
 async def test_delete_global(client: lightkube.AsyncClient):
     respx.delete("https://localhost:9443/api/v1/nodes/xx")
     await client.delete(Node, name="xx")
+
+    # with cascade and grace_period
+    respx.delete("https://localhost:9443/api/v1/nodes/params?propagationPolicy=Foreground&gracePeriodSeconds=0")
+    await client.delete(Node, name="params", cascade=types.CascadeType.FOREGROUND, grace_period=0)
     await client.close()
 
 @respx.mock
@@ -132,8 +136,10 @@ async def test_delete_global(client: lightkube.AsyncClient):
 async def test_deletecollection_global(client: lightkube.AsyncClient):
     respx.delete("https://localhost:9443/api/v1/nodes")
     await client.deletecollection(Node)
-    await client.close()
 
+    respx.delete("https://localhost:9443/api/v1/nodes?propagationPolicy=Foreground&gracePeriodSeconds=0")
+    await client.deletecollection(Node, cascade=types.CascadeType.FOREGROUND, grace_period=0)
+    await client.close()
 
 @respx.mock
 @pytest.mark.asyncio
