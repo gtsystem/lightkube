@@ -2,17 +2,18 @@
 
 ## Reference
 
-* lightkube-models [1.15](https://gtsystem.github.io/lightkube-models/1.15)
-* lightkube-models [1.16](https://gtsystem.github.io/lightkube-models/1.16)
-* lightkube-models [1.17](https://gtsystem.github.io/lightkube-models/1.17)
-* lightkube-models [1.18](https://gtsystem.github.io/lightkube-models/1.18)
-* lightkube-models [1.19](https://gtsystem.github.io/lightkube-models/1.19)
-* lightkube-models [1.20](https://gtsystem.github.io/lightkube-models/1.20)
-* lightkube-models [1.21](https://gtsystem.github.io/lightkube-models/1.21)
-* lightkube-models [1.22](https://gtsystem.github.io/lightkube-models/1.22)
-* lightkube-models [1.23](https://gtsystem.github.io/lightkube-models/1.23)
-* lightkube-models [1.24](https://gtsystem.github.io/lightkube-models/1.24)
+* lightkube-models [1.26](https://gtsystem.github.io/lightkube-models/1.26)
 * lightkube-models [1.25](https://gtsystem.github.io/lightkube-models/1.25)
+* lightkube-models [1.24](https://gtsystem.github.io/lightkube-models/1.24)
+* lightkube-models [1.23](https://gtsystem.github.io/lightkube-models/1.23)
+* lightkube-models [1.22](https://gtsystem.github.io/lightkube-models/1.22)
+* lightkube-models [1.21](https://gtsystem.github.io/lightkube-models/1.21)
+* lightkube-models [1.20](https://gtsystem.github.io/lightkube-models/1.20)
+* lightkube-models [1.19](https://gtsystem.github.io/lightkube-models/1.19)
+* lightkube-models [1.18](https://gtsystem.github.io/lightkube-models/1.18)
+* lightkube-models [1.17](https://gtsystem.github.io/lightkube-models/1.17)
+* lightkube-models [1.16](https://gtsystem.github.io/lightkube-models/1.16)
+* lightkube-models [1.15](https://gtsystem.github.io/lightkube-models/1.15)
 
 ## Resources
 
