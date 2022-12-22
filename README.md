@@ -1,6 +1,6 @@
 # lightkube
 
-![](https://img.shields.io/github/workflow/status/gtsystem/lightkube/Python%20package)
+![](https://img.shields.io/github/actions/workflow/status/gtsystem/lightkube/python-package.yml?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/gtsystem/lightkube/badge.svg?branch=master)](https://coveralls.io/github/gtsystem/lightkube?branch=master)
 [![pypi supported versions](https://img.shields.io/pypi/pyversions/lightkube.svg)](https://pypi.python.org/pypi/lightkube)
 
