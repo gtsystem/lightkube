@@ -270,6 +270,51 @@ def test_deletecollection(obj_name):
         client.delete(Namespace, name=obj_name)
 
 
+def test_dry_run():
+    client = Client()
+
+    name = 'superconf'
+    config = ConfigMap(
+        metadata=ObjectMeta(name=name, namespace='default'),
+        data={'key1': 'value1', 'key2': 'value2'}
+    )
+
+    try:
+        # Create
+        client.create(config, dry_run=True)
+        with pytest.raises(Exception) as ApiError:
+            client.get(ConfigMap, name)
+        client.create(config)
+        client.get(ConfigMap, name)
+
+        # Patch
+        patch = {'metadata': {'labels': {'app': 'xyz'}}}
+        client.patch(ConfigMap, name, obj=patch, dry_run=True)
+        config = client.get(ConfigMap, name)
+        assert config.metadata.labels is None
+
+        client.patch(ConfigMap, name, obj=patch)
+        config = client.get(ConfigMap, name)
+        assert config.metadata.labels.get('app') == "xyz"
+
+        # Replace
+        config.data['key1'] = 'new value'
+        client.replace(config, dry_run=True)
+        cfg = client.get(ConfigMap, 'superconf')
+        assert cfg.data['key1'] == 'value1'
+
+        client.replace(config)
+        cfg = client.get(ConfigMap, 'superconf')
+        assert cfg.data['key1'] == 'new value'
+
+        # Delete
+        client.deletecollection(ConfigMap, dry_run=True)
+        client.delete(ConfigMap, name, dry_run=True)
+        cfg = client.get(ConfigMap, name)
+    finally:
+        client.delete(ConfigMap, "superconf")
+
+
 def test_list_all_ns(obj_name):
     client = Client()
     ns1 = obj_name
