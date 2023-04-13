@@ -542,31 +542,36 @@ def test_replace_global(client: lightkube.Client):
 @respx.mock
 def test_pod_log(client: lightkube.Client):
     result = ['line1\n', 'line2\n', 'line3\n']
+    expected = [_.strip() for _ in result]
     content = "".join(result)
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
     lines = list(client.log('test'))
-    assert lines == result
+    assert lines == expected
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?follow=true").respond(
         content=content)
     lines = list(client.log('test', follow=True))
-    assert lines == result
+    assert lines == expected
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?tailLines=3").respond(
         content=content)
     lines = list(client.log('test', tail_lines=3))
-    assert lines == result
+    assert lines == expected
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?since=30&timestamps=true").respond(
         content=content)
     lines = list(client.log('test', since=30, timestamps=True))
-    assert lines == result
+    assert lines == expected
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
         content=content)
+
     lines = list(client.log('test', container="bla", newlines=False))
     assert lines == [_.strip() for _ in result]
+
+    lines = list(client.log('test', container="bla"))
+    assert lines == expected
 
 
 @respx.mock
