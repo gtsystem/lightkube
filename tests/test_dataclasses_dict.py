@@ -42,11 +42,32 @@ class Def(DataclassDictMixIn):
 
 
 @pytest.mark.parametrize("lazy", [True, False])
-def test_issue_44(lazy):
-    inst = C.from_dict({"c1": "val"}, lazy=lazy)                    # Setup a C object without setting c2
-    assert inst.to_dict() == {"c1": "val"}                          # de-serialize to a dict
-    inst.c2 = [A("abc")]                                            # Add c2 list
-    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "abc"}]}   # Expect c2 list to show up in dict
+def test_lazy_default_not_hiding_added(lazy):
+    # Setup a C object without setting c2 (default)
+    inst = C.from_dict({"c1": "val"}, lazy=lazy)
+    assert inst.to_dict() == {"c1": "val"}
+    inst.c2 = [A("def")]
+    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "def"}]}
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_lazy_loaded_not_hiding_set(lazy):
+    # Setup a C object without setting c2 (default)
+    inst = C.from_dict({"c1": "val", "c2": [{"a1": "abc"}]}, lazy=lazy)
+    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "abc"}]}
+    # Change c2 list attribute
+    inst.c2 = [A("def")]
+    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "def"}]}
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_lazy_loaded_not_hiding_cleared(lazy):
+    # Setup a C object without setting c2 (default)
+    inst = C.from_dict({"c1": "val", "c2": [{"a1": "abc"}]}, lazy=lazy)
+    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "abc"}]}
+    # Change c2 list attribute
+    inst.c2 = None
+    assert inst.to_dict() == {"c1": "val"}
 
 
 @pytest.mark.parametrize("lazy", [True, False])
