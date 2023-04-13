@@ -85,7 +85,7 @@ class LazyAttribute:
         if value is not None:
             value = self.convert(value, instance._lazy_kwargs)
         setattr(instance, self.key, value)
-        del instance._lazy_values[self.key]
+        instance._lazy_values.pop(self.key, None)
         return value
 
 
@@ -95,6 +95,13 @@ class DataclassDictMixIn:
     _json_to_prop: typing.Dict = None
     _prop_to_json: typing.Dict = None
     _valid_params: typing.Set = None
+
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            _lazy_values = getattr(self, "_lazy_values", {})
+            if name in _lazy_values and not isinstance(value, LazyAttribute):
+                del self._lazy_values[name]
+        self.__dict__[name] = value
 
     @classmethod
     def _setup(cls):
