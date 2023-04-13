@@ -96,10 +96,8 @@ class DataclassDictMixIn:
     _valid_params: typing.Set = None
 
     def __setattr__(self, name, value):
-        if not name.startswith('_'):
-            _lazy_values = getattr(self, "_lazy_values", {})
-            if name in _lazy_values and not isinstance(value, LazyAttribute):
-                del self._lazy_values[name]
+        if name in getattr(self, "_lazy_values", {}):
+            del self._lazy_values[name]
         self.__dict__[name] = value
 
     @classmethod
