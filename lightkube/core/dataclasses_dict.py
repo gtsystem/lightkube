@@ -85,7 +85,6 @@ class LazyAttribute:
         if value is not None:
             value = self.convert(value, instance._lazy_kwargs)
         setattr(instance, self.key, value)
-        instance._lazy_values.pop(self.key, None)
         return value
 
 
