@@ -41,6 +41,13 @@ class Def(DataclassDictMixIn):
     d4: str = "ok"
 
 
+def test_issue_44():
+    inst = C.from_dict({"c1": "val"})                               # Setup a C object without setting c2
+    assert inst.to_dict() == {"c1": "val"}                          # de-serialize to a dict
+    inst.c2 = [A("abc")]                                            # Add c2 list
+    assert inst.to_dict() == {"c1": "val", "c2": [{"a1": "abc"}]}   # Expect c2 list to show up in dict
+
+
 @pytest.mark.parametrize("lazy", [True, False])
 def test_single(lazy):
     a = A.from_dict({'a1': 'a', 'a3': True}, lazy=lazy)
