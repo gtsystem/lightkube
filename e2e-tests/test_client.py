@@ -73,7 +73,7 @@ def test_pod_apis(obj_name):
 
         # read pod logs
         for l in client.log(obj_name, follow=True):
-            assert l == 'this is a test'
+            assert l == 'this is a test\n'
             break
     finally:
         # delete the pod
