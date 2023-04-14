@@ -15,7 +15,7 @@ setup(
     package_data={'lightkube': ['py.typed']},
     install_requires=[
         'lightkube-models >= 1.15.12.0',
-        'httpx >= 0.20.0',
+        'httpx >= 0.24.0',
         'PyYAML',
         'backports-datetime-fromisoformat;python_version<"3.7"',
         'dataclasses;python_version<"3.7"'
