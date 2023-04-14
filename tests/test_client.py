@@ -565,8 +565,8 @@ def test_pod_log(client: lightkube.Client):
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
         content=content)
-    lines = list(client.log('test', container="bla"))
-    assert lines == result
+    lines = list(client.log('test', container="bla", newlines=False))
+    assert lines == [_.strip() for _ in result]
 
 
 @respx.mock
