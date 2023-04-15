@@ -4,7 +4,7 @@ import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
-from .generic_client import GenericSyncClient, GenericAsyncClient, transform_newlines
+from .generic_client import GenericSyncClient, GenericAsyncClient
 from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1

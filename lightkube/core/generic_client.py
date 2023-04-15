@@ -16,23 +16,12 @@ from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
 
 
 ALL_NS = '*'
-NEWLINE = '\n'
 
 
 def transform_exception(e: httpx.HTTPError):
     if isinstance(e, httpx.HTTPStatusError) and e.response.headers['Content-Type'] == 'application/json':
         return ApiError(request=e.request, response=e.response)
     return e
-
-
-def transform_newlines(newlines: bool):
-    def wraps(l: str):
-        if not newlines:
-            return l.rstrip()
-        elif not l.endswith(NEWLINE):
-            return l + NEWLINE
-        return l
-    return wraps
 
 
 METHOD_MAPPING = {
