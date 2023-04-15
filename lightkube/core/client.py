@@ -417,7 +417,7 @@ class Client:
         req = self._client.build_adapter_request(br)
         resp = self._client.send(req, stream=follow)
         self._client.raise_for_status(resp)
-        return map(transform_newlines(newlines), resp.iter_lines())
+        return (line + '\n' if newlines else line for l in resp.iter_lines())
 
     @overload
     def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
