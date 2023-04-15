@@ -417,7 +417,7 @@ class AsyncClient:
             resp = await self._client.send(req, stream=follow)
             self._client.raise_for_status(resp)
             async for line in resp.aiter_lines():
-                yield transform_newlines(newlines)(line)
+                yield line + '\n' if newlines else line
         return stream_log()
 
     @overload
