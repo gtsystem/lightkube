@@ -299,8 +299,8 @@ async def test_pod_log(client: lightkube.AsyncClient):
 
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(
         content=content)
-    lines = await alist(client.log('test', container="bla"))
-    assert lines == result
+    lines = await alist(client.log('test', container="bla", newlines=False))
+    assert lines == [_.strip() for _ in result]
     await client.close()
 
 @respx.mock

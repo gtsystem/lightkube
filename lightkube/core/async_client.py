@@ -389,11 +389,11 @@ class AsyncClient:
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
-            since: int = None, tail_lines: int = None, timestamps: bool = False) -> AsyncIterable[str]:
+            since: int = None, tail_lines: int = None, timestamps: bool = False, newlines: bool = True) -> AsyncIterable[str]:
         ...
 
     def log(self, name, *, namespace=None, container=None, follow=False,
-            since=None, tail_lines=None, timestamps=False):
+            since=None, tail_lines=None, timestamps=False, newlines=True):
         """Return log lines for the given Pod
 
         **parameters**
@@ -405,6 +405,7 @@ class AsyncClient:
         * **since** - *(optional)* If set, a relative time in seconds before the current time from which to fetch logs.
         * **tail_lines** - *(optional)* If set, the number of lines from the end of the logs to fetch.
         * **timestamps** - *(optional)* If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
+        * **newlines** - *(optional)* If `True`, each line will end with a newline, otherwise the newlines will be stripped.
         """
         br = self._client.prepare_request(
             'get', core_v1.PodLog, name=name, namespace=namespace,
@@ -416,7 +417,7 @@ class AsyncClient:
             resp = await self._client.send(req, stream=follow)
             self._client.raise_for_status(resp)
             async for line in resp.aiter_lines():
-                yield line
+                yield line + '\n' if newlines else line
         return stream_log()
 
     @overload
