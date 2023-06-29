@@ -59,6 +59,10 @@ def test_from_dict():
 
 
 def test_from_dict_wrong_model():
+    # provided argument must actually be a dict
+    with pytest.raises(LoadResourceError, match='.*not a dict'):
+        codecs.from_dict([])
+
     # apiVersion and kind are required
     with pytest.raises(LoadResourceError, match=".*key 'apiVersion' missing"):
         codecs.from_dict({
@@ -123,6 +127,7 @@ def test_from_dict_not_found():
     (
             "example-def.yaml",
             "example-def-with-nulls.yaml",
+            "example-def-with-lists.yaml"
     )
 )
 def test_load_all_yaml_static(yaml_file):

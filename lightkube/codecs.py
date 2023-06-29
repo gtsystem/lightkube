@@ -1,5 +1,5 @@
 import importlib
-from typing import Union, TextIO, List
+from typing import Union, TextIO, Iterator, List, Mapping
 
 import yaml
 
@@ -52,6 +52,8 @@ def from_dict(d: dict) -> AnyResource:
     * **d** - A dictionary representing a Kubernetes resource. Keys `apiVersion` and `kind` are
       always required.
     """
+    if not isinstance(d, Mapping):
+        raise LoadResourceError(f"Invalid resource definition, not a dict.")
     for attr in REQUIRED_ATTR:
         if attr not in d:
             raise LoadResourceError(f"Invalid resource definition, key '{attr}' missing.")
@@ -63,7 +65,7 @@ def from_dict(d: dict) -> AnyResource:
 def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env = None, create_resources_for_crds: bool = False) -> List[AnyResource]:
     """Load kubernetes resource objects defined as YAML. See `from_dict` regarding how resource types are detected.
     Returns a list of resource objects or raise a `LoadResourceError`.  Skips any empty YAML documents in the
-    stream, returning an empty list if all YAML documents are empty.
+    stream, returning an empty list if all YAML documents are empty. Deep parse any items from .*List resources.
 
     **parameters**
 
@@ -83,15 +85,28 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
     """
     if context is not None:
         stream = _template(stream, context=context, template_env=template_env)
-    resources = []
-    for obj in yaml.safe_load_all(stream):
-        if obj is not None:
-            res = from_dict(obj)
-            resources.append(res)
 
-            if create_resources_for_crds is True and res.kind == "CustomResourceDefinition":
-                create_resources_from_crd(res)
-    return resources
+    def _flatten(objects: Iterator) -> List[AnyResource]:
+        """Flatten resources which hae a kind = *List."""
+        resources = []
+        for obj in objects:
+            if obj is None:
+                continue
+            if (
+                isinstance(obj, Mapping) and 
+                obj.get("kind").endswith("List") and 
+                (items := obj.get("items"))
+            ):
+                resources += _flatten(items)
+            else:
+                res = from_dict(obj)
+                resources.append(res)
+
+                if create_resources_for_crds is True and res.kind == "CustomResourceDefinition":
+                    create_resources_from_crd(res)
+        return resources
+
+    return _flatten(yaml.safe_load_all(stream))
 
 
 def dump_all_yaml(resources: List[AnyResource], stream: TextIO = None, indent=2):
