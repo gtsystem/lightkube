@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: SecretList
+items:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: "nginxsecret"
+    namespace: "default"
+  type: kubernetes.io/tls
+  data:
+    tls.crt: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURIekNDQWdW...Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0t"
+    tls.key: "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURB...TkJnVW1VbGc9Ci0tLS0tRU5EIFBSSVZB"
+---
+apiVersion: v1
+kind: List
+items:
+- apiVersion: myapp.com/v1
+  kind: Mydb
+  metadata:
+    name: bla
+    a: xx
+    b: yy
+---
+apiVersion: v1
+kind: ServiceList
+items:
+- apiVersion: v1
+  kind: ServiceList
+  metadata: {}
+  items:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: my-nginx
+      labels:
+        run: my-nginx
+    spec:
+      type: NodePort
+      ports:
+      - port: 8080
+        targetPort: 80
+        protocol: TCP
+        name: http
+      - port: 443
+        protocol: TCP
+        name: https
+      selector:
+        run: my-nginx
+---
+apiVersion: apps/v1
+kind: DeploymentList
+items:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: my-nginx
+  spec:
+    selector:
+      matchLabels:
+        run: my-nginx
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          run: my-nginx
+      spec:
+        volumes:
+        - name: secret-volume
+          secret:
+            secretName: nginxsecret
+        - name: configmap-volume
+          configMap:
+            name: nginxconfigmap
+        containers:
+        - name: nginxhttps
+          image: bprashanth/nginxhttps:1.0
+          ports:
+          - containerPort: 443
+          - containerPort: 80
+          volumeMounts:
+          - mountPath: /etc/nginx/ssl
+            name: secret-volume
+          - mountPath: /etc/nginx/conf.d
+            name: configmap-volume
