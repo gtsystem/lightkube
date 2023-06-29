@@ -87,7 +87,7 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
         stream = _template(stream, context=context, template_env=template_env)
 
     def _flatten(objects: Iterator) -> List[AnyResource]:
-        """Flatten resources which hae a kind = *List."""
+        """Flatten resources which have a kind = *List."""
         resources = []
         for obj in objects:
             if obj is None:
