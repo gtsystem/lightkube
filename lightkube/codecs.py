@@ -92,12 +92,8 @@ def load_all_yaml(stream: Union[str, TextIO], context: dict = None, template_env
         for obj in objects:
             if obj is None:
                 continue
-            if (
-                isinstance(obj, Mapping) and 
-                obj.get("kind").endswith("List") and 
-                (items := obj.get("items"))
-            ):
-                resources += _flatten(items)
+            if isinstance(obj, Mapping) and obj.get("kind").endswith("List"):
+                resources += _flatten(obj.get("items") or [])
             else:
                 res = from_dict(obj)
                 resources.append(res)
