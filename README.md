@@ -6,7 +6,6 @@
 
 Modern lightweight kubernetes module for python
 
-**NOTICE:** This project is still under development and not suitable for production usage.
 
 ## Highlights
 
@@ -111,7 +110,7 @@ obj = Deployment.Scale(
     metadata=ObjectMeta(name='metrics-server', namespace='kube-system'),
     spec=ScaleSpec(replicas=1)
 )
-client.replace(obj, 'metrics-server', namespace='kube-system')
+client.replace(obj)
 ```
 
 Create and modify resources using [server side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
