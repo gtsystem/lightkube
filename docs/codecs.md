@@ -41,7 +41,8 @@ Output: `<class 'lightkube.resources.core_v1.ConfigMap'>`
 
 !!! note
     Only known resources can be loaded. These are either kubernetes [standard resources](resources-and-models.md) 
-    or [generic resources](generic-resources.md) manually defined.
+    or [generic resources](generic-resources.md) manually defined. You can register further resources using
+    the [`resource_registry`](#resource-registry).
 
 ## Load from YAML
 
@@ -212,3 +213,34 @@ with open('crs_amd_crds.yaml') as f:
 ```
 
 This orders the objects in a way that is friendly for deleting them as a batch.
+
+## Resource Registry
+
+The singleton `resource_registry` allows to register a custom resource, so that it can be used by the load
+functions on this module:
+
+```python
+from lightkube import codecs
+
+codecs.resource_registry.register(MyCustomResource)
+
+with open('service.yaml') as f:
+    # Now `MyCustomResource` can be loaded
+    objs = codecs.load_all_yaml(f)
+```
+
+`register` can also be used as a decorator:
+```python
+from lightkube.core.resource import NamespacedResource
+from lightkube.codecs import resource_registry
+
+@resource_registry.register
+class MyCustomResource(NamespacedResource):
+    ...
+```
+
+### Reference
+
+::: lightkube.codecs.resource_registry
+    :docstring:
+    :members:

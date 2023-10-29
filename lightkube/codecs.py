@@ -1,11 +1,17 @@
-import importlib
 from typing import Union, TextIO, Iterator, List, Mapping
 
 import yaml
 
-from .generic_resource import get_generic_resource, GenericGlobalResource, GenericNamespacedResource, create_resources_from_crd
+from .generic_resource import GenericGlobalResource, GenericNamespacedResource, create_resources_from_crd
 from .core.exceptions import LoadResourceError
+from .core.resource_registry import resource_registry
 
+__all__ = [
+    'from_dict',
+    'load_all_yaml',
+    'dump_all_yaml',
+    'resource_registry'
+]
 
 try:
     import jinja2
@@ -15,30 +21,6 @@ except ImportError:
 REQUIRED_ATTR = ('apiVersion', 'kind')
 
 AnyResource = Union[GenericGlobalResource, GenericNamespacedResource]
-
-
-def _load_model(version, kind):
-    if "/" in version:
-        group, version_n = version.split("/")
-        # Check if a generic resource was defined
-        model = get_generic_resource(version, kind)
-        if model is not None:
-            return model
-
-        # Generic resource not defined, but it could be a k8s resource
-        if group.endswith(".k8s.io"):
-            group = group[:-7]
-        group = group.replace(".", "_")
-        version = "_".join([group, version_n])
-    else:
-        version = f'core_{version}'
-
-    try:
-        module = importlib.import_module(f'lightkube.resources.{version.lower()}')
-    except ImportError as e:
-        # It was not a k8s resource and a generic resource was not previously defined
-        raise LoadResourceError(f"{e}. If using a CRD, ensure you define a generic resource.")
-    return getattr(module, kind)
 
 
 def from_dict(d: dict) -> AnyResource:
@@ -58,7 +40,7 @@ def from_dict(d: dict) -> AnyResource:
         if attr not in d:
             raise LoadResourceError(f"Invalid resource definition, key '{attr}' missing.")
 
-    model = _load_model(d['apiVersion'], d['kind'])
+    model = resource_registry.load(d['apiVersion'], d['kind'])
     return model.from_dict(d)
 
 

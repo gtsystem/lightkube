@@ -10,6 +10,7 @@ from lightkube.models.apiextensions_v1 import (
     CustomResourceDefinitionSpec,
     CustomResourceDefinitionVersion,
 )
+from lightkube.core.resource_registry import resource_registry
 
 
 def create_dummy_crd(group="thisgroup", kind="thiskind", plural="thiskinds", scope="Namespaced",
@@ -38,12 +39,11 @@ def create_dummy_crd(group="thisgroup", kind="thiskind", plural="thiskinds", sco
     return crd
 
 
-@pytest.fixture()
-def mocked_created_resources():
-    """Isolates the module variable generic_resource._created_resources to avoid test spillover"""
-    created_resources_dict = {}
-    with mock.patch("lightkube.generic_resource._created_resources", created_resources_dict) as mocked_created_resources:
-        yield mocked_created_resources
+@pytest.fixture(autouse=True)
+def cleanup_registry():
+    """Cleanup the registry before each test"""
+    yield
+    resource_registry.clear()
 
 
 class MockedClient(GenericClient):
@@ -183,18 +183,18 @@ def test_create_global_resource():
         "Cluster",
     ]
 )
-def test_create_resources_from_crd(crd_scope, mocked_created_resources):
+def test_create_resources_from_crd(crd_scope):
     version_names = ['v1alpha1', 'v1', 'v2']
     crd = create_dummy_crd(scope=crd_scope, versions=version_names)
 
     # Confirm no generic resources exist before testing
-    assert len(gr._created_resources) == 0
+    assert len(resource_registry._registry) == 0
 
     # Test the function
     gr.create_resources_from_crd(crd)
 
     # Confirm expected number of resources created
-    assert len(gr._created_resources) == len(version_names)
+    assert len(resource_registry._registry) == len(version_names)
 
     # Confirm expected resources exist
     for version in version_names:
@@ -226,19 +226,19 @@ def test_generic_model():
         mod._a
 
 
-def test_load_in_cluster_generic_resources(mocked_created_resources, mocked_client_list_crds):
+def test_load_in_cluster_generic_resources(mocked_client_list_crds):
     """Test that load_in_cluster_generic_resources creates generic resources for crds in cluster"""
     # Set up environment
     mocked_client, expected_crds, expected_n_resources = mocked_client_list_crds
 
     # Confirm no generic resources exist before testing
-    assert len(gr._created_resources) == 0
+    assert len(resource_registry._registry) == 0
 
     # Test the function
     gr.load_in_cluster_generic_resources(mocked_client)
 
     # Confirm the expected resources and no others were created
-    assert len(gr._created_resources) == expected_n_resources
+    assert len(resource_registry._registry) == expected_n_resources
     for crd in expected_crds:
         for version in crd.spec.versions:
             resource = gr.get_generic_resource(f"{crd.spec.group}/{version.name}", crd.spec.names.kind)
@@ -248,19 +248,19 @@ def test_load_in_cluster_generic_resources(mocked_created_resources, mocked_clie
 
 
 @pytest.mark.asyncio
-async def test_async_load_in_cluster_generic_resources(mocked_created_resources, mocked_asyncclient_list_crds):
+async def test_async_load_in_cluster_generic_resources(mocked_asyncclient_list_crds):
     """Test that async_load_in_cluster_generic_resources creates generic resources for crds in cluster"""
     # Set up environment
     mocked_client, expected_crds, expected_n_resources = mocked_asyncclient_list_crds
 
     # Confirm no generic resources exist before testing
-    assert len(gr._created_resources) == 0
+    assert len(resource_registry._registry) == 0
 
     # Test the function
     await gr.async_load_in_cluster_generic_resources(mocked_client)
 
     # Confirm the expected resources and no others were created
-    assert len(gr._created_resources) == expected_n_resources
+    assert len(resource_registry._registry) == expected_n_resources
     for crd in expected_crds:
         for version in crd.spec.versions:
             resource = gr.get_generic_resource(f"{crd.spec.group}/{version.name}", crd.spec.names.kind)
