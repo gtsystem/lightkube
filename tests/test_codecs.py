@@ -11,16 +11,16 @@ from lightkube.resources.rbac_authorization_v1 import Role
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import generic_resource as gr
 from lightkube import LoadResourceError
+from lightkube.codecs import resource_registry
 
 data_dir = Path(__file__).parent.joinpath('data')
 
 
-@pytest.fixture()
-def mocked_created_resources():
-    """Isolates the module variable generic_resource._created_resources to avoid test spillover"""
-    created_resources_dict = {}
-    with mock.patch("lightkube.generic_resource._created_resources", created_resources_dict) as mocked_created_resources:
-        yield mocked_created_resources
+@pytest.fixture(autouse=True)
+def cleanup_registry():
+    """Cleanup the registry before each test"""
+    yield
+    resource_registry.clear()
 
 
 def test_from_dict():
@@ -111,7 +111,7 @@ def test_from_dict_not_found():
     with pytest.raises(LoadResourceError):
         codecs.from_dict({'apiVersion': 'myapp2.com/v1', 'kind': 'Mydb'})
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(LoadResourceError):
         codecs.from_dict({'apiVersion': 'v1', 'kind': 'Missing'})
 
     with pytest.raises(LoadResourceError):
@@ -131,6 +131,7 @@ def test_from_dict_not_found():
     )
 )
 def test_load_all_yaml_static(yaml_file):
+    gr.create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
     objs = list(codecs.load_all_yaml(data_dir.joinpath(yaml_file).read_text()))
     kinds = [o.kind for o in objs]
 
@@ -144,6 +145,7 @@ def test_load_all_yaml_static(yaml_file):
 
 
 def test_load_all_yaml_template():
+    gr.create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
     objs = list(codecs.load_all_yaml(
         data_dir.joinpath('example-def.tmpl').read_text(),
         context={'test': 'xyz'})
@@ -162,6 +164,7 @@ def test_load_all_yaml_template():
 
 
 def test_load_all_yaml_template_env():
+    gr.create_namespaced_resource('myapp.com', 'v1', 'Mydb', 'mydbs')
     import jinja2
     env = jinja2.Environment()
     env.globals['test'] = 'global'
@@ -214,7 +217,7 @@ def test_load_all_yaml_missing_dependency():
         False,  # no generic resources should be created
     ]
 )
-def test_load_all_yaml_creating_generic_resources(create_resources_for_crds, mocked_created_resources):
+def test_load_all_yaml_creating_generic_resources(create_resources_for_crds):
     template_yaml = data_dir.joinpath('example-multi-version-crd.yaml').read_text()
     template_dict = list(yaml.safe_load_all(template_yaml))[0]
 
@@ -222,7 +225,7 @@ def test_load_all_yaml_creating_generic_resources(create_resources_for_crds, moc
     expected_kind = template_dict["spec"]["names"]["kind"]
 
     # Confirm no generic resources exist before testing
-    assert len(gr._created_resources) == 0
+    assert len(resource_registry._registry) == 0
 
     objs = list(codecs.load_all_yaml(
         template_yaml,
@@ -232,14 +235,15 @@ def test_load_all_yaml_creating_generic_resources(create_resources_for_crds, moc
     # Confirm expected resources exist
     if create_resources_for_crds:
         for version in template_dict["spec"]["versions"]:
-            resource = gr.get_generic_resource(f"{expected_group}/{version['name']}", expected_kind)
+            resource = resource_registry.get(f"{expected_group}/{version['name']}", expected_kind)
             assert resource is not None
 
         # Confirm we did not make any extra resources
-        assert len(gr._created_resources) == len(template_dict["spec"]["versions"])
+        # + 1 as CustomResourceDefinition is also added to the registry
+        assert len(resource_registry._registry) == len(template_dict["spec"]["versions"]) + 1
     else:
-        # Confirm we did not make any resources
-        assert len(gr._created_resources) == 0
+        # Confirm we did not make any resources except CustomResourceDefinition
+        assert len(resource_registry._registry) == 1
 
     assert len(objs) == 1
 

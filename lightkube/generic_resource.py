@@ -5,6 +5,7 @@ from .core.client import Client
 from .core.async_client import AsyncClient
 from .core.internal_models import meta_v1, autoscaling_v1
 from .core.internal_resources import apiextensions
+from .core.resource_registry import resource_registry
 
 
 __all__ = [
@@ -15,8 +16,6 @@ __all__ = [
     'get_generic_resource',
     'load_in_cluster_generic_resources',
 ]
-
-_created_resources = {}
 
 
 def get_generic_resource(version, kind):
@@ -30,9 +29,10 @@ def get_generic_resource(version, kind):
 
     **returns** class representing the generic resource or `None` if it's not found
     """
-    global _created_resources
-    model = _created_resources.get((version, kind))
-    return model[0] if model is not None else None
+    resource = resource_registry.get(version, kind)
+    if resource is None or not issubclass(resource, (GenericGlobalResource, GenericNamespacedResource)):
+        return None
+    return resource
 
 
 class Generic(dict):
@@ -132,12 +132,18 @@ class GenericNamespacedResource(res.NamespacedResourceG, Generic):
     Status: Type[GenericNamespacedStatus]
 
 
+def _api_info_signature(api_info: res.ApiInfo, namespaced: bool):
+    return (namespaced, api_info.plural, tuple(api_info.verbs) if api_info.verbs else None)
+
+
 def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> Any:
-    global _created_resources
-    res_key = (f'{group}/{version}', kind)
-    signature = (namespaced, plural, tuple(verbs) if verbs else None)
-    if res_key in _created_resources:
-        model, curr_signature = _created_resources[res_key]
+    model = resource_registry.get(f'{group}/{version}', kind)
+    api_info = create_api_info(group, version, kind, plural, verbs=verbs)
+    signature = _api_info_signature(api_info, namespaced)
+
+    if model is not None:
+        curr_namespaced = issubclass(model, res.NamespacedResource)
+        curr_signature = _api_info_signature(model._api_info, curr_namespaced)
         if curr_signature != signature:
             raise ValueError(f"Resource {kind} already created but with different signature")
         return model
@@ -154,8 +160,7 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
         Status = _create_subresource(status, _api_info, action='status')
 
     TmpName.__name__ = TmpName.__qualname__ = kind
-    _created_resources[res_key] = (TmpName, signature)
-    return TmpName
+    return resource_registry.register(TmpName)
 
 
 def create_global_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
