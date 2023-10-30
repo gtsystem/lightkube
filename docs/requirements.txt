@@ -1,5 +1,5 @@
 # build documentation
-mkdocs==1.3.0
+mkdocs==1.5.3
 markdown
 mkautodoc
 markdown-include
