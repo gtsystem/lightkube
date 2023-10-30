@@ -79,9 +79,16 @@ config.data['key1'] = 'new value'
 client.replace(config)
 ```
 
-Patch an existing config
+Patch an existing config adding a label
 ```python
 patch = {'metadata': {'labels': {'app': 'xyz'}}}
+client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
+```
+
+Remove the label `app`
+```python
+# When using PatchType.STRATEGIC (default), setting a value of a key/value to None, will remove the current item 
+patch = {'metadata': {'labels': {'app': None}}}
 client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
 ```
 
