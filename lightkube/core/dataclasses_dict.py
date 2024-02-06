@@ -1,6 +1,6 @@
 import sys
 import typing
-from typing import get_type_hints
+from typing import Union
 from datetime import datetime
 import dataclasses as dc
 
@@ -51,6 +51,18 @@ def nohop(x, kw):
 def is_dataclass_json(cls):
     return dc.is_dataclass(cls) and issubclass(cls, DataclassDictMixIn)
 
+NoneType = type(None)
+
+def _remove_optional(tp):
+       if get_origin(tp) is Union:
+         args = get_args(tp)
+         if args[1] is NoneType:
+           return args[0]
+       return tp
+
+def get_type_hints(cl):
+        types = typing.get_type_hints(cl)
+        return {k: _remove_optional(v) for k, v in types.items()}
 
 def extract_types(cls, is_to=True):
     func_name = "to_json_type" if is_to else "from_json_type"
