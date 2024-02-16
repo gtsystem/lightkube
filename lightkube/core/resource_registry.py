@@ -1,10 +1,12 @@
 import importlib
-from typing import Union, Type, Optional
+from typing import Optional, Type, TypeVar, Union
 
 from lightkube.core import resource as res
 from lightkube.core.exceptions import LoadResourceError
 
 AnyResource = Union[res.NamespacedResource, res.GlobalResource]
+AnyResourceType = Type[AnyResource]
+AnyResourceTypeVar = TypeVar('AnyResourceTypeVar', bound=AnyResourceType)
 
 def _load_internal_resource(version, kind):
     if "/" in version:
@@ -40,7 +42,7 @@ class ResourceRegistry:
     def __init__(self):
         self._registry = {}
 
-    def register(self, resource: Type[AnyResource]) -> Type[AnyResource]:
+    def register(self, resource: AnyResourceTypeVar) -> AnyResourceTypeVar:
         """Register a custom resource
 
         **parameters**
