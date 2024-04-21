@@ -2,6 +2,7 @@
 
 ## Reference
 lightkube-models
+[1.30](https://gtsystem.github.io/lightkube-models/1.30),
 [1.29](https://gtsystem.github.io/lightkube-models/1.29),
 [1.28](https://gtsystem.github.io/lightkube-models/1.28),
 [1.27](https://gtsystem.github.io/lightkube-models/1.27),
@@ -16,7 +17,7 @@ lightkube-models
 [1.18](https://gtsystem.github.io/lightkube-models/1.18),
 [1.17](https://gtsystem.github.io/lightkube-models/1.17),
 [1.16](https://gtsystem.github.io/lightkube-models/1.16),
-[1.15](https://gtsystem.github.io/lightkube-models/1.15)
+[1.15](https://gtsystem.github.io/lightkube-models/1.15).
 
 ## Resources
 
