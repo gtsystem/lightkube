@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [ '1.23', '1.27' ]
+        k8s: [ '1.25', '1.29' ]
     name: E2E test in K8s ${{ matrix.k8s }}
     runs-on: ubuntu-20.04
     steps:
