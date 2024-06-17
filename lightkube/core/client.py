@@ -13,7 +13,7 @@ NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
 GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
 GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
 NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
-AllNamespacedResource = TypeVar('AllNamespacedResource', r.NamespacedResource, r.NamespacedSubResource)
+AllNamespacedResource = TypeVar('AllNamespacedResource', bound=Union[r.NamespacedResource, r.NamespacedSubResource])
 Resource = TypeVar('Resource', bound=r.Resource)
 LabelValue = Union[str, None, operators.Operator, Iterable]
 FieldValue = Union[str, operators.BinaryOperator, operators.SequenceOperator]
