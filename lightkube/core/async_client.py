@@ -30,7 +30,7 @@ class AsyncClient:
     * **trust_env** - Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
     """
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
+    def __init__(self, config: Union[SingleConfig, KubeConfig, None] = None, namespace: str = None,
                  timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
         self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
                                           field_manager=field_manager, trust_env=trust_env)
