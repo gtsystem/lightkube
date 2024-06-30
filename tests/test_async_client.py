@@ -108,6 +108,24 @@ async def test_list_global(client: lightkube.AsyncClient):
         client.list(Binding, namespace=lightkube.ALL_NS)
     await client.close()
 
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_list_namespaced(client: lightkube.AsyncClient):
+    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
+    pods = [pod async for pod in client.list(Pod)]
+    for pod, expected in zip(pods, resp["items"]):
+        assert pod.metadata is not None
+        assert pod.metadata.name == expected["metadata"]["name"]
+        assert pod.apiVersion is not None
+        assert pod.kind is not None
+    
+    respx.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv").respond(json=resp)
+    pods = client.list(Pod, namespace="other", labels={'k': 'v'})
+    assert [pod.metadata.name async for pod in pods] == ['xx', 'yy']
+
+
 @respx.mock
 @pytest.mark.asyncio
 async def test_list_chunk_size(client: lightkube.AsyncClient):

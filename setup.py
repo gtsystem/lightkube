@@ -18,6 +18,13 @@ setup(
         'httpx >= 0.24.0',
         'PyYAML'
     ],
+    extras_require={
+        "dev": [
+            "pytest",
+            "pytest-asyncio<0.17.0",
+            "respx"
+        ]
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
