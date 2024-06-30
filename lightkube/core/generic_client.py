@@ -7,6 +7,7 @@ import asyncio
 
 import httpx
 
+from . import dataclasses_dict as dc_d
 from . import resource as r
 from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
@@ -192,6 +193,14 @@ class GenericClient:
     def build_adapter_request(self, br: BasicRequest):
         return self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
 
+    def convert_to_resource(self, res: Type[r.Resource], item: dict) -> r.Resource:
+        resource_def = r.api_info(res).resource
+        if not issubclass(res, dc_d.DataclassDictMixIn):
+            raise NotImplementedError(res)
+        item.setdefault("apiVersion", resource_def.api_version)
+        item.setdefault("kind", resource_def.kind)
+        return res.from_dict(item, lazy=self._lazy)
+
     def handle_response(self, method, resp, br):
         self.raise_for_status(resp)
         res = br.response_type
@@ -205,10 +214,10 @@ class GenericClient:
                 br.params['continue'] = data['metadata']['continue']
             else:
                 cont = False
-            return cont, (res.from_dict(obj, lazy=self._lazy) for obj in data['items'])
+            return cont, (self.convert_to_resource(res, obj) for obj in data['items'])
         else:
             if res is not None:
-                return res.from_dict(data, lazy=self._lazy)
+                return self.convert_to_resource(res, data)
 
 
 class GenericSyncClient(GenericClient):

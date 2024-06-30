@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Optional
+from typing import NamedTuple, List, Optional, Type, Union
 from dataclasses import dataclass
 
 
@@ -25,7 +25,7 @@ class Resource:
     _api_info: ApiInfo
 
 
-def api_info(res: Resource):
+def api_info(res: Union[Resource, Type[Resource]]):
     return res._api_info
 
 
