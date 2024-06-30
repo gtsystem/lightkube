@@ -7,7 +7,6 @@ import asyncio
 
 import httpx
 
-from . import dataclasses_dict as dc_d
 from . import resource as r
 from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
@@ -195,8 +194,6 @@ class GenericClient:
 
     def convert_to_resource(self, res: Type[r.Resource], item: dict) -> r.Resource:
         resource_def = r.api_info(res).resource
-        if not issubclass(res, dc_d.DataclassDictMixIn):
-            raise NotImplementedError(res)
         item.setdefault("apiVersion", resource_def.api_version)
         item.setdefault("kind", resource_def.kind)
         return res.from_dict(item, lazy=self._lazy)
