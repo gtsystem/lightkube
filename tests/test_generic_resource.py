@@ -50,6 +50,7 @@ class MockedClient(GenericClient):
     def __init__(self):
         self.namespace = 'default'
         self._field_manager = None
+        self._dry_run = False
 
 
 @pytest.fixture()

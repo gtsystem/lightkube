@@ -147,6 +147,13 @@ async def test_delete_global(client: lightkube.AsyncClient):
     # with cascade and grace_period
     respx.delete("https://localhost:9443/api/v1/nodes/params?propagationPolicy=Foreground&gracePeriodSeconds=0")
     await client.delete(Node, name="params", cascade=types.CascadeType.FOREGROUND, grace_period=0)
+
+    # dry-run
+    req_dry = respx.delete("https://localhost:9443/api/v1/nodes/xz?dryRun=All").respond(
+        text="deleted")
+    node = await client.delete(Node, name="xz", dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
+
     await client.close()
 
 @respx.mock
@@ -157,6 +164,16 @@ async def test_deletecollection_global(client: lightkube.AsyncClient):
 
     respx.delete("https://localhost:9443/api/v1/nodes?propagationPolicy=Foreground&gracePeriodSeconds=0")
     await client.deletecollection(Node, cascade=types.CascadeType.FOREGROUND, grace_period=0)
+
+    await client.close()
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_deletecollection_namespaced(client: lightkube.AsyncClient):
+    # dry-run
+    req_dry = respx.delete("https://localhost:9443/api/v1/namespaces/other/pods?dryRun=All")
+    pod = await client.deletecollection(Pod, namespace="other", dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
     await client.close()
 
 @respx.mock
@@ -273,6 +290,14 @@ async def test_patch_global(client: lightkube.AsyncClient):
     assert node.metadata.name == 'xy'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
 
+    # dry-run
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xz?fieldManager=test&dryRun=All").respond(
+        json={'metadata': {'name': 'xz'}})
+    node = await client.patch(Node, "xz", [{"op": "add", "path": "/metadata/labels/x", "value": "z"}],
+                            patch_type=types.PatchType.JSON, field_manager='test', dry_run=True)
+    assert node.metadata.name == 'xz'
+    assert req.calls[0][0].url.params['dryRun'] == 'All'
+
     await client.close()
 
 
@@ -283,6 +308,13 @@ async def test_create_global(client: lightkube.AsyncClient):
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
     assert pod.metadata.name == 'xx'
+
+    # dry-run
+    req_dry = respx.post("https://localhost:9443/api/v1/nodes").respond(
+        json={'metadata': {'name': 'xx'}})
+    node = await client.create(Node(metadata=ObjectMeta(name='xx')), dry_run=True)
+    assert req_dry.calls[1][0].url.params['dryRun'] == 'All'
+
     await client.close()
 
 
@@ -293,11 +325,18 @@ async def test_replace_global(client: lightkube.AsyncClient):
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read() , {"metadata": {"name": "xx"}})
     assert pod.metadata.name == 'xx'
+
+    # dry-run
+    req_dry = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(
+        json={'metadata': {'name': 'xx'}})
+    pod = await client.replace(Node(metadata=ObjectMeta(name='xx')), dry_run=True)
+    assert req_dry.calls[1][0].url.params['dryRun'] == 'All'
+
     await client.close()
 
 
 async def alist(aiter):
-    return [l async for l in aiter]
+    return [item async for item in aiter]
 
 
 @respx.mock
@@ -359,6 +398,13 @@ async def test_apply_global(client: lightkube.AsyncClient):
     node = await client.apply(Node(metadata=ObjectMeta(name='xy')), field_manager='test')
     assert node.metadata.name == 'xy'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # dry-run
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&dryRun=All").respond(
+        json={'metadata': {'name': 'xy'}})
+    node = await client.apply(Node(metadata=ObjectMeta(name='xy')), field_manager='test', dry_run=True)
+    assert node.metadata.name == 'xy'
+    assert req.calls[0][0].url.params['dryRun'] == 'All'
 
     # sub-resource + force
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx/status?fieldManager=a&force=true").respond(

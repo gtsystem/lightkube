@@ -206,15 +206,30 @@ def test_delete_namespaced(client: lightkube.Client):
     respx.delete("https://localhost:9443/api/v1/namespaces/default/pods/x_cascade?propagationPolicy=Background")
     client.delete(Pod, name="x_cascade", cascade=types.CascadeType.BACKGROUND)
 
+    # test dry_run parameter
+    req_dry = respx.delete("https://localhost:9443/api/v1/namespaces/other/pods/z?dryRun=All")
+    pod = client.delete(Pod, name="z", namespace="other", dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
+
 
 @respx.mock
 def test_delete_global(client: lightkube.Client):
     respx.delete("https://localhost:9443/api/v1/nodes/xx")
     client.delete(Node, name="xx")
 
+    # test dry_run parameter
+    req_dry = respx.delete("https://localhost:9443/api/v1/nodes/z?dryRun=All")
+    node = client.delete(Node, name="z", dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
 
 @respx.mock
 def test_delete_collection_namespaced(client: lightkube.Client):
+
+    # test dry_run parameter
+    req_dry = respx.delete("https://localhost:9443/api/v1/namespaces/other/pods?dryRun=All")
+    pod = client.deletecollection(Pod, namespace="other", dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
+
     respx.delete("https://localhost:9443/api/v1/namespaces/default/pods")
     client.deletecollection(Pod)
 
@@ -229,9 +244,13 @@ def test_delete_collection_namespaced(client: lightkube.Client):
     respx.delete("https://localhost:9443/api/v1/namespaces/cascade/pods?propagationPolicy=Orphan")
     client.deletecollection(Pod, namespace="cascade", cascade=types.CascadeType.ORPHAN)
 
-
 @respx.mock
 def test_deletecollection_global(client: lightkube.Client):
+    # test dry_run parameter
+    req_dry = respx.delete("https://localhost:9443/api/v1/nodes?dryRun=All")
+    noeds = client.deletecollection(Node, dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
+
     respx.delete("https://localhost:9443/api/v1/nodes")
     client.deletecollection(Node)
 
@@ -451,6 +470,13 @@ def test_patch_namespaced(client: lightkube.Client):
         client.patch(Pod, "xz", Pod(metadata=ObjectMeta(labels={'l': 'ok'})), namespace='other',
                      patch_type=types.PatchType.APPLY)
 
+    # test dry_run parameter
+    req_dry = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=test&dryRun=All").respond(
+        json={'metadata': {'name': 'xz'}})
+    node = client.patch(Pod, "xz", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+        patch_type=types.PatchType.STRATEGIC, namespace="other",  field_manager='test', dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
+
 
 @respx.mock
 def test_patch_global(client: lightkube.Client):
@@ -467,6 +493,13 @@ def test_patch_global(client: lightkube.Client):
                         patch_type=types.PatchType.APPLY, field_manager='test', force=True)
     assert node.metadata.name == 'xy'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # test dry_run parameter
+    req_dry = respx.patch("https://localhost:9443/api/v1/nodes/xz?fieldManager=test&dryRun=All").respond(
+        json={'metadata': {'name': 'xz'}})
+    node = client.patch(Node, "xz", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}],
+        patch_type=types.PatchType.APPLY, field_manager='test', dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
 
 
 @respx.mock
@@ -518,6 +551,11 @@ def test_create_global(client: lightkube.Client):
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
     assert pod.metadata.name == 'xx'
 
+    # dry-run
+    req_dry = respx.post("https://localhost:9443/api/v1/nodes").respond(
+        json={'metadata': {'name': 'xz'}})
+    node = client.create(Node(metadata=ObjectMeta(name='xz')), dry_run=True)
+    assert req_dry.calls[1][0].url.params['dryRun'] == 'All'
 
 @respx.mock
 def test_replace_namespaced(client: lightkube.Client):
@@ -534,6 +572,12 @@ def test_replace_namespaced(client: lightkube.Client):
     with pytest.raises(ValueError):
         client.replace(Pod(metadata=ObjectMeta(name="xx", namespace='ns1')), namespace='ns2')
 
+    # dry-run
+    req_dry = respx.put("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(
+        json={'metadata': {'name': 'xx'}})
+    pod = client.replace(Pod(metadata=ObjectMeta(name='xx')), namespace="other", dry_run=True)
+    assert pod.metadata.name == 'xx'
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
 
 @respx.mock
 def test_replace_global(client: lightkube.Client):
@@ -541,6 +585,12 @@ def test_replace_global(client: lightkube.Client):
     pod = client.replace(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}, "apiVersion": "v1", "kind": "Node"})
     assert pod.metadata.name == 'xx'
+
+    # dry-run
+    req_dry = respx.put("https://localhost:9443/api/v1/nodes/xy").respond(
+        json={'metadata': {'name': 'xy'}})
+    pod = client.replace(Node(metadata=ObjectMeta(name='xy')), dry_run=True)
+    assert req_dry.calls[0][0].url.params['dryRun'] == 'All'
 
 
 @respx.mock
@@ -614,4 +664,11 @@ def test_apply_global(client: lightkube.Client):
     node = client.apply(Node.Status(), name='xx', field_manager='a', force=True)
     assert node.metadata.name == 'xx'
     assert req.calls[0][0].headers['Content-Type'] == "application/apply-patch+yaml"
+
+    # dry-run
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xz?fieldManager=test&dryRun=All").respond(
+        json={'metadata': {'name': 'xz'}})
+    node = client.apply(Node(metadata=ObjectMeta(name='xz')), field_manager='test', dry_run=True)
+    assert node.metadata.name == 'xz'
+    assert req.calls[0][0].url.params['dryRun'] == 'All'
 

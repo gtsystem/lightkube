@@ -37,11 +37,30 @@ class Client:
     * **field_manager** - Name associated with the actor or entity that is making these changes.
     * **trust_env** - Ignore environment variables, also passed through to httpx.Client trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
+    * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+        be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+        to `kubectl` commands.
     """
-    def __init__(self, config: Union[SingleConfig, KubeConfig, None] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
-        self._client = GenericSyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
-                                         field_manager=field_manager, trust_env=trust_env)
+
+    def __init__(
+        self,
+        config: Union[SingleConfig, KubeConfig, None] = None,
+        namespace: str = None,
+        timeout: httpx.Timeout = None,
+        lazy=True,
+        field_manager: str = None,
+        trust_env: bool = True,
+        dry_run: bool = False,
+    ):
+        self._client = GenericSyncClient(
+            config,
+            namespace=namespace,
+            timeout=timeout,
+            lazy=lazy,
+            field_manager=field_manager,
+            trust_env=trust_env,
+            dry_run=dry_run,
+        )
 
     @property
     def namespace(self):
@@ -54,17 +73,37 @@ class Client:
         return self._client.config
 
     @overload
-    def delete(self, res: Type[GlobalResource], name: str, grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    def delete(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
     @overload
-    def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    def delete(
+        self,
+        res: Type[NamespacedResource],
+        name: str,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
-    def delete(self, res, name: str, *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None):
+    def delete(
+        self,
+        res,
+        name: str,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ):
         """Delete an object
 
         **parameters**
@@ -82,24 +121,51 @@ class Client:
             * 'CascadeType.ORPHAN' - orphan the dependents;
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return self._client.request("delete", res=res, name=name, namespace=namespace, params={
-            'gracePeriodSeconds': grace_period,
-            'propagationPolicy': cascade.value if cascade else None
-        })
+        return self._client.request(
+            "delete",
+            res=res,
+            name=name,
+            namespace=namespace,
+            params={
+                "gracePeriodSeconds": grace_period,
+                "propagationPolicy": cascade.value if cascade else None,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    def deletecollection(self, res: Type[GlobalResource], grace_period: int = None,
-                         cascade: CascadeType = None) -> None:
-        ...
+    def deletecollection(
+        self,
+        res: Type[GlobalResource],
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
     @overload
-    def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None, grace_period: int = None,
-                         cascade: CascadeType = None) -> None:
-        ...
+    def deletecollection(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
-    def deletecollection(self, res, *, namespace: str = None, grace_period: int = None,
-                         cascade: CascadeType = None):
+    def deletecollection(
+        self,
+        res,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ):
         """Delete all objects of the given kind
 
         * **res** - Resource kind.
@@ -114,11 +180,20 @@ class Client:
             * 'CascadeType.ORPHAN' - orphan the dependents;
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return self._client.request("deletecollection", res=res, namespace=namespace, params={
-            'gracePeriodSeconds': grace_period,
-            'propagationPolicy': cascade.value if cascade else None
-        })
+        return self._client.request(
+            "deletecollection",
+            res=res,
+            namespace=namespace,
+            params={
+                "gracePeriodSeconds": grace_period,
+                "propagationPolicy": cascade.value if cascade else None,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
     def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
@@ -285,27 +360,57 @@ class Client:
                 raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
 
     @overload
-    def patch(self, res: Type[GlobalSubResource], name: str,
-              obj: Union[GlobalSubResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalSubResource:
-        ...
+    def patch(
+        self,
+        res: Type[GlobalSubResource],
+        name: str,
+        obj: Union[GlobalSubResource, Dict, List],
+        *,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    def patch(self, res: Type[GlobalResource], name: str,
-              obj: Union[GlobalResource, Dict, List], *,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> GlobalResource:
-        ...
+    def patch(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        obj: Union[GlobalResource, Dict, List],
+        *,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalResource: ...
 
     @overload
-    def patch(self, res: Type[AllNamespacedResource], name: str,
-              obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-              patch_type: PatchType = PatchType.STRATEGIC,
-              field_manager: str = None, force: bool = False) -> AllNamespacedResource:
-        ...
+    def patch(
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        obj: Union[AllNamespacedResource, Dict, List],
+        *,
+        namespace: str = None,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> AllNamespacedResource: ...
 
-    def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC, field_manager=None, force=False):
+    def patch(
+        self,
+        res,
+        name,
+        obj,
+        *,
+        namespace=None,
+        patch_type=PatchType.STRATEGIC,
+        field_manager=None,
+        force=False,
+        dry_run=False,
+    ):
         """Patch an object.
 
         **parameters**
@@ -320,32 +425,58 @@ class Client:
             **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
         * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
           fields owned by other people. This parameter is ignored for non-apply patch types
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        force_param = 'true' if force and patch_type == PatchType.APPLY else None
-        return self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
-                                    headers={'Content-Type': patch_type.value},
-                                    params={'force': force_param, 'fieldManager': field_manager})
-
-
-
-    @overload
-    def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
-        ...
-
-    @overload
-    def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResource:
-        ...
-
-    @overload
-    def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
-        ...
+        force_param = "true" if force and patch_type == PatchType.APPLY else None
+        return self._client.request(
+            "patch",
+            res=res,
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            headers={"Content-Type": patch_type.value},
+            params={
+                "force": force_param,
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
-        ...
+    def create(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
-    def create(self, obj, name=None, *, namespace=None, field_manager=None):
+    @overload
+    def create(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
+
+    @overload
+    def create(
+        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+    ) -> GlobalResource: ...
+
+    @overload
+    def create(
+        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+    ) -> NamespacedResource: ...
+
+    def create(
+        self, obj, name=None, *, namespace=None, field_manager=None, dry_run=False
+    ):
         """Creates a new object
 
         **parameters**
@@ -355,28 +486,39 @@ class Client:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return self._client.request("post", name=name, namespace=namespace, obj=obj,
-                                    params={'fieldManager': field_manager})
+        return self._client.request(
+            "post",
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            params={
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
+    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None, dry_run: bool = False) -> GlobalSubResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
+    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None, dry_run: bool = False) \
             -> NamespacedSubResource:
         ...
 
     @overload
-    def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
+    def replace(self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False) -> GlobalResource:
         ...
 
     @overload
-    def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
+    def replace(self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False) -> NamespacedResource:
         ...
 
-    def replace(self, obj, name=None, *, namespace=None, field_manager=None):
+    def replace(self, obj, name=None, *, namespace=None, field_manager=None, dry_run: bool = False):
         """Replace an existing resource.
 
         **parameters**
@@ -386,9 +528,12 @@ class Client:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
         return self._client.request("put", name=name, namespace=namespace, obj=obj,
-                                    params={'fieldManager': field_manager})
+                                    params={'fieldManager': field_manager, "dryRun": "All" if dry_run else None})
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
@@ -420,24 +565,24 @@ class Client:
         return (l + '\n' if newlines else l for l in resp.iter_lines())
 
     @overload
-    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
+    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False, dry_run: bool = False) \
             -> GlobalSubResource:
         ...
 
     @overload
     def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
-              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
+              field_manager: str = None, force: bool = False, dry_run: bool = False) -> NamespacedSubResource:
         ...
 
     @overload
-    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
+    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False, dry_run: bool = False) -> GlobalResource:
         ...
 
     @overload
-    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
+    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False, dry_run: bool = False) -> NamespacedResource:
         ...
 
-    def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
+    def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False, dry_run=False):
         """Create or configure an object. This method uses the
         [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
 
@@ -449,11 +594,14 @@ class Client:
         * **field_manager** - Name associated with the actor or entity that is making these changes.
         * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
           fields owned by other people.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
         if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
         return self.patch(type(obj), name, obj, namespace=namespace,
-                          patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
+                          patch_type=PatchType.APPLY, field_manager=field_manager, force=force, dry_run=dry_run)
 
