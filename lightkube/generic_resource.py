@@ -9,12 +9,12 @@ from .core.resource_registry import resource_registry
 
 
 __all__ = [
-    'async_load_in_cluster_generic_resources',
-    'create_global_resource',
-    'create_namespaced_resource',
-    'create_resources_from_crd',
-    'get_generic_resource',
-    'load_in_cluster_generic_resources',
+    "async_load_in_cluster_generic_resources",
+    "create_global_resource",
+    "create_namespaced_resource",
+    "create_resources_from_crd",
+    "get_generic_resource",
+    "load_in_cluster_generic_resources",
 ]
 
 
@@ -30,15 +30,22 @@ def get_generic_resource(version, kind):
     **returns** class representing the generic resource or `None` if it's not found
     """
     resource = resource_registry.get(version, kind)
-    if resource is None or not issubclass(resource, (GenericGlobalResource, GenericNamespacedResource)):
+    if resource is None or not issubclass(
+        resource, (GenericGlobalResource, GenericNamespacedResource)
+    ):
         return None
     return resource
 
 
 class Generic(dict):
     @overload
-    def __init__(self, apiVersion: str=None, kind: str=None,
-                 metadata: meta_v1.ObjectMeta=None, **kwargs):
+    def __init__(
+        self,
+        apiVersion: str = None,
+        kind: str = None,
+        metadata: meta_v1.ObjectMeta = None,
+        **kwargs,
+    ):
         pass
 
     def __init__(self, *args, **kwargs):
@@ -46,19 +53,19 @@ class Generic(dict):
 
     @property
     def apiVersion(self) -> str:
-        return self.get('apiVersion')
+        return self.get("apiVersion")
 
     @property
     def kind(self) -> str:
-        return self.get('kind')
+        return self.get("kind")
 
     @property
     def status(self) -> str:
-        return self.get('status')
+        return self.get("status")
 
     @property
     def metadata(self) -> Optional[meta_v1.ObjectMeta]:
-        meta = self.get('metadata')
+        meta = self.get("metadata")
         if meta is None:
             return None
         elif isinstance(meta, meta_v1.ObjectMeta):
@@ -76,19 +83,27 @@ class Generic(dict):
 
     def to_dict(self, dict_factory=dict):
         d = dict_factory(self)
-        if 'metadata' in d and isinstance(d['metadata'], meta_v1.ObjectMeta):
-            d['metadata'] = d['metadata'].to_dict(dict_factory)
+        if "metadata" in d and isinstance(d["metadata"], meta_v1.ObjectMeta):
+            d["metadata"] = d["metadata"].to_dict(dict_factory)
         return d
 
 
 def create_api_info(group, version, kind, plural, verbs=None) -> res.ApiInfo:
     if verbs is None:
-        verbs = ['delete', 'deletecollection', 'get', 'global_list', 'global_watch', 'list', 'patch',
-               'post', 'put', 'watch']
+        verbs = [
+            "delete",
+            "deletecollection",
+            "get",
+            "global_list",
+            "global_watch",
+            "list",
+            "patch",
+            "post",
+            "put",
+            "watch",
+        ]
     return res.ApiInfo(
-        resource=res.ResourceDef(group, version, kind),
-        plural=plural,
-        verbs=verbs
+        resource=res.ResourceDef(group, version, kind), plural=plural, verbs=verbs
     )
 
 
@@ -111,14 +126,20 @@ class GenericNamespacedStatus(res.NamespacedResourceG, Generic):
 def _create_subresource(main_class, parent_info: res.ApiInfo, action):
     class TmpName(main_class):
         _api_info = res.ApiInfo(
-            resource=parent_info.resource if action == 'status' else res.ResourceDef('autoscaling', 'v1', 'Scale'),
+            resource=(
+                parent_info.resource
+                if action == "status"
+                else res.ResourceDef("autoscaling", "v1", "Scale")
+            ),
             parent=parent_info.resource,
             plural=parent_info.plural,
-            verbs=['get', 'patch', 'put'],
+            verbs=["get", "patch", "put"],
             action=action,
         )
 
-    TmpName.__name__ = TmpName.__qualname__ = f"{parent_info.resource.kind}{action.capitalize()}"
+    TmpName.__name__ = TmpName.__qualname__ = (
+        f"{parent_info.resource.kind}{action.capitalize()}"
+    )
     return TmpName
 
 
@@ -133,11 +154,15 @@ class GenericNamespacedResource(res.NamespacedResourceG, Generic):
 
 
 def _api_info_signature(api_info: res.ApiInfo, namespaced: bool):
-    return (namespaced, api_info.plural, tuple(api_info.verbs) if api_info.verbs else None)
+    return (
+        namespaced,
+        api_info.plural,
+        tuple(api_info.verbs) if api_info.verbs else None,
+    )
 
 
 def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> Any:
-    model = resource_registry.get(f'{group}/{version}', kind)
+    model = resource_registry.get(f"{group}/{version}", kind)
     api_info = create_api_info(group, version, kind, plural, verbs=verbs)
     signature = _api_info_signature(api_info, namespaced)
 
@@ -145,26 +170,37 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
         curr_namespaced = issubclass(model, res.NamespacedResource)
         curr_signature = _api_info_signature(model._api_info, curr_namespaced)
         if curr_signature != signature:
-            raise ValueError(f"Resource {kind} already created but with different signature")
+            raise ValueError(
+                f"Resource {kind} already created but with different signature"
+            )
         return model
 
     if namespaced:
-        main, status, scale = GenericNamespacedResource, GenericNamespacedStatus, GenericNamespacedScale
+        main, status, scale = (
+            GenericNamespacedResource,
+            GenericNamespacedStatus,
+            GenericNamespacedScale,
+        )
     else:
-        main, status, scale = GenericGlobalResource, GenericGlobalStatus, GenericGlobalScale
+        main, status, scale = (
+            GenericGlobalResource,
+            GenericGlobalStatus,
+            GenericGlobalScale,
+        )
 
     class TmpName(main):
         _api_info = create_api_info(group, version, kind, plural, verbs=verbs)
 
-        Scale = _create_subresource(scale, _api_info, action='scale')
-        Status = _create_subresource(status, _api_info, action='status')
+        Scale = _create_subresource(scale, _api_info, action="scale")
+        Status = _create_subresource(status, _api_info, action="status")
 
     TmpName.__name__ = TmpName.__qualname__ = kind
     return resource_registry.register(TmpName)
 
 
-def create_global_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
-        -> Type[GenericGlobalResource]:
+def create_global_resource(
+    group: str, version: str, kind: str, plural: str, verbs=None
+) -> Type[GenericGlobalResource]:
     """Create a new class representing a global resource with the provided specifications.
 
     **Parameters**
@@ -176,12 +212,12 @@ def create_global_resource(group: str, version: str, kind: str, plural: str, ver
 
     **returns**  Subclass of `GenericGlobalResource`.
     """
-    return _create_resource(
-        False, group, version, kind, plural, verbs=verbs)
+    return _create_resource(False, group, version, kind, plural, verbs=verbs)
 
 
-def create_namespaced_resource(group: str, version: str, kind: str, plural: str, verbs=None) \
-        -> Type[GenericNamespacedResource]:
+def create_namespaced_resource(
+    group: str, version: str, kind: str, plural: str, verbs=None
+) -> Type[GenericNamespacedResource]:
     """Create a new class representing a namespaced resource with the provided specifications.
 
     **Parameters**
@@ -193,8 +229,7 @@ def create_namespaced_resource(group: str, version: str, kind: str, plural: str,
 
     **returns**  Subclass of `GenericNamespacedResource`.
     """
-    return _create_resource(
-        True, group, version, kind, plural, verbs=verbs)
+    return _create_resource(True, group, version, kind, plural, verbs=verbs)
 
 
 def load_in_cluster_generic_resources(client: Client):

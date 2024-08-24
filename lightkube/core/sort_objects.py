@@ -1,9 +1,10 @@
-from collections import defaultdict
 from typing import List
 from ..core import resource as r
 
 
-def sort_objects(objs: List[r.Resource], by: str = "kind", reverse: bool = False) -> List[r.Resource]:
+def sort_objects(
+    objs: List[r.Resource], by: str = "kind", reverse: bool = False
+) -> List[r.Resource]:
     """Sorts a list of resource objects by a sorting schema, returning a new list
 
     **parameters**

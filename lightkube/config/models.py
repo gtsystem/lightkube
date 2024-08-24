@@ -52,16 +52,22 @@ class User(DataclassDictMixIn):
     username: str = None
     password: str = None
     token: str = None
-    auth_provider: Dict = field(metadata={'json': 'auth-provider'}, default=None)
-    client_cert: str = field(metadata={'json': 'client-certificate'}, default=None)
-    client_cert_data: str = field(metadata={'json': 'client-certificate-data'}, default=None)
-    client_key: str = field(metadata={'json': 'client-key'}, default=None)
-    client_key_data: str = field(metadata={'json': 'client-key-data'}, default=None)
+    auth_provider: Dict = field(metadata={"json": "auth-provider"}, default=None)
+    client_cert: str = field(metadata={"json": "client-certificate"}, default=None)
+    client_cert_data: str = field(
+        metadata={"json": "client-certificate-data"}, default=None
+    )
+    client_key: str = field(metadata={"json": "client-key"}, default=None)
+    client_key_data: str = field(metadata={"json": "client-key-data"}, default=None)
 
 
 @dataclass
 class Cluster(DataclassDictMixIn):
     server: str = "http://localhost:8080"
-    certificate_auth: str = field(metadata={'json': 'certificate-authority'}, default=None)
-    certificate_auth_data: str = field(metadata={'json': 'certificate-authority-data'}, default=None)
-    insecure: bool = field(metadata={'json': 'insecure-skip-tls-verify'}, default=False)
+    certificate_auth: str = field(
+        metadata={"json": "certificate-authority"}, default=None
+    )
+    certificate_auth_data: str = field(
+        metadata={"json": "certificate-authority-data"}, default=None
+    )
+    insecure: bool = field(metadata={"json": "insecure-skip-tls-verify"}, default=False)

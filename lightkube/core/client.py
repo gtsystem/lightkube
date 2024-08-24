@@ -1,20 +1,32 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
+from typing import (
+    Type,
+    Iterator,
+    TypeVar,
+    Union,
+    overload,
+    Dict,
+    Tuple,
+    List,
+    Iterable,
+)
 import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
-from .generic_client import GenericSyncClient, GenericAsyncClient
+from .generic_client import GenericSyncClient
 from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
 
-NamespacedResource = TypeVar('NamespacedResource', bound=r.NamespacedResource)
-GlobalResource = TypeVar('GlobalResource', bound=r.GlobalResource)
-GlobalSubResource = TypeVar('GlobalSubResource', bound=r.GlobalSubResource)
-NamespacedSubResource = TypeVar('NamespacedSubResource', bound=r.NamespacedSubResource)
-AllNamespacedResource = TypeVar('AllNamespacedResource', bound=Union[r.NamespacedResource, r.NamespacedSubResource])
-Resource = TypeVar('Resource', bound=r.Resource)
+NamespacedResource = TypeVar("NamespacedResource", bound=r.NamespacedResource)
+GlobalResource = TypeVar("GlobalResource", bound=r.GlobalResource)
+GlobalSubResource = TypeVar("GlobalSubResource", bound=r.GlobalSubResource)
+NamespacedSubResource = TypeVar("NamespacedSubResource", bound=r.NamespacedSubResource)
+AllNamespacedResource = TypeVar(
+    "AllNamespacedResource", bound=Union[r.NamespacedResource, r.NamespacedSubResource]
+)
+Resource = TypeVar("Resource", bound=r.Resource)
 LabelValue = Union[str, None, operators.Operator, Iterable]
 FieldValue = Union[str, operators.BinaryOperator, operators.SequenceOperator]
 LabelSelector = Dict[str, LabelValue]
@@ -196,12 +208,12 @@ class Client:
         )
 
     @overload
-    def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
-        ...
+    def get(self, res: Type[GlobalResource], name: str) -> GlobalResource: ...
 
     @overload
-    def get(self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None) -> AllNamespacedResource:
-        ...
+    def get(
+        self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None
+    ) -> AllNamespacedResource: ...
 
     def get(self, res, name, *, namespace=None):
         """Return an object
@@ -215,15 +227,25 @@ class Client:
         return self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
-    def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[GlobalResource]:
-        ...
+    def list(
+        self,
+        res: Type[GlobalResource],
+        *,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+    ) -> Iterator[GlobalResource]: ...
 
     @overload
-    def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
-             labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            Iterator[NamespacedResource]:
-        ...
+    def list(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+    ) -> Iterator[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
         """Return an iterator of objects matching the selection criteria.
@@ -239,31 +261,55 @@ class Client:
         """
 
         br = self._client.prepare_request(
-            'list', res=res, namespace=namespace,
+            "list",
+            res=res,
+            namespace=namespace,
             params={
-                'limit': chunk_size,
-                'labelSelector': build_selector(labels) if labels else None,
-                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
-            }
+                "limit": chunk_size,
+                "labelSelector": build_selector(labels) if labels else None,
+                "fieldSelector": (
+                    build_selector(fields, for_fields=True) if fields else None
+                ),
+            },
         )
         return self._client.list(br)
 
     @overload
-    def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
-              server_timeout: int = None,
-              resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, GlobalResource]]:
-        ...
+    def watch(
+        self,
+        res: Type[GlobalResource],
+        *,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        server_timeout: int = None,
+        resource_version: str = None,
+        on_error: OnErrorHandler = on_error_raise,
+    ) -> Iterator[Tuple[str, GlobalResource]]: ...
 
     @overload
-    def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
-              labels: LabelSelector = None, fields: FieldSelector = None,
-              server_timeout: int = None, resource_version: str = None,
-              on_error: OnErrorHandler = on_error_raise) -> \
-            Iterator[Tuple[str, NamespacedResource]]:
-        ...
+    def watch(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        server_timeout: int = None,
+        resource_version: str = None,
+        on_error: OnErrorHandler = on_error_raise,
+    ) -> Iterator[Tuple[str, NamespacedResource]]: ...
 
-    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
+    def watch(
+        self,
+        res,
+        *,
+        namespace=None,
+        labels=None,
+        fields=None,
+        server_timeout=None,
+        resource_version=None,
+        on_error=on_error_raise,
+    ):
         """Watch changes to objects
 
         **parameters**
@@ -279,13 +325,19 @@ class Client:
         * **on_error** - *(optional)* Function that control what to do in case of errors.
             The default implementation will raise any error.
         """
-        br = self._client.prepare_request("list", res=res, namespace=namespace, watch=True,
+        br = self._client.prepare_request(
+            "list",
+            res=res,
+            namespace=namespace,
+            watch=True,
             params={
-                'timeoutSeconds': server_timeout,
-                'resourceVersion': resource_version,
-                'labelSelector': build_selector(labels) if labels else None,
-                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
-            }
+                "timeoutSeconds": server_timeout,
+                "resourceVersion": resource_version,
+                "labelSelector": build_selector(labels) if labels else None,
+                "fieldSelector": (
+                    build_selector(fields, for_fields=True) if fields else None
+                ),
+            },
         )
         return self._client.watch(br, on_error=on_error)
 
@@ -297,8 +349,7 @@ class Client:
         *,
         for_conditions: Iterable[str],
         raise_for_conditions: Iterable[str] = (),
-    ) -> GlobalResource:
-        ...
+    ) -> GlobalResource: ...
 
     @overload
     def wait(
@@ -309,8 +360,7 @@ class Client:
         for_conditions: Iterable[str],
         namespace: str = None,
         raise_for_conditions: Iterable[str] = (),
-    ) -> AllNamespacedResource:
-        ...
+    ) -> AllNamespacedResource: ...
 
     def wait(
         self,
@@ -333,12 +383,14 @@ class Client:
         """
 
         kind = r.api_info(res).plural
-        full_name = f'{kind}/{name}'
+        full_name = f"{kind}/{name}"
 
         for_conditions = list(for_conditions)
         raise_for_conditions = list(raise_for_conditions)
 
-        for op, obj in self.watch(res, namespace=namespace, fields={'metadata.name': name}):
+        for op, obj in self.watch(
+            res, namespace=namespace, fields={"metadata.name": name}
+        ):
             if obj.status is None:
                 continue
 
@@ -350,14 +402,18 @@ class Client:
             except AttributeError:
                 status = obj.status
 
-            conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
-            if any(c['type'] in for_conditions for c in conditions):
+            conditions = [
+                c for c in status.get("conditions", []) if c["status"] == "True"
+            ]
+            if any(c["type"] in for_conditions for c in conditions):
                 return obj
 
-            failures = [c for c in conditions if c['type'] in raise_for_conditions]
+            failures = [c for c in conditions if c["type"] in raise_for_conditions]
 
             if failures:
-                raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+                raise ConditionError(
+                    full_name, [f.get("message", f["type"]) for f in failures]
+                )
 
     @overload
     def patch(
@@ -502,23 +558,44 @@ class Client:
         )
 
     @overload
-    def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None, dry_run: bool = False) -> GlobalSubResource:
-        ...
+    def replace(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None, dry_run: bool = False) \
-            -> NamespacedSubResource:
-        ...
+    def replace(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
 
     @overload
-    def replace(self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False) -> GlobalResource:
-        ...
+    def replace(
+        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+    ) -> GlobalResource: ...
 
     @overload
-    def replace(self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False) -> NamespacedResource:
-        ...
+    def replace(
+        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+    ) -> NamespacedResource: ...
 
-    def replace(self, obj, name=None, *, namespace=None, field_manager=None, dry_run: bool = False):
+    def replace(
+        self,
+        obj,
+        name=None,
+        *,
+        namespace=None,
+        field_manager=None,
+        dry_run: bool = False,
+    ):
         """Replace an existing resource.
 
         **parameters**
@@ -532,16 +609,43 @@ class Client:
             be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
             to `kubectl` commands.
         """
-        return self._client.request("put", name=name, namespace=namespace, obj=obj,
-                                    params={'fieldManager': field_manager, "dryRun": "All" if dry_run else None})
+        return self._client.request(
+            "put",
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            params={
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
-            since: int = None, tail_lines: int = None, timestamps: bool = False, newlines: bool = True) -> Iterator[str]:
-        ...
+    def log(
+        self,
+        name: str,
+        *,
+        namespace: str = None,
+        container: str = None,
+        follow: bool = False,
+        since: int = None,
+        tail_lines: int = None,
+        timestamps: bool = False,
+        newlines: bool = True,
+    ) -> Iterator[str]: ...
 
-    def log(self, name, *, namespace=None, container=None, follow=False,
-            since=None, tail_lines=None, timestamps=False, newlines=True):
+    def log(
+        self,
+        name,
+        *,
+        namespace=None,
+        container=None,
+        follow=False,
+        since=None,
+        tail_lines=None,
+        timestamps=False,
+        newlines=True,
+    ):
         """Return log lines for the given Pod
 
         **parameters**
@@ -556,33 +660,74 @@ class Client:
         * **newlines** - *(optional)* If `True`, each line will end with a newline, otherwise the newlines will be stripped.
         """
         br = self._client.prepare_request(
-            'get', core_v1.PodLog, name=name, namespace=namespace,
-            params={'timestamps': timestamps, 'tailLines': tail_lines, 'container': container,
-                    'sinceSeconds': since, 'follow': follow})
+            "get",
+            core_v1.PodLog,
+            name=name,
+            namespace=namespace,
+            params={
+                "timestamps": timestamps,
+                "tailLines": tail_lines,
+                "container": container,
+                "sinceSeconds": since,
+                "follow": follow,
+            },
+        )
         req = self._client.build_adapter_request(br)
         resp = self._client.send(req, stream=follow)
         self._client.raise_for_status(resp)
-        return (l + '\n' if newlines else l for l in resp.iter_lines())
+        return (l + "\n" if newlines else l for l in resp.iter_lines())
 
     @overload
-    def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False, dry_run: bool = False) \
-            -> GlobalSubResource:
-        ...
+    def apply(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        *,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
-              field_manager: str = None, force: bool = False, dry_run: bool = False) -> NamespacedSubResource:
-        ...
+    def apply(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
 
     @overload
-    def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False, dry_run: bool = False) -> GlobalResource:
-        ...
+    def apply(
+        self,
+        obj: GlobalResource,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalResource: ...
 
     @overload
-    def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False, dry_run: bool = False) -> NamespacedResource:
-        ...
+    def apply(
+        self,
+        obj: NamespacedResource,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> NamespacedResource: ...
 
-    def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False, dry_run=False):
+    def apply(
+        self,
+        obj,
+        name=None,
+        *,
+        namespace=None,
+        field_manager=None,
+        force=False,
+        dry_run=False,
+    ):
         """Create or configure an object. This method uses the
         [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
 
@@ -598,10 +743,21 @@ class Client:
             be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
             to `kubectl` commands.
         """
-        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
+        if (
+            namespace is None
+            and isinstance(obj, r.NamespacedResource)
+            and obj.metadata.namespace
+        ):
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
-        return self.patch(type(obj), name, obj, namespace=namespace,
-                          patch_type=PatchType.APPLY, field_manager=field_manager, force=force, dry_run=dry_run)
-
+        return self.patch(
+            type(obj),
+            name,
+            obj,
+            namespace=namespace,
+            patch_type=PatchType.APPLY,
+            field_manager=field_manager,
+            force=force,
+            dry_run=dry_run,
+        )

@@ -1,4 +1,3 @@
-import sys
 import typing
 from typing import Union
 from datetime import datetime
@@ -51,18 +50,22 @@ def nohop(x, kw):
 def is_dataclass_json(cls):
     return dc.is_dataclass(cls) and issubclass(cls, DataclassDictMixIn)
 
+
 NoneType = type(None)
 
+
 def _remove_optional(tp):
-       if get_origin(tp) is Union:
-         args = get_args(tp)
-         if args[1] is NoneType:
-           return args[0]
-       return tp
+    if get_origin(tp) is Union:
+        args = get_args(tp)
+        if args[1] is NoneType:
+            return args[0]
+    return tp
+
 
 def get_type_hints(cl):
-        types = typing.get_type_hints(cl)
-        return {k: _remove_optional(v) for k, v in types.items()}
+    types = typing.get_type_hints(cl)
+    return {k: _remove_optional(v) for k, v in types.items()}
+
 
 def extract_types(cls, is_to=True):
     func_name = "to_json_type" if is_to else "from_json_type"
@@ -79,9 +82,15 @@ def extract_types(cls, is_to=True):
             is_list = False
 
         if is_dataclass_json(t):
-            yield k, Converter(is_list=is_list, supp_kw=True, func=getattr(t, method_name)), field.default
+            yield k, Converter(
+                is_list=is_list, supp_kw=True, func=getattr(t, method_name)
+            ), field.default
         elif t in TYPE_CONVERTERS:
-            yield k, Converter(is_list=is_list, supp_kw=False, func=getattr(TYPE_CONVERTERS[t], func_name)), field.default
+            yield k, Converter(
+                is_list=is_list,
+                supp_kw=False,
+                func=getattr(TYPE_CONVERTERS[t], func_name),
+            ), field.default
         else:
             if is_to:
                 yield k, nohop, field.default
@@ -118,7 +127,11 @@ class DataclassDictMixIn:
             cls._late_init_from = list(t[:2] for t in extract_types(cls, is_to=False))
             for k, convert in cls._late_init_from:
                 setattr(cls, k, LazyAttribute(k, convert))
-            cls._prop_to_json = {field.name: field.metadata['json'] for field in dc.fields(cls) if 'json' in field.metadata}
+            cls._prop_to_json = {
+                field.name: field.metadata["json"]
+                for field in dc.fields(cls)
+                if "json" in field.metadata
+            }
             cls._json_to_prop = {v: k for k, v in cls._prop_to_json.items()}
             cls._late_init_to = list(extract_types(cls, is_to=True))
             cls._valid_params = {f.name for f in dc.fields(cls)}
