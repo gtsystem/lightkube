@@ -1,16 +1,31 @@
-from typing import Type, Iterator, TypeVar, Union, overload, Dict, Tuple, List, Iterable, AsyncIterable
+from typing import (
+    Type,
+    Union,
+    overload,
+    Dict,
+    Tuple,
+    List,
+    Iterable,
+    AsyncIterable,
+)
 import httpx
 
 from ..config.kubeconfig import SingleConfig, KubeConfig
-from .. import operators
 from ..core import resource as r
-from .generic_client import GenericSyncClient, GenericAsyncClient
+from .generic_client import GenericAsyncClient
 from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1
 from .selector import build_selector
-from .client import NamespacedResource, GlobalResource, GlobalSubResource, NamespacedSubResource, \
-    AllNamespacedResource, Resource, LabelValue, FieldValue, LabelSelector, FieldSelector
+from .client import (
+    NamespacedResource,
+    GlobalResource,
+    GlobalSubResource,
+    NamespacedSubResource,
+    AllNamespacedResource,
+    LabelSelector,
+    FieldSelector,
+)
 
 
 class AsyncClient:
@@ -188,12 +203,12 @@ class AsyncClient:
         )
 
     @overload
-    async def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
-        ...
+    async def get(self, res: Type[GlobalResource], name: str) -> GlobalResource: ...
 
     @overload
-    async def get(self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None) -> AllNamespacedResource:
-        ...
+    async def get(
+        self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None
+    ) -> AllNamespacedResource: ...
 
     async def get(self, res, name, *, namespace=None):
         """Return an object
@@ -204,18 +219,30 @@ class AsyncClient:
         * **name** - Name of the object to fetch.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         """
-        return await self._client.request("get", res=res, name=name, namespace=namespace)
+        return await self._client.request(
+            "get", res=res, name=name, namespace=namespace
+        )
 
     @overload
-    def list(self, res: Type[GlobalResource], *, chunk_size: int = None, labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            AsyncIterable[GlobalResource]:
-        ...
+    def list(
+        self,
+        res: Type[GlobalResource],
+        *,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+    ) -> AsyncIterable[GlobalResource]: ...
 
     @overload
-    def list(self, res: Type[NamespacedResource], *, namespace: str = None, chunk_size: int = None,
-             labels: LabelSelector = None, fields: FieldSelector = None) -> \
-            AsyncIterable[NamespacedResource]:
-        ...
+    def list(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+    ) -> AsyncIterable[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
         """Return an iterator of objects matching the selection criteria.
@@ -231,31 +258,55 @@ class AsyncClient:
         """
 
         br = self._client.prepare_request(
-            'list', res=res, namespace=namespace,
+            "list",
+            res=res,
+            namespace=namespace,
             params={
-                'limit': chunk_size,
-                'labelSelector': build_selector(labels) if labels else None,
-                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
-            }
+                "limit": chunk_size,
+                "labelSelector": build_selector(labels) if labels else None,
+                "fieldSelector": (
+                    build_selector(fields, for_fields=True) if fields else None
+                ),
+            },
         )
         return self._client.list(br)
 
     @overload
-    def watch(self, res: Type[GlobalResource], *, labels: LabelSelector = None, fields: FieldSelector = None,
-              server_timeout: int = None,
-              resource_version: str = None, on_error: OnErrorHandler = on_error_raise) -> \
-            AsyncIterable[Tuple[str, GlobalResource]]:
-        ...
+    def watch(
+        self,
+        res: Type[GlobalResource],
+        *,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        server_timeout: int = None,
+        resource_version: str = None,
+        on_error: OnErrorHandler = on_error_raise,
+    ) -> AsyncIterable[Tuple[str, GlobalResource]]: ...
 
     @overload
-    def watch(self, res: Type[NamespacedResource], *, namespace: str = None,
-              labels: LabelSelector = None, fields: FieldSelector = None,
-              server_timeout: int = None, resource_version: str = None,
-              on_error: OnErrorHandler = on_error_raise) -> \
-            AsyncIterable[Tuple[str, NamespacedResource]]:
-        ...
+    def watch(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        server_timeout: int = None,
+        resource_version: str = None,
+        on_error: OnErrorHandler = on_error_raise,
+    ) -> AsyncIterable[Tuple[str, NamespacedResource]]: ...
 
-    def watch(self, res, *, namespace=None, labels=None, fields=None, server_timeout=None, resource_version=None, on_error=on_error_raise):
+    def watch(
+        self,
+        res,
+        *,
+        namespace=None,
+        labels=None,
+        fields=None,
+        server_timeout=None,
+        resource_version=None,
+        on_error=on_error_raise,
+    ):
         """Watch changes to objects
 
         **parameters**
@@ -271,13 +322,19 @@ class AsyncClient:
         * **on_error** - *(optional)* Function that control what to do in case of errors.
             The default implementation will raise any error.
         """
-        br = self._client.prepare_request("list", res=res, namespace=namespace, watch=True,
+        br = self._client.prepare_request(
+            "list",
+            res=res,
+            namespace=namespace,
+            watch=True,
             params={
-                'timeoutSeconds': server_timeout,
-                'resourceVersion': resource_version,
-                'labelSelector': build_selector(labels) if labels else None,
-                'fieldSelector': build_selector(fields, for_fields=True) if fields else None
-            }
+                "timeoutSeconds": server_timeout,
+                "resourceVersion": resource_version,
+                "labelSelector": build_selector(labels) if labels else None,
+                "fieldSelector": (
+                    build_selector(fields, for_fields=True) if fields else None
+                ),
+            },
         )
         return self._client.watch(br, on_error=on_error)
 
@@ -289,8 +346,7 @@ class AsyncClient:
         *,
         for_conditions: Iterable[str],
         raise_for_conditions: Iterable[str] = (),
-    ) -> GlobalResource:
-        ...
+    ) -> GlobalResource: ...
 
     @overload
     async def wait(
@@ -301,8 +357,7 @@ class AsyncClient:
         for_conditions: Iterable[str],
         namespace: str = None,
         raise_for_conditions: Iterable[str] = (),
-    ) -> AllNamespacedResource:
-        ...
+    ) -> AllNamespacedResource: ...
 
     async def wait(
         self,
@@ -325,12 +380,12 @@ class AsyncClient:
         """
 
         kind = r.api_info(res).plural
-        full_name = f'{kind}/{name}'
+        full_name = f"{kind}/{name}"
 
         for_conditions = list(for_conditions)
         raise_for_conditions = list(raise_for_conditions)
 
-        watch = self.watch(res, namespace=namespace, fields={'metadata.name': name})
+        watch = self.watch(res, namespace=namespace, fields={"metadata.name": name})
         try:
             async for op, obj in watch:
 
@@ -345,14 +400,18 @@ class AsyncClient:
                 except AttributeError:
                     status = obj.status
 
-                conditions = [c for c in status.get('conditions', []) if c['status'] == 'True']
-                if any(c['type'] in for_conditions for c in conditions):
+                conditions = [
+                    c for c in status.get("conditions", []) if c["status"] == "True"
+                ]
+                if any(c["type"] in for_conditions for c in conditions):
                     return obj
 
-                failures = [c for c in conditions if c['type'] in raise_for_conditions]
+                failures = [c for c in conditions if c["type"] in raise_for_conditions]
 
                 if failures:
-                    raise ConditionError(full_name, [f.get('message', f['type']) for f in failures])
+                    raise ConditionError(
+                        full_name, [f.get("message", f["type"]) for f in failures]
+                    )
         finally:
             # we ensure the async generator is closed before returning
             await watch.aclose()
@@ -569,12 +628,31 @@ class AsyncClient:
         )
 
     @overload
-    def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
-            since: int = None, tail_lines: int = None, timestamps: bool = False, newlines: bool = True) -> AsyncIterable[str]:
-        ...
+    def log(
+        self,
+        name: str,
+        *,
+        namespace: str = None,
+        container: str = None,
+        follow: bool = False,
+        since: int = None,
+        tail_lines: int = None,
+        timestamps: bool = False,
+        newlines: bool = True,
+    ) -> AsyncIterable[str]: ...
 
-    def log(self, name, *, namespace=None, container=None, follow=False,
-            since=None, tail_lines=None, timestamps=False, newlines=True):
+    def log(
+        self,
+        name,
+        *,
+        namespace=None,
+        container=None,
+        follow=False,
+        since=None,
+        tail_lines=None,
+        timestamps=False,
+        newlines=True,
+    ):
         """Return log lines for the given Pod
 
         **parameters**
@@ -589,16 +667,26 @@ class AsyncClient:
         * **newlines** - *(optional)* If `True`, each line will end with a newline, otherwise the newlines will be stripped.
         """
         br = self._client.prepare_request(
-            'get', core_v1.PodLog, name=name, namespace=namespace,
-            params={'timestamps': timestamps, 'tailLines': tail_lines, 'container': container,
-                    'sinceSeconds': since, 'follow': follow})
+            "get",
+            core_v1.PodLog,
+            name=name,
+            namespace=namespace,
+            params={
+                "timestamps": timestamps,
+                "tailLines": tail_lines,
+                "container": container,
+                "sinceSeconds": since,
+                "follow": follow,
+            },
+        )
         req = self._client.build_adapter_request(br)
 
         async def stream_log():
             resp = await self._client.send(req, stream=follow)
             self._client.raise_for_status(resp)
             async for line in resp.aiter_lines():
-                yield line + '\n' if newlines else line
+                yield line + "\n" if newlines else line
+
         return stream_log()
 
     @overload
@@ -667,14 +755,25 @@ class AsyncClient:
             be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
             to `kubectl` commands.
         """
-        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
+        if (
+            namespace is None
+            and isinstance(obj, r.NamespacedResource)
+            and obj.metadata.namespace
+        ):
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
-        return await self.patch(type(obj), name, obj, namespace=namespace,
-                                patch_type=PatchType.APPLY, field_manager=field_manager, force=force, dry_run=dry_run)
+        return await self.patch(
+            type(obj),
+            name,
+            obj,
+            namespace=namespace,
+            patch_type=PatchType.APPLY,
+            field_manager=field_manager,
+            force=force,
+            dry_run=dry_run,
+        )
 
     async def close(self):
         """Close the underline httpx client"""
         await self._client.close()
-

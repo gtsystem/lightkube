@@ -1,6 +1,7 @@
 """
 Exceptions.
 """
+
 import httpx
 
 from .internal_models import meta_v1
@@ -10,14 +11,16 @@ class ConfigError(Exception):
     """
     Configuration specific errors.
     """
+
     pass
 
 
 class ApiError(httpx.HTTPStatusError):
-    status: 'meta_v1.Status'
+    status: "meta_v1.Status"
 
     def __init__(
-            self, request: httpx.Request = None, response: httpx.Response = None) -> None:
+        self, request: httpx.Request = None, response: httpx.Response = None
+    ) -> None:
         self.status = meta_v1.Status.from_dict(response.json())
         super().__init__(self.status.message, request=request, response=response)
 
@@ -50,5 +53,5 @@ class ConditionError(Exception):
         self.messages = messages
 
     def __str__(self):
-        messages = '; '.join(self.messages)
-        return f'{self.name} has failure condition(s): {messages}'
+        messages = "; ".join(self.messages)
+        return f"{self.name} has failure condition(s): {messages}"

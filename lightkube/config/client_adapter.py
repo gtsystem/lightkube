@@ -11,11 +11,15 @@ from .models import Cluster, User, UserExec, FileStr
 from ..core.exceptions import ConfigError
 
 
-def Client(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True) -> httpx.Client:
+def Client(
+    config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True
+) -> httpx.Client:
     return httpx.Client(**httpx_parameters(config, timeout, trust_env))
 
 
-def AsyncClient(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True) -> httpx.AsyncClient:
+def AsyncClient(
+    config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True
+) -> httpx.AsyncClient:
     return httpx.AsyncClient(**httpx_parameters(config, timeout, trust_env))
 
 
@@ -41,18 +45,26 @@ class BearerAuth(httpx.Auth):
 
 async def async_check_output(command, env):
     PIPE = asyncio.subprocess.PIPE
-    proc = await asyncio.create_subprocess_exec(*command, env=env, stdin=None, stdout=PIPE, stderr=PIPE)
+    proc = await asyncio.create_subprocess_exec(
+        *command, env=env, stdin=None, stdout=PIPE, stderr=PIPE
+    )
     stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
+        raise ConfigError(
+            f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}"
+        )
     return stdout
 
 
 def sync_check_output(command, env):
-    proc = subprocess.Popen(command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
-        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
+        raise ConfigError(
+            f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}"
+        )
     return stdout
 
 
@@ -63,8 +75,13 @@ class ExecAuth(httpx.Auth):
 
     def _prepare(self):
         exec = self._exec
-        if exec.apiVersion not in ("client.authentication.k8s.io/v1alpha1", "client.authentication.k8s.io/v1beta1"):
-            raise ConfigError(f"auth exec api version {exec.apiVersion} not implemented")
+        if exec.apiVersion not in (
+            "client.authentication.k8s.io/v1alpha1",
+            "client.authentication.k8s.io/v1beta1",
+        ):
+            raise ConfigError(
+                f"auth exec api version {exec.apiVersion} not implemented"
+            )
         cmd_env_vars = dict(os.environ)
         cmd_env_vars.update((var.name, var.value) for var in exec.env)
         # TODO: add support for passing KUBERNETES_EXEC_INFO env var
@@ -121,7 +138,7 @@ def user_cert(user: User, abs_file):
     if user.client_cert or user.client_cert_data:
         return (
             FileStr(user.client_cert_data) or abs_file(user.client_cert),
-            FileStr(user.client_key_data) or abs_file(user.client_key)
+            FileStr(user.client_key_data) or abs_file(user.client_key),
         )
     return None
 

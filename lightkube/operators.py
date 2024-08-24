@@ -1,6 +1,6 @@
 from typing import Iterable
 
-__all__ = ['in_', 'not_in', 'exists', 'not_exists', 'equal', 'not_equal']
+__all__ = ["in_", "not_in", "exists", "not_exists", "equal", "not_equal"]
 
 
 class Operator:
@@ -28,25 +28,24 @@ class UnaryOperator(Operator):
 
 
 def in_(values: Iterable) -> SequenceOperator:
-    return SequenceOperator('in_', 'in', sorted(values))
+    return SequenceOperator("in_", "in", sorted(values))
 
 
 def not_in(values: Iterable) -> SequenceOperator:
-    return SequenceOperator('not_in', 'notin', sorted(values))
+    return SequenceOperator("not_in", "notin", sorted(values))
 
 
 def exists() -> UnaryOperator:
-    return UnaryOperator('exists', '')
+    return UnaryOperator("exists", "")
 
 
 def not_exists() -> UnaryOperator:
-    return UnaryOperator('not_exists', '!')
+    return UnaryOperator("not_exists", "!")
 
 
 def equal(value: str) -> BinaryOperator:
-    return BinaryOperator('equal', '=', value)
+    return BinaryOperator("equal", "=", value)
 
 
 def not_equal(value: str) -> BinaryOperator:
-    return BinaryOperator('not_equal', '!=', value)
-
+    return BinaryOperator("not_equal", "!=", value)

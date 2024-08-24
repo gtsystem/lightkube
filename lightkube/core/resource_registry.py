@@ -6,7 +6,8 @@ from lightkube.core.exceptions import LoadResourceError
 
 AnyResource = Union[res.NamespacedResource, res.GlobalResource]
 AnyResourceType = Type[AnyResource]
-AnyResourceTypeVar = TypeVar('AnyResourceTypeVar', bound=AnyResourceType)
+AnyResourceTypeVar = TypeVar("AnyResourceTypeVar", bound=AnyResourceType)
+
 
 def _load_internal_resource(version, kind):
     if "/" in version:
@@ -17,13 +18,16 @@ def _load_internal_resource(version, kind):
         group = group.replace(".", "_")
         module_name = "_".join([group, version_n])
     else:
-        module_name = f'core_{version}'
+        module_name = f"core_{version}"
 
-    module = importlib.import_module(f'lightkube.resources.{module_name.lower()}')
+    module = importlib.import_module(f"lightkube.resources.{module_name.lower()}")
     try:
         return getattr(module, kind)
     except AttributeError:
-        raise LoadResourceError(f"Cannot find resource kind '{kind}' in module {module.__name__}")
+        raise LoadResourceError(
+            f"Cannot find resource kind '{kind}' in module {module.__name__}"
+        )
+
 
 def _maybe_internal(version):
     if "/" not in version:
@@ -35,8 +39,8 @@ def _maybe_internal(version):
 
 
 class ResourceRegistry:
-    """Resource Registry used to load standard resources or to register custom resources
-    """
+    """Resource Registry used to load standard resources or to register custom resources"""
+
     _registry: dict
 
     def __init__(self):
@@ -52,21 +56,26 @@ class ResourceRegistry:
         **returns** The `resource` class provided
         """
         info = resource._api_info
-        version = f'{info.resource.group}/{info.resource.version}' if info.resource.group else info.resource.version
+        version = (
+            f"{info.resource.group}/{info.resource.version}"
+            if info.resource.group
+            else info.resource.version
+        )
         res_key = (version, info.resource.kind)
 
         if res_key in self._registry:
             registered_resource = self._registry[res_key]
-            if registered_resource is resource:   # already present
+            if registered_resource is resource:  # already present
                 return registered_resource
-            raise ValueError(f"Another class for resource '{info.resource.kind}' is already registered")
+            raise ValueError(
+                f"Another class for resource '{info.resource.kind}' is already registered"
+            )
 
         self._registry[res_key] = resource
         return resource
 
     def clear(self):
-        """Clear the registry from all registered resources
-        """
+        """Clear the registry from all registered resources"""
         self._registry.clear()
 
     def get(self, version: str, kind: str) -> Optional[Type[AnyResource]]:
@@ -102,7 +111,10 @@ class ResourceRegistry:
             except ImportError:
                 pass
 
-        raise LoadResourceError(f"Cannot find resource {kind} of group {version}. "
-                                "If using a CRD, ensure a generic resource is defined.")
+        raise LoadResourceError(
+            f"Cannot find resource {kind} of group {version}. "
+            "If using a CRD, ensure a generic resource is defined."
+        )
+
 
 resource_registry = ResourceRegistry()

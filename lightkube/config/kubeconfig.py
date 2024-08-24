@@ -1,7 +1,5 @@
 import os
 import yaml
-import tempfile
-import base64
 from typing import Dict, NamedTuple, Optional
 from pathlib import Path
 
@@ -21,7 +19,7 @@ from .models import Cluster, User, Context
 
 
 def to_mapping(obj_list, key, factory):
-    return {obj['name']: factory.from_dict(obj[key], lazy=False) for obj in obj_list}
+    return {obj["name"]: factory.from_dict(obj[key], lazy=False) for obj in obj_list}
 
 
 DEFAULT_NAMESPACE = "default"
@@ -45,24 +43,30 @@ class SingleConfig(NamedTuple):
             return fname
 
         if self.fname is None:
-            raise exceptions.ConfigError(f"{fname} is relative, but kubeconfig path unknown")
+            raise exceptions.ConfigError(
+                f"{fname} is relative, but kubeconfig path unknown"
+            )
 
         return self.fname.parent.joinpath(fname)
 
 
 PROXY_CONF = SingleConfig(
-    context_name="default", context=Context(cluster="default"),
-    cluster=Cluster(server="http://localhost:8080")
+    context_name="default",
+    context=Context(cluster="default"),
+    cluster=Cluster(server="http://localhost:8080"),
 )
 
 
 class KubeConfig:
     """Class to represent a kubeconfig. See the specific constructors depending on your use case."""
+
     clusters: Dict[str, Cluster]
     users: Dict[str, User]
     contexts: Dict[str, Context]
 
-    def __init__(self, *, clusters, contexts, users=None, current_context=None, fname=None):
+    def __init__(
+        self, *, clusters, contexts, users=None, current_context=None, fname=None
+    ):
         """
         Create the kubernetes configuration manually. Normally this constructor should not be called directly.
         Use a specific constructor instead.
@@ -92,14 +96,16 @@ class KubeConfig:
           present inside the configuration.
         """
         return cls(
-            current_context=conf.get('current-context'),
-            clusters=to_mapping(conf['clusters'], 'cluster', factory=Cluster),
-            contexts=to_mapping(conf['contexts'], 'context', factory=Context),
-            users=to_mapping(conf.get('users', []), 'user', factory=User),
-            fname=fname
+            current_context=conf.get("current-context"),
+            clusters=to_mapping(conf["clusters"], "cluster", factory=Cluster),
+            contexts=to_mapping(conf["contexts"], "context", factory=Context),
+            users=to_mapping(conf.get("users", []), "user", factory=User),
+            fname=fname,
         )
 
-    def get(self, context_name=None, default: SingleConfig = None) -> Optional[SingleConfig]:
+    def get(
+        self, context_name=None, default: SingleConfig = None
+    ) -> Optional[SingleConfig]:
         """Returns a `SingleConfig` instance, representing the configuration matching the given `context_name`.
         Lightkube client will automatically call this method without parameters when an instance of `KubeConfig`
         is provided.
@@ -116,17 +122,20 @@ class KubeConfig:
             context_name = self.current_context
         if context_name is None:
             if default is None:
-                raise exceptions.ConfigError("No current context set and no default provided")
+                raise exceptions.ConfigError(
+                    "No current context set and no default provided"
+                )
             return default
         try:
             ctx = self.contexts[context_name]
         except KeyError:
             raise exceptions.ConfigError(f"Context '{context_name}' not found")
         return SingleConfig(
-            context_name=context_name, context=ctx,
+            context_name=context_name,
+            context=ctx,
             cluster=self.clusters[ctx.cluster],
             user=self.users[ctx.user] if ctx.user else None,
-            fname=self.fname
+            fname=self.fname,
         )
 
     @classmethod
@@ -144,15 +153,21 @@ class KubeConfig:
             return cls.from_dict(yaml.safe_load(f.read()), fname=filepath)
 
     @classmethod
-    def from_one(cls, *, cluster, user=None, context_name='default', namespace=None, fname=None):
+    def from_one(
+        cls, *, cluster, user=None, context_name="default", namespace=None, fname=None
+    ):
         """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
-        context = Context(cluster=context_name, user=context_name if user else None, namespace=namespace)
+        context = Context(
+            cluster=context_name,
+            user=context_name if user else None,
+            namespace=namespace,
+        )
         return cls(
             clusters={context_name: cluster},
             contexts={context_name: context},
             users={context_name: user} if user else None,
             current_context=context_name,
-            fname=fname
+            fname=fname,
         )
 
     @classmethod
@@ -179,35 +194,36 @@ class KubeConfig:
 
         host = os.environ["KUBERNETES_SERVICE_HOST"]
         port = os.environ["KUBERNETES_SERVICE_PORT"]
-        if ":" in host:     # ipv6
+        if ":" in host:  # ipv6
             host = f"[{host}]"
         return cls.from_one(
             cluster=Cluster(
                 server=f"https://{host}:{port}",
-                certificate_auth=str(account_dir.joinpath("ca.crt"))
+                certificate_auth=str(account_dir.joinpath("ca.crt")),
             ),
             user=User(token=token),
-            namespace=namespace
+            namespace=namespace,
         )
 
     @classmethod
-    def from_env(cls, service_account=SERVICE_ACCOUNT, default_config=DEFAULT_KUBECONFIG):
+    def from_env(
+        cls, service_account=SERVICE_ACCOUNT, default_config=DEFAULT_KUBECONFIG
+    ):
         """Attempts to load the configuration automatically looking at the environment and filesystem.
 
-         The method will attempt to load a configuration using the following order:
+        The method will attempt to load a configuration using the following order:
 
-         * in-cluster config.
-         * config file defined in `KUBECONFIG` environment variable.
-         * configuration file present on the default location.
+        * in-cluster config.
+        * config file defined in `KUBECONFIG` environment variable.
+        * configuration file present on the default location.
 
-         **Parameters**
+        **Parameters**
 
-         * **service_account**: Allows to override the default service account directory path.
-           Default `/var/run/secrets/kubernetes.io/serviceaccount`.
-         * **default_config**: Allows to override the default configuration location. Default `~/.kube/config`.
-         """
+        * **service_account**: Allows to override the default service account directory path.
+          Default `/var/run/secrets/kubernetes.io/serviceaccount`.
+        * **default_config**: Allows to override the default configuration location. Default `~/.kube/config`.
+        """
         try:
             return KubeConfig.from_service_account(service_account=service_account)
         except exceptions.ConfigError:
-            return KubeConfig.from_file(os.environ.get('KUBECONFIG', default_config))
-
+            return KubeConfig.from_file(os.environ.get("KUBECONFIG", default_config))
