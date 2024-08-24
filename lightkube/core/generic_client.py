@@ -72,8 +72,16 @@ class WatchDriver:
 class GenericClient:
     AdapterClient = staticmethod(client_adapter.Client)
 
-    def __init__(self, config: Union[SingleConfig, KubeConfig] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, trust_env: bool = True, field_manager: str = None):
+    def __init__(
+        self,
+        config: Union[SingleConfig, KubeConfig] = None,
+        namespace: str = None,
+        timeout: httpx.Timeout = None,
+        lazy=True,
+        trust_env: bool = True,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
         self._watch_timeout = httpx.Timeout(self._timeout)
         self._watch_timeout.read = None
@@ -88,6 +96,7 @@ class GenericClient:
         self.config = config
         self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
         self._field_manager = field_manager
+        self._dry_run = dry_run
         self.namespace = namespace if namespace else config.namespace
 
     def prepare_request(self, method, res: Type[r.Resource] = None, obj=None, name=None, namespace=None,
@@ -149,6 +158,8 @@ class GenericClient:
         if method in ('post', 'put', 'patch'):
             if self._field_manager is not None and 'fieldManager' not in params:
                 params['fieldManager'] = self._field_manager
+            if self._dry_run is True and "dryRun" not in params:
+                params["dryRun"] = "All"
             if method == 'patch' and headers['Content-Type'] == PatchType.APPLY.value and 'fieldManager' not in params:
                 raise ValueError('Parameter "field_manager" is required for PatchType.APPLY')
             if obj is None:

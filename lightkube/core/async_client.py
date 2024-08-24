@@ -29,11 +29,30 @@ class AsyncClient:
     * **field_manager** - Name associated with the actor or entity that is making these changes.
     * **trust_env** - Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
       docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
+    * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+        be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+        to `kubectl` commands.
     """
-    def __init__(self, config: Union[SingleConfig, KubeConfig, None] = None, namespace: str = None,
-                 timeout: httpx.Timeout = None, lazy=True, field_manager: str = None, trust_env: bool = True):
-        self._client = GenericAsyncClient(config, namespace=namespace, timeout=timeout, lazy=lazy,
-                                          field_manager=field_manager, trust_env=trust_env)
+
+    def __init__(
+        self,
+        config: Union[SingleConfig, KubeConfig, None] = None,
+        namespace: str = None,
+        timeout: httpx.Timeout = None,
+        lazy=True,
+        field_manager: str = None,
+        trust_env: bool = True,
+        dry_run: bool = False,
+    ):
+        self._client = GenericAsyncClient(
+            config,
+            namespace=namespace,
+            timeout=timeout,
+            lazy=lazy,
+            field_manager=field_manager,
+            trust_env=trust_env,
+            dry_run=dry_run,
+        )
 
     @property
     def namespace(self):
@@ -46,17 +65,37 @@ class AsyncClient:
         return self._client.config
 
     @overload
-    async def delete(self, res: Type[GlobalResource], name: str, grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    async def delete(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
     @overload
-    async def delete(self, res: Type[NamespacedResource], name: str, *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    async def delete(
+        self,
+        res: Type[NamespacedResource],
+        name: str,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
-    async def delete(self, res, name: str, *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None):
+    async def delete(
+        self,
+        res,
+        name: str,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ):
         """Delete an object
 
         **parameters**
@@ -74,24 +113,51 @@ class AsyncClient:
             * 'CascadeType.ORPHAN' - orphan the dependents;
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return await self._client.request("delete", res=res, name=name, namespace=namespace, params={
-            'gracePeriodSeconds': grace_period,
-            'propagationPolicy': cascade.value if cascade else None
-        })
+        return await self._client.request(
+            "delete",
+            res=res,
+            name=name,
+            namespace=namespace,
+            params={
+                "gracePeriodSeconds": grace_period,
+                "propagationPolicy": cascade.value if cascade else None,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    async def deletecollection(self, res: Type[GlobalResource], grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    async def deletecollection(
+        self,
+        res: Type[GlobalResource],
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
     @overload
-    async def deletecollection(self, res: Type[NamespacedResource], *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None) -> None:
-        ...
+    async def deletecollection(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ) -> None: ...
 
-    async def deletecollection(self, res, *, namespace: str = None, grace_period: int = None,
-               cascade: CascadeType = None):
+    async def deletecollection(
+        self,
+        res,
+        *,
+        namespace: str = None,
+        grace_period: int = None,
+        cascade: CascadeType = None,
+        dry_run: bool = False,
+    ):
         """Delete all objects of the given kind
 
         * **res** - Resource kind.
@@ -106,11 +172,20 @@ class AsyncClient:
             * 'CascadeType.ORPHAN' - orphan the dependents;
             * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
             * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return await self._client.request("deletecollection", res=res, namespace=namespace, params={
-            'gracePeriodSeconds': grace_period,
-            'propagationPolicy': cascade.value if cascade else None
-        })
+        return await self._client.request(
+            "deletecollection",
+            res=res,
+            namespace=namespace,
+            params={
+                "gracePeriodSeconds": grace_period,
+                "propagationPolicy": cascade.value if cascade else None,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
     async def get(self, res: Type[GlobalResource], name: str) -> GlobalResource:
@@ -283,28 +358,57 @@ class AsyncClient:
             await watch.aclose()
 
     @overload
-    async def patch(self, res: Type[GlobalSubResource], name: str,
-                    obj: Union[GlobalSubResource, Dict, List], *,
-                    patch_type: PatchType = PatchType.STRATEGIC,
-                    field_manager: str = None, force: bool = False) -> GlobalSubResource:
-        ...
+    async def patch(
+        self,
+        res: Type[GlobalSubResource],
+        name: str,
+        obj: Union[GlobalSubResource, Dict, List],
+        *,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    async def patch(self, res: Type[GlobalResource], name: str,
-                    obj: Union[GlobalResource, Dict, List], *,
-                    patch_type: PatchType = PatchType.STRATEGIC,
-                    field_manager: str = None, force: bool = False) -> GlobalResource:
-        ...
+    async def patch(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        obj: Union[GlobalResource, Dict, List],
+        *,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalResource: ...
 
     @overload
-    async def patch(self, res: Type[AllNamespacedResource], name: str,
-                    obj: Union[AllNamespacedResource, Dict, List], *, namespace: str = None,
-                    patch_type: PatchType = PatchType.STRATEGIC,
-                    field_manager: str = None, force: bool = False) -> AllNamespacedResource:
-        ...
+    async def patch(
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        obj: Union[AllNamespacedResource, Dict, List],
+        *,
+        namespace: str = None,
+        patch_type: PatchType = PatchType.STRATEGIC,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> AllNamespacedResource: ...
 
-    async def patch(self, res, name, obj, *, namespace=None, patch_type=PatchType.STRATEGIC,
-                    field_manager=None, force=False):
+    async def patch(
+        self,
+        res,
+        name,
+        obj,
+        *,
+        namespace=None,
+        patch_type=PatchType.STRATEGIC,
+        field_manager=None,
+        force=False,
+        dry_run: bool = False,
+    ):
         """Patch an object.
 
         **parameters**
@@ -319,30 +423,64 @@ class AsyncClient:
             **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
         * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
           fields owned by other people. This parameter is ignored for non-apply patch types
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        force_param = 'true' if force and patch_type == PatchType.APPLY else None
-        return await self._client.request("patch", res=res, name=name, namespace=namespace, obj=obj,
-                                          headers={'Content-Type': patch_type.value},
-                                          params={'force': force_param, 'fieldManager': field_manager})
+        force_param = "true" if force and patch_type == PatchType.APPLY else None
+        return await self._client.request(
+            "patch",
+            res=res,
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            headers={"Content-Type": patch_type.value},
+            params={
+                "force": force_param,
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    async def create(self, obj: GlobalSubResource,  name: str, field_manager: str = None) -> GlobalSubResource:
-        ...
+    async def create(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    async def create(self, obj: NamespacedSubResource, name: str, *, namespace: str = None, field_manager: str = None) \
-            -> NamespacedSubResource:
-        ...
+    async def create(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
 
     @overload
-    async def create(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
-        ...
+    async def create(
+        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+    ) -> GlobalResource: ...
 
     @overload
-    async def create(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
-        ...
+    async def create(
+        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+    ) -> NamespacedResource: ...
 
-    async def create(self, obj, name=None, *, namespace=None, field_manager=None):
+    async def create(
+        self,
+        obj,
+        name=None,
+        *,
+        namespace=None,
+        field_manager=None,
+        dry_run: bool = False,
+    ):
         """Creates a new object
 
         **parameters**
@@ -352,28 +490,60 @@ class AsyncClient:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return await self._client.request("post", name=name, namespace=namespace, obj=obj,
-                                          params={'fieldManager': field_manager})
+        return await self._client.request(
+            "post",
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            params={
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
-    async def replace(self, obj: GlobalSubResource, name: str, field_manager: str = None) -> GlobalSubResource:
-        ...
+    async def replace(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    async def replace(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
-                      field_manager: str = None) -> NamespacedSubResource:
-        ...
+    async def replace(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
 
     @overload
-    async def replace(self, obj: GlobalResource, field_manager: str = None) -> GlobalResource:
-        ...
+    async def replace(
+        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+    ) -> GlobalResource: ...
 
     @overload
-    async def replace(self, obj: NamespacedResource, field_manager: str = None) -> NamespacedResource:
-        ...
+    async def replace(
+        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+    ) -> NamespacedResource: ...
 
-    async def replace(self, obj, name=None, *, namespace=None, field_manager=None):
+    async def replace(
+        self,
+        obj,
+        name=None,
+        *,
+        namespace=None,
+        field_manager=None,
+        dry_run: bool = False,
+    ):
         """Replace an existing resource.
 
         **parameters**
@@ -383,9 +553,20 @@ class AsyncClient:
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
-        return await self._client.request("put", name=name, namespace=namespace, obj=obj,
-                                          params={'fieldManager': field_manager})
+        return await self._client.request(
+            "put",
+            name=name,
+            namespace=namespace,
+            obj=obj,
+            params={
+                "fieldManager": field_manager,
+                "dryRun": "All" if dry_run else None,
+            },
+        )
 
     @overload
     def log(self, name:str, *, namespace: str = None, container: str = None, follow: bool = False,
@@ -421,24 +602,56 @@ class AsyncClient:
         return stream_log()
 
     @overload
-    async def apply(self, obj: GlobalSubResource,  name: str, *, field_manager: str = None, force: bool = False) \
-            -> GlobalSubResource:
-        ...
+    async def apply(
+        self,
+        obj: GlobalSubResource,
+        name: str,
+        *,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalSubResource: ...
 
     @overload
-    async def apply(self, obj: NamespacedSubResource, name: str, *, namespace: str = None,
-              field_manager: str = None, force: bool = False) -> NamespacedSubResource:
-        ...
+    async def apply(
+        self,
+        obj: NamespacedSubResource,
+        name: str,
+        *,
+        namespace: str = None,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> NamespacedSubResource: ...
 
     @overload
-    async def apply(self, obj: GlobalResource, field_manager: str = None, force: bool = False) -> GlobalResource:
-        ...
+    async def apply(
+        self,
+        obj: GlobalResource,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> GlobalResource: ...
 
     @overload
-    async def apply(self, obj: NamespacedResource, field_manager: str = None, force: bool = False) -> NamespacedResource:
-        ...
+    async def apply(
+        self,
+        obj: NamespacedResource,
+        field_manager: str = None,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> NamespacedResource: ...
 
-    async def apply(self, obj, name=None, *, namespace=None, field_manager=None, force=False):
+    async def apply(
+        self,
+        obj,
+        name=None,
+        *,
+        namespace=None,
+        field_manager=None,
+        force=False,
+        dry_run: bool = False,
+    ):
         """Create or configure an object. This method uses the
         [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
 
@@ -450,13 +663,16 @@ class AsyncClient:
         * **field_manager** - Name associated with the actor or entity that is making these changes.
         * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
           fields owned by other people.
+        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
+            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+            to `kubectl` commands.
         """
         if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
         return await self.patch(type(obj), name, obj, namespace=namespace,
-                                patch_type=PatchType.APPLY, field_manager=field_manager, force=force)
+                                patch_type=PatchType.APPLY, field_manager=field_manager, force=force, dry_run=dry_run)
 
     async def close(self):
         """Close the underline httpx client"""
