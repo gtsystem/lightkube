@@ -45,9 +45,9 @@ jobs:
       run: |
         python setup.py sdist
     - name: Archive artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-${{ matrix.python-version }}
         path: |
           dist
   e2e-test:
