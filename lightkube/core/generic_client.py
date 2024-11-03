@@ -84,6 +84,7 @@ class GenericClient:
         trust_env: bool = True,
         field_manager: str = None,
         dry_run: bool = False,
+        transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport] = None,
     ):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
         self._watch_timeout = httpx.Timeout(self._timeout)
@@ -97,7 +98,9 @@ class GenericClient:
             config = config.get()
 
         self.config = config
-        self._client = self.AdapterClient(config, timeout, trust_env=trust_env)
+        self._client = self.AdapterClient(
+            config, timeout, trust_env=trust_env, transport=transport
+        )
         self._field_manager = field_manager
         self._dry_run = dry_run
         self.namespace = namespace if namespace else config.namespace

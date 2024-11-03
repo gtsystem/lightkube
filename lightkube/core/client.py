@@ -52,6 +52,7 @@ class Client:
     * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
         be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
         to `kubectl` commands.
+    * **transport** - *(optional)* Custom httpx transport
     """
 
     def __init__(
@@ -63,6 +64,7 @@ class Client:
         field_manager: str = None,
         trust_env: bool = True,
         dry_run: bool = False,
+        transport: httpx.BaseTransport = None,
     ):
         self._client = GenericSyncClient(
             config,
@@ -72,6 +74,7 @@ class Client:
             field_manager=field_manager,
             trust_env=trust_env,
             dry_run=dry_run,
+            transport=transport,
         )
 
     @property
