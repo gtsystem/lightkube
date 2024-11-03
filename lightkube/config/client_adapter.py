@@ -12,15 +12,25 @@ from ..core.exceptions import ConfigError
 
 
 def Client(
-    config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True
+    config: SingleConfig,
+    timeout: httpx.Timeout,
+    trust_env: bool = True,
+    transport: httpx.BaseTransport = None,
 ) -> httpx.Client:
-    return httpx.Client(**httpx_parameters(config, timeout, trust_env))
+    return httpx.Client(
+        transport=transport, **httpx_parameters(config, timeout, trust_env)
+    )
 
 
 def AsyncClient(
-    config: SingleConfig, timeout: httpx.Timeout, trust_env: bool = True
+    config: SingleConfig,
+    timeout: httpx.Timeout,
+    trust_env: bool = True,
+    transport: httpx.AsyncBaseTransport = None,
 ) -> httpx.AsyncClient:
-    return httpx.AsyncClient(**httpx_parameters(config, timeout, trust_env))
+    return httpx.AsyncClient(
+        transport=transport, **httpx_parameters(config, timeout, trust_env)
+    )
 
 
 def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool):
