@@ -113,7 +113,8 @@ def test_client_httpx_attributes(user_auth, httpx_client, kubeconfig):
         verify=True,
         cert=None,
         auth=user_auth.return_value,
-        trust_env=False
+        trust_env=False,
+        transport=None,
     )
 
 
