@@ -93,7 +93,8 @@ class ExecAuth(httpx.Auth):
                 f"auth exec api version {exec.apiVersion} not implemented"
             )
         cmd_env_vars = dict(os.environ)
-        cmd_env_vars.update((var.name, var.value) for var in exec.env)
+        if exec.env:
+            cmd_env_vars.update((var.name, var.value) for var in exec.env)
         # TODO: add support for passing KUBERNETES_EXEC_INFO env var
         # https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/kubectl-exec-plugins.md
         args = exec.args if exec.args else []
