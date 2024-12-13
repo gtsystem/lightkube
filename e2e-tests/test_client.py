@@ -1,4 +1,3 @@
-import time
 from datetime import datetime
 from pathlib import Path
 from string import ascii_lowercase
@@ -23,7 +22,7 @@ uid_count = 0
 def obj_name():
     global uid_count
     uid_count += 1
-    return f'test-{datetime.utcnow().strftime("%Y%m%d%H%M%S")}-{uid_count}'
+    return f'test-{datetime.now().strftime("%Y%m%d%H%M%S")}-{uid_count}'
 
 
 def names(obj_list):
