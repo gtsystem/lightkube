@@ -1,3 +1,7 @@
+import base64
+import shutil
+import ssl
+import unittest
 from pathlib import Path
 from unittest.mock import Mock
 from lightkube.config import kubeconfig, client_adapter
@@ -18,40 +22,49 @@ def single_conf(cluster=None, user=None, fname=None):
 
 
 def test_verify_cluster_insecure():
-    cfg = single_conf(cluster=models.Cluster(insecure=True))
-    verify = client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
-    assert verify is False
+    cfg = single_conf(cluster=models.Cluster(insecure=True), user=models.User())
+    verify = client_adapter.verify_cluster(cfg.cluster, cfg.user, cfg.abs_file)
+    assert verify.verify_mode is ssl.CERT_NONE
+    assert not verify.check_hostname
 
 
 def test_verify_cluster_secure():
-    cfg = single_conf(cluster=models.Cluster())
-    verify = client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
-    assert verify is True
+    cfg = single_conf(cluster=models.Cluster(), user=models.User())
+    verify = client_adapter.verify_cluster(cfg.cluster, cfg.user, cfg.abs_file)
+    assert verify.verify_mode is ssl.CERT_REQUIRED
 
 
-def test_verify_cluster_ca(tmpdir):
+def get_issuer_mata(data: dict):
+    return {d[0][0]: d[0][1] for d in data['issuer']}
+
+def test_verify_cluster_ca_path(tmpdir):
     tmpdir = Path(tmpdir)
-    cluster = models.Cluster(certificate_auth="ca.pem")
-    cfg = single_conf(cluster=cluster, fname=tmpdir.joinpath("kubeconf"))
-    verify = client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
-    assert verify == tmpdir.joinpath("ca.pem")
+    data_dir = Path(__file__).parent.joinpath('data')
+    shutil.copy(data_dir.joinpath("clientreq.pem"), tmpdir.joinpath("clientreq.pem"))
+    cluster = models.Cluster(certificate_auth="clientreq.pem")
+    cfg = single_conf(cluster=cluster, user=models.User(), fname=tmpdir.joinpath("kubeconf"))
+    verify = client_adapter.verify_cluster(cfg.cluster, cfg.user, cfg.abs_file)
+    assert get_issuer_mata(verify.get_ca_certs()[0])["organizationName"] == "Example"
 
     # fname not provided
-    cfg = single_conf(cluster=cluster)
+    cfg = single_conf(cluster=models.Cluster(certificate_auth="clientreq.pem"), user=models.User())
     with pytest.raises(ConfigError):
-        client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
+        client_adapter.verify_cluster(cfg.cluster, cfg.user, cfg.abs_file)
 
     # cert path absolute
-    cluster.certificate_auth = tmpdir.joinpath("ca.pem")
-    verify = client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
-    assert verify == tmpdir.joinpath("ca.pem")
+    cluster = models.Cluster(certificate_auth=str(data_dir.joinpath("clientreq.pem")))
+    verify = client_adapter.verify_cluster(cluster, cfg.user, cfg.abs_file)
+    assert get_issuer_mata(verify.get_ca_certs()[0])["organizationName"] == "Example"
 
 
 def test_verify_cluster_ca_data():
-    cluster = models.Cluster(certificate_auth_data="dGVzdCBkZWNvZGluZw==")
-    cfg = single_conf(cluster=cluster)
-    verify = client_adapter.verify_cluster(cfg.cluster, cfg.abs_file)
-    assert Path(verify).read_text() == "test decoding"
+    data_dir = Path(__file__).parent.joinpath('data')
+    cert_data = base64.b64encode(data_dir.joinpath("clientreq.pem").read_bytes()).decode("utf8")
+
+    cluster = models.Cluster(certificate_auth_data=cert_data)
+    cfg = single_conf(cluster=cluster, user=models.User())
+    verify = client_adapter.verify_cluster(cfg.cluster, cfg.user, cfg.abs_file)
+    assert get_issuer_mata(verify.get_ca_certs()[0])["organizationName"] == "Example"
 
 
 def test_user_cert_missing():
@@ -71,6 +84,23 @@ def test_user_cert_data():
     certs = client_adapter.user_cert(cfg.user, cfg.abs_file)
     assert Path(certs[0]).read_text() == "cert"
     assert Path(certs[1]).read_text() == "key"
+
+
+@unittest.mock.patch('ssl.create_default_context')
+def test_verify_cluster_ca_and_cert(create_default_context):
+    data_dir = Path(__file__).parent.joinpath('data')
+    cluster = models.Cluster(certificate_auth=str(data_dir.joinpath("clientreq.pem")))
+    cfg = single_conf(cluster=cluster, user=models.User(
+        client_cert=str(data_dir.joinpath("clientreq.pem")),
+        client_key=str(data_dir.joinpath("clientkey.pem"))
+    ))
+    verify = client_adapter.verify_cluster(cluster, cfg.user, cfg.abs_file)
+    assert verify is create_default_context.return_value
+    create_default_context.assert_called_once_with(cafile=str(data_dir.joinpath("clientreq.pem")))
+    create_default_context.return_value.load_cert_chain.assert_called_once_with(
+        str(data_dir.joinpath("clientreq.pem")),
+        str(data_dir.joinpath("clientkey.pem"))
+    )
 
 
 def test_user_auth_missing():
