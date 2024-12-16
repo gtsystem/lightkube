@@ -1,5 +1,6 @@
 import json
 import os
+import ssl
 import subprocess
 from typing import Optional
 import asyncio.subprocess
@@ -37,8 +38,7 @@ def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, trust_env: bo
     return dict(
         timeout=timeout,
         base_url=config.cluster.server,
-        verify=verify_cluster(config.cluster, config.abs_file),
-        cert=user_cert(config.user, config.abs_file),
+        verify=verify_cluster(config.cluster, config.user, config.abs_file, trust_env=trust_env),
         auth=user_auth(config.user),
         trust_env=trust_env,
     )
@@ -154,12 +154,15 @@ def user_cert(user: User, abs_file):
     return None
 
 
-def verify_cluster(cluster: Cluster, abs_file):
+def verify_cluster(cluster: Cluster, user: User, abs_file, trust_env: bool = True):
     """setup certificate verification"""
     if cluster.certificate_auth:
-        return abs_file(cluster.certificate_auth)
+        ctx = ssl.create_default_context(cafile=abs_file(cluster.certificate_auth))
     elif cluster.certificate_auth_data:
-        return FileStr(cluster.certificate_auth_data)
-    elif cluster.insecure:
-        return False
-    return True
+        ctx = ssl.create_default_context(cafile=FileStr(cluster.certificate_auth_data))
+    else:
+        ctx = httpx.create_ssl_context(verify=not cluster.insecure, trust_env=trust_env)
+    cert = user_cert(user, abs_file)
+    if cert:
+        ctx.load_cert_chain(*cert)
+    return ctx
