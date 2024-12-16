@@ -64,15 +64,16 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
 
 @unittest.mock.patch('httpx.AsyncClient')
 @unittest.mock.patch('lightkube.config.client_adapter.user_auth')
-def test_client_httpx_attributes(user_auth, httpx_async_client, kubeconfig):
+@unittest.mock.patch('lightkube.config.client_adapter.verify_cluster')
+def test_client_httpx_attributes(verify_cluster, user_auth, httpx_async_client, kubeconfig):
     config = KubeConfig.from_file(kubeconfig)
     single_conf = config.get()
     lightkube.AsyncClient(config=single_conf, trust_env=False)
+    verify_cluster.assert_called_once_with(single_conf.cluster, single_conf.user, single_conf.abs_file, trust_env=False)
     httpx_async_client.assert_called_once_with(
         timeout=None,
         base_url=single_conf.cluster.server,
-        verify=True,
-        cert=None,
+        verify=verify_cluster.return_value,
         auth=user_auth.return_value,
         trust_env=False,
         transport=None,
