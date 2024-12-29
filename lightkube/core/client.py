@@ -1,4 +1,5 @@
 from typing import (
+    Optional,
     Type,
     Iterator,
     TypeVar,
@@ -8,6 +9,7 @@ from typing import (
     Tuple,
     List,
     Iterable,
+    Literal,
 )
 import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
@@ -250,7 +252,39 @@ class Client:
         fields: FieldSelector = None,
     ) -> Iterator[NamespacedResource]: ...
 
-    def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
+    @overload
+    def list(
+        self,
+        res: Type[GlobalResource],
+        *,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        as_pages: Literal[True],
+    ) -> Iterator[Tuple[Optional[str], List[GlobalResource]]]: ...
+
+    @overload
+    def list(
+        self,
+        res: Type[NamespacedResource],
+        *,
+        namespace: str = None,
+        chunk_size: int = None,
+        labels: LabelSelector = None,
+        fields: FieldSelector = None,
+        as_pages: Literal[True],
+    ) -> Iterator[Tuple[Optional[str], List[NamespacedResource]]]: ...
+
+    def list(
+        self,
+        res,
+        *,
+        namespace=None,
+        chunk_size=None,
+        labels=None,
+        fields=None,
+        as_pages: bool = False,
+    ):
         """Return an iterator of objects matching the selection criteria.
 
         **parameters**
@@ -275,7 +309,11 @@ class Client:
                 ),
             },
         )
-        return self._client.list(br)
+        pages = self._client.list(br)
+        if as_pages:
+            return ((rv, list(chunk)) for rv, chunk in pages)
+        else:
+            return (item for rv, chunk in pages for item in chunk)
 
     @overload
     def watch(

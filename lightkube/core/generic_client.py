@@ -1,5 +1,5 @@
 import time
-from typing import Type, Any, Dict, Union
+from typing import Type, Any, Dict, Union, AsyncIterator
 import dataclasses
 from dataclasses import dataclass
 import json
@@ -260,7 +260,15 @@ class GenericClient:
                 br.params["continue"] = data["metadata"]["continue"]
             else:
                 cont = False
-            return cont, (self.convert_to_resource(res, obj) for obj in data["items"])
+            try:
+                rv = data["metadata"]["resourceVersion"]
+            except KeyError:
+                rv = None
+            return (
+                cont,
+                rv,
+                (self.convert_to_resource(res, obj) for obj in data["items"]),
+            )
         else:
             if res is not None:
                 return self.convert_to_resource(res, data)
@@ -315,8 +323,8 @@ class GenericSyncClient(GenericClient):
         while cont:
             req = self.build_adapter_request(br)
             resp = self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
-            yield from chunk
+            cont, rv, chunk = self.handle_response("list", resp, br)
+            yield rv, chunk
 
 
 class GenericAsyncClient(GenericClient):
@@ -367,14 +375,13 @@ class GenericAsyncClient(GenericClient):
         resp = await self.send(req)
         return self.handle_response(method, resp, br)
 
-    async def list(self, br: BasicRequest) -> Any:
+    async def list(self, br: BasicRequest) -> AsyncIterator:
         cont = True
         while cont:
             req = self.build_adapter_request(br)
             resp = await self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
-            for item in chunk:
-                yield item
+            cont, rv, chunk = self.handle_response("list", resp, br)
+            yield rv, chunk
 
     async def close(self):
         await self._client.aclose()
