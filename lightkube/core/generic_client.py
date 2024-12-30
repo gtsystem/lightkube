@@ -1,5 +1,6 @@
 import time
-from typing import Type, Any, Dict, Union
+from functools import partial
+from typing import Type, Any, Dict, Union, Generic, AsyncIterator, TypeVar
 import dataclasses
 from dataclasses import dataclass
 import json
@@ -260,7 +261,8 @@ class GenericClient:
                 br.params["continue"] = data["metadata"]["continue"]
             else:
                 cont = False
-            return cont, (self.convert_to_resource(res, obj) for obj in data["items"])
+            rv = data["metadata"].get("resourceVersion")
+            return cont, rv, (self.convert_to_resource(res, obj) for obj in data["items"])
         else:
             if res is not None:
                 return self.convert_to_resource(res, data)
@@ -315,8 +317,43 @@ class GenericSyncClient(GenericClient):
         while cont:
             req = self.build_adapter_request(br)
             resp = self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
+            cont, rv, chunk = self.handle_response("list", resp, br)
             yield from chunk
+
+
+T = TypeVar('T')
+
+class GenericAsyncIterator(Generic[T]):
+
+    def __init__(self, next_page):
+        self._resource_version = None
+        self._next_page = next_page
+        self._continue = True
+        self._chunk = None
+
+    async def resourceVersion(self):
+        if self._chunk is None:
+            await self._read_chunk()
+        return self._resource_version
+
+    async def _read_chunk(self):
+        if self._continue:
+            self._continue, self._resource_version, chunk = await self._next_page()
+            self._chunk = iter(chunk)
+
+    async def __anext__(self):
+        if self._chunk:
+            item = next(self._chunk, None)
+            if item:
+                return item
+        await self._read_chunk()
+        item = next(self._chunk, None)
+        if item:
+            return item
+        raise StopAsyncIteration
+
+    def __aiter__(self) -> AsyncIterator[T]:
+        return self
 
 
 class GenericAsyncClient(GenericClient):
@@ -367,14 +404,13 @@ class GenericAsyncClient(GenericClient):
         resp = await self.send(req)
         return self.handle_response(method, resp, br)
 
-    async def list(self, br: BasicRequest) -> Any:
-        cont = True
-        while cont:
-            req = self.build_adapter_request(br)
-            resp = await self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
-            for item in chunk:
-                yield item
+    async def next_page(self, br: BasicRequest) -> Any:
+        req = self.build_adapter_request(br)
+        resp = await self.send(req)
+        return self.handle_response("list", resp, br)
+
+    def list(self, br: BasicRequest) -> Any:
+        return GenericAsyncIterator(partial(self.next_page, br))
 
     async def close(self):
         await self._client.aclose()
