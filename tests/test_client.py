@@ -144,7 +144,7 @@ def test_get_global(client: lightkube.Client):
 
 @respx.mock
 def test_list_namespaced(client: lightkube.Client):
-    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], "metadata": {}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     pods = client.list(Pod)
     for pod, expected in zip(pods, resp["items"]):
@@ -169,7 +169,7 @@ def test_list_crd(client: lightkube.Client):
 
 @respx.mock
 def test_list_global(client: lightkube.Client):
-    resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], "metadata": {}}
     respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
     assert [node.metadata.name for node in nodes] == ['xx', 'yy']
@@ -187,7 +187,7 @@ def test_list_global(client: lightkube.Client):
 def test_list_chunk_size(client: lightkube.Client):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], 'metadata': {'continue': 'yes'}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
-    resp = {'items': [{'metadata': {'name': 'zz'}}]}
+    resp = {'items': [{'metadata': {'name': 'zz'}}], 'metadata': {}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name for pod in pods] == ['xx', 'yy', 'zz']

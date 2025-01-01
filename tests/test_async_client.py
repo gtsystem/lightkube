@@ -96,7 +96,7 @@ async def test_get_namespaced(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_list_global(client: lightkube.AsyncClient):
-    resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], "metadata": {}}
     respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
     assert [node.metadata.name async for node in nodes] == ['xx', 'yy']
@@ -114,7 +114,7 @@ async def test_list_global(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_list_namespaced(client: lightkube.AsyncClient):
-    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], "metadata": {}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     pods = [pod async for pod in client.list(Pod)]
     for pod, expected in zip(pods, resp["items"]):
@@ -133,7 +133,7 @@ async def test_list_namespaced(client: lightkube.AsyncClient):
 async def test_list_chunk_size(client: lightkube.AsyncClient):
     resp = {'items': [{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}], 'metadata': {'continue': 'yes'}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
-    resp = {'items': [{'metadata': {'name': 'zz'}}]}
+    resp = {'items': [{'metadata': {'name': 'zz'}}], 'metadata': {}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name async for pod in pods] == ['xx', 'yy', 'zz']
