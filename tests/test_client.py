@@ -144,14 +144,18 @@ def test_get_global(client: lightkube.Client):
 
 @respx.mock
 def test_list_namespaced(client: lightkube.Client):
-    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}],
+            'metadata': {'resourceVersion': '42'}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     pods = client.list(Pod)
+    with pytest.raises(lightkube.NotReadyError):
+        pods.resourceVersion
     for pod, expected in zip(pods, resp["items"]):
         assert pod.metadata is not None
         assert pod.metadata.name == expected["metadata"]["name"]
         assert pod.apiVersion is not None
         assert pod.kind is not None
+    assert pods.resourceVersion == "42"
 
     respx.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv").respond(json=resp)
     pods = client.list(Pod, namespace="other", labels={'k': 'v'})
