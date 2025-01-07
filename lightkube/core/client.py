@@ -13,7 +13,7 @@ import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
 from ..core import resource as r
-from .generic_client import GenericSyncClient
+from .generic_client import GenericSyncClient, ListIterator
 from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1
@@ -237,7 +237,7 @@ class Client:
         chunk_size: int = None,
         labels: LabelSelector = None,
         fields: FieldSelector = None,
-    ) -> Iterator[GlobalResource]: ...
+    ) -> ListIterator[GlobalResource]: ...
 
     @overload
     def list(
@@ -248,7 +248,7 @@ class Client:
         chunk_size: int = None,
         labels: LabelSelector = None,
         fields: FieldSelector = None,
-    ) -> Iterator[NamespacedResource]: ...
+    ) -> ListIterator[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
         """Return an iterator of objects matching the selection criteria.

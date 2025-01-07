@@ -1,5 +1,17 @@
 import time
-from typing import Type, Any, Dict, Union
+from typing import (
+    AsyncIterable,
+    Type,
+    Any,
+    Dict,
+    Union,
+    Iterator,
+    AsyncIterator,
+    Tuple,
+    TypeVar,
+    Iterable,
+    Optional,
+)
 import dataclasses
 from dataclasses import dataclass
 import json
@@ -10,7 +22,7 @@ import httpx
 from . import resource as r
 from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
-from .exceptions import ApiError
+from .exceptions import ApiError, NotReadyError
 from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
 
 
@@ -70,6 +82,58 @@ class WatchDriver:
         obj = line["object"]
         self._version = obj["metadata"]["resourceVersion"]
         return tp, self._convert(obj, lazy=self._lazy)
+
+
+T = TypeVar("T")
+
+
+class ListIterator(Iterable[T]):
+
+    _resourceVersion: Optional[str] = None
+
+    @property
+    def resourceVersion(self) -> str:
+        """Returns the resource version at which the collection was constructed.
+        Note: this property is only available after the iteration started and will raise NotReadyError otherwise
+        """
+        if self._resourceVersion:
+            return self._resourceVersion
+        raise NotReadyError(
+            "resourceVersion", "only available after the iteration started"
+        )
+
+    def __init__(self, inner_iter: Iterator[Tuple[str, Iterator[T]]]) -> None:
+        self._inner_iter = inner_iter
+
+    def __iter__(self) -> Iterator[T]:
+        for rv, chunk in self._inner_iter:
+            self._resourceVersion = rv
+            yield from chunk
+
+
+class ListAsyncIterator(AsyncIterable[T]):
+
+    _resourceVersion: Optional[str] = None
+
+    @property
+    def resourceVersion(self) -> str:
+        """Returns the resource version at which the collection was constructed.
+        Note: this property is only available after the iteration started and will raise NotReadyError otherwise
+        """
+        if self._resourceVersion:
+            return self._resourceVersion
+        raise NotReadyError(
+            "resourceVersion", "only available after the iteration started"
+        )
+
+    def __init__(self, inner_iter: AsyncIterator[Tuple[str, Iterator[T]]]) -> None:
+        self._inner_iter = inner_iter
+
+    async def __aiter__(self) -> AsyncIterator[T]:
+        async for rv, chunk in self._inner_iter:
+            self._resourceVersion = rv
+            for item in chunk:
+                yield item
 
 
 class GenericClient:
@@ -260,7 +324,15 @@ class GenericClient:
                 br.params["continue"] = data["metadata"]["continue"]
             else:
                 cont = False
-            return cont, (self.convert_to_resource(res, obj) for obj in data["items"])
+            try:
+                rv = data["metadata"]["resourceVersion"]
+            except KeyError:
+                rv = None
+            return (
+                cont,
+                rv,
+                (self.convert_to_resource(res, obj) for obj in data["items"]),
+            )
         else:
             if res is not None:
                 return self.convert_to_resource(res, data)
@@ -310,13 +382,16 @@ class GenericSyncClient(GenericClient):
         resp = self.send(req)
         return self.handle_response(method, resp, br)
 
-    def list(self, br: BasicRequest) -> Any:
+    def list_chunks(self, br: BasicRequest) -> Iterator[Tuple[str, Iterator]]:
         cont = True
         while cont:
             req = self.build_adapter_request(br)
             resp = self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
-            yield from chunk
+            cont, rv, chunk = self.handle_response("list", resp, br)
+            yield rv, chunk
+
+    def list(self, br: BasicRequest) -> ListIterator:
+        return ListIterator(self.list_chunks(br))
 
 
 class GenericAsyncClient(GenericClient):
@@ -367,14 +442,18 @@ class GenericAsyncClient(GenericClient):
         resp = await self.send(req)
         return self.handle_response(method, resp, br)
 
-    async def list(self, br: BasicRequest) -> Any:
+    async def list_chunks(
+        self, br: BasicRequest
+    ) -> AsyncIterator[Tuple[str, Iterator]]:
         cont = True
         while cont:
             req = self.build_adapter_request(br)
             resp = await self.send(req)
-            cont, chunk = self.handle_response("list", resp, br)
-            for item in chunk:
-                yield item
+            cont, rv, chunk = self.handle_response("list", resp, br)
+            yield rv, chunk
+
+    def list(self, br: BasicRequest) -> ListAsyncIterator:
+        return ListAsyncIterator(self.list_chunks(br))
 
     async def close(self):
         await self._client.aclose()

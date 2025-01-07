@@ -15,6 +15,20 @@ class ConfigError(Exception):
     pass
 
 
+class NotReadyError(Exception):
+    """
+    Some information is not ready yet.
+    """
+
+    def __init__(self, name: str, message: str) -> None:
+        super().__init__()
+        self.name = name
+        self.message = message
+
+    def __str__(self) -> str:
+        return f"{self.name} is not ready yet: {self.message}"
+
+
 class ApiError(httpx.HTTPStatusError):
     status: "meta_v1.Status"
 

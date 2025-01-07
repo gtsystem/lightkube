@@ -114,9 +114,14 @@ async def test_list_global(client: lightkube.AsyncClient):
 @respx.mock
 @pytest.mark.asyncio
 async def test_list_namespaced(client: lightkube.AsyncClient):
-    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}]}
+    resp = {'items':[{'metadata': {'name': 'xx'}}, {'metadata': {'name': 'yy'}}],
+            'metadata': {'resourceVersion': '42'}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
-    pods = [pod async for pod in client.list(Pod)]
+    poditer = client.list(Pod)
+    with pytest.raises(lightkube.NotReadyError):
+        poditer.resourceVersion
+    pods = [pod async for pod in poditer]
+    assert poditer.resourceVersion == "42"
     for pod, expected in zip(pods, resp["items"]):
         assert pod.metadata is not None
         assert pod.metadata.name == expected["metadata"]["name"]
