@@ -12,7 +12,7 @@ import httpx
 
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from ..core import resource as r
-from .generic_client import GenericAsyncClient, ListAsyncIterator
+from .generic_client import GenericAsyncClient, ListAsyncIterable
 from ..core.exceptions import ConditionError, ObjectDeleted
 from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
 from .internal_resources import core_v1
@@ -234,7 +234,7 @@ class AsyncClient:
         chunk_size: int = None,
         labels: LabelSelector = None,
         fields: FieldSelector = None,
-    ) -> ListAsyncIterator[GlobalResource]: ...
+    ) -> ListAsyncIterable[GlobalResource]: ...
 
     @overload
     def list(
@@ -245,7 +245,7 @@ class AsyncClient:
         chunk_size: int = None,
         labels: LabelSelector = None,
         fields: FieldSelector = None,
-    ) -> ListAsyncIterator[NamespacedResource]: ...
+    ) -> ListAsyncIterable[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
         """Return an iterator of objects matching the selection criteria.
