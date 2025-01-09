@@ -87,7 +87,7 @@ class WatchDriver:
 T = TypeVar("T")
 
 
-class ListIterator(Iterable[T]):
+class ListIterable(Iterable[T]):
 
     _resourceVersion: Optional[str] = None
 
@@ -111,7 +111,7 @@ class ListIterator(Iterable[T]):
             yield from chunk
 
 
-class ListAsyncIterator(AsyncIterable[T]):
+class ListAsyncIterable(AsyncIterable[T]):
 
     _resourceVersion: Optional[str] = None
 
@@ -390,8 +390,8 @@ class GenericSyncClient(GenericClient):
             cont, rv, chunk = self.handle_response("list", resp, br)
             yield rv, chunk
 
-    def list(self, br: BasicRequest) -> ListIterator:
-        return ListIterator(self.list_chunks(br))
+    def list(self, br: BasicRequest) -> ListIterable:
+        return ListIterable(self.list_chunks(br))
 
 
 class GenericAsyncClient(GenericClient):
@@ -452,8 +452,8 @@ class GenericAsyncClient(GenericClient):
             cont, rv, chunk = self.handle_response("list", resp, br)
             yield rv, chunk
 
-    def list(self, br: BasicRequest) -> ListAsyncIterator:
-        return ListAsyncIterator(self.list_chunks(br))
+    def list(self, br: BasicRequest) -> ListAsyncIterable:
+        return ListAsyncIterable(self.list_chunks(br))
 
     async def close(self):
         await self._client.aclose()
