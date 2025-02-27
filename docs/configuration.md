@@ -4,7 +4,7 @@ Similar to other Kubernetes libraries and the `kubectl` CLI tool,
 lightkube utilizes the kubeconfig file to configure the connection
 with Kubernetes. 
 
-The kubernetes configuration is represented by the class [lightkube.KubeConfig](client.md#kubeconfig).
+The kubernetes configuration is represented by the class [lightkube.KubeConfig][].
 
 ## Load the configuration from a file
 

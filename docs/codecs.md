@@ -49,7 +49,8 @@ Output: `<class 'lightkube.resources.core_v1.ConfigMap'>`
 Kubernetes resource defined in a YAML file can be easily loaded using the following function: 
 
 ::: lightkube.codecs.load_all_yaml
-    :docstring:
+    options:
+        heading_level: 3
    
 ### Example
 
@@ -115,7 +116,8 @@ with open('service.tmpl') as f:
 The function `lightkube.codecs.dump_all_yaml(...)` can be used to dump resource objects as YAML.
 
 ::: lightkube.codecs.dump_all_yaml
-    :docstring:
+    options:
+        heading_level: 3
 
 ### Example
 
@@ -163,7 +165,8 @@ In cases like this, the order in which we `apply` these resources matters as the
 encounter API errors when `apply`ing them, use `sort_objects(...)`.
 
 ::: lightkube.sort_objects
-    :docstring:
+    options:
+        heading_level: 3
 
 Revisiting the example above, we can apply from `yaml_with_dependencies.yaml` by:
 
@@ -216,6 +219,10 @@ This orders the objects in a way that is friendly for deleting them as a batch.
 
 ## Resource Registry
 
+::: lightkube.codecs.resource_registry
+    options:
+        heading_level: 3
+
 The singleton `resource_registry` allows to register a custom resource, so that it can be used by the load
 functions on this module:
 
@@ -239,8 +246,4 @@ class MyCustomResource(NamespacedResource):
     ...
 ```
 
-### Reference
 
-::: lightkube.codecs.resource_registry
-    :docstring:
-    :members:

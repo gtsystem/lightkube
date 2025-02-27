@@ -1,11 +1,12 @@
-# Exception
+# Exceptions
 
-Lightkube uses httpx for http requests/response. 
-You can get familiar with the exceptions returnd by this library [here](https://www.python-httpx.org/exceptions/).
+Lightkube uses httpx for handling http requests and responses. 
+Because of that, connectivity or timeout issues may raise exceptions. 
+You can get familiar with the exceptions returned by httpx library [here](https://www.python-httpx.org/exceptions/).
 
-There are two lightkube specific exceptions:
+There are few lightkube specific exceptions:
 
-## ConfigError
+::: lightkube.ConfigError
 
 This exception is raised if a failure is encountered handling the kubernetes configuration:
 
@@ -24,7 +25,8 @@ output:
 Configuration file ~/.kube/config not found
 ```
 
-## ApiError
+
+::: lightkube.ApiError
 
 This exception extends [`httpx.HTTPStatusError`](https://www.python-httpx.org/exceptions/) and is raised when an HTTP error is
 returned from kubernetes API. An extra `status` attribute is available with details
@@ -60,7 +62,28 @@ Status(
 )
 ```
 
-## LoadResourceError
+
+::: lightkube.LoadResourceError
 
 This exception can be raised when loading an undefined resource using `codecs.from_dict()`
 or `codecs.load_all_yaml()` (See [Load/Dump kubernetes objects](codecs.md)).
+
+
+::: lightkube.NotReadyError
+
+This exception is raised when attempting to access the list response attribute `resourceVersion` 
+before the list has been consumed. For more details see [List-Watch pattern](list-watch.md)
+
+
+::: lightkube.exceptions.ObjectDeleted
+
+This exception is raised when waiting for an object condition using `client.wait(...)`, 
+but the object itself get deleted. This is to prevent an infinite wait.
+
+
+::: lightkube.exceptions.ConditionError
+
+This exception is raised when waiting for an object condition using `client.wait(...)`,
+if the condition matches one of the conditions in `raise_for_conditions` parameter.
+
+

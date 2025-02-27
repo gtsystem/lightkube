@@ -28,8 +28,19 @@ extra_css:
 
 markdown_extensions:
   - admonition
-  - mkautodoc
   - pymdownx.highlight
   - pymdownx.superfences
   - markdown_include.include:
       base_path: .
+
+plugins:
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        options:
+          heading_level: 2
+          show_root_heading: true
+          show_symbol_type_heading: true
+          show_signature_annotations: true
+          signature_crossrefs: true

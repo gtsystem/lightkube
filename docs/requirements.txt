@@ -1,5 +1,6 @@
 # build documentation
-mkdocs==1.5.3
+mkdocstrings
+mkdocstrings-python
 markdown
 mkautodoc
 markdown-include
