@@ -34,7 +34,7 @@ FieldSelector = Dict[str, FieldValue]
 
 
 class Client:
-    """Creates a new lightkube client
+    """Create a new lightkube client
 
     **parameters**
 
@@ -119,7 +119,7 @@ class Client:
         cascade: CascadeType = None,
         dry_run: bool = False,
     ):
-        """Delete an object
+        """Delete an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
         **parameters**
 
@@ -130,7 +130,7 @@ class Client:
             Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
             (default), the default grace period for the specified type will be used. Defaults to a per object value if
             not specified. Zero means delete immediately.
-        * **cascade* - *(optional)* Whether and how garbage collection will be performed. Either this field or
+        * **cascade** - *(optional)* Whether and how garbage collection will be performed. Either this field or
             OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
             in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
             * 'CascadeType.ORPHAN' - orphan the dependents;
@@ -189,7 +189,7 @@ class Client:
             Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
             (default), the default grace period for the specified type will be used. Defaults to a per object value if
             not specified. Zero means delete immediately.
-        * **cascade* - *(optional)* Whether and how garbage collection will be performed. Either this field or
+        * **cascade** - *(optional)* Whether and how garbage collection will be performed. Either this field or
             OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
             in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
             * 'CascadeType.ORPHAN' - orphan the dependents;
@@ -219,7 +219,7 @@ class Client:
     ) -> AllNamespacedResource: ...
 
     def get(self, res, name, *, namespace=None):
-        """Return an object
+        """Return an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
         **parameters**
 
@@ -374,7 +374,8 @@ class Client:
         namespace=None,
         raise_for_conditions: Iterable[str] = (),
     ):
-        """Waits for specified conditions.
+        """Wait for the specified conditions.
+        Raise `lightkube.ObjectDeleted` if the object get deleted during waiting.
 
         **parameters**
 
@@ -382,7 +383,8 @@ class Client:
         * **name** - Name of resource to wait for.
         * **for_conditions** - Condition types that are considered a success and will end the wait.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **raise_for_conditions** - *(optional)* Condition types that are considered failures and will exit the wait early.
+        * **raise_for_conditions** - *(optional)* Condition types that are considered failures and will exit the wait early
+            with `lightkube.ConditionError`.
         """
 
         kind = r.api_info(res).plural
@@ -470,7 +472,7 @@ class Client:
         force=False,
         dry_run=False,
     ):
-        """Patch an object.
+        """Patch an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
         **parameters**
 
@@ -536,13 +538,15 @@ class Client:
     def create(
         self, obj, name=None, *, namespace=None, field_manager=None, dry_run=False
     ):
-        """Creates a new object
+        """Create a new object and return its representation.
+        Raise `lightkube.ApiError` if the object already exist.
 
         **parameters**
 
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+            If the namespace doesn't exist, `lightkube.ApiError` is raised.
         * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
             This parameter overrides the corresponding `Client` initialization parameter.
         * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
@@ -599,7 +603,7 @@ class Client:
         field_manager=None,
         dry_run: bool = False,
     ):
-        """Replace an existing resource.
+        """Replace an existing resource. Raise `lightkube.ApiError` if the object doesn't exist.
 
         **parameters**
 
@@ -649,7 +653,7 @@ class Client:
         timestamps=False,
         newlines=True,
     ):
-        """Return log lines for the given Pod
+        """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist.
 
         **parameters**
 
@@ -739,6 +743,7 @@ class Client:
         * **obj** - object to create. This need to be an instance of a resource kind.
         * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
         * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+            If the namespace doesn't exist, `lightkube.ApiError` is raised.
         * **field_manager** - Name associated with the actor or entity that is making these changes.
         * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
           fields owned by other people.

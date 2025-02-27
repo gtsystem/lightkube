@@ -1,5 +1,3 @@
-## Client
-
 ::: lightkube.Client
     :docstring:
     :members:
@@ -22,12 +20,10 @@ Override rules summary:
 * `Client(..., namespace=...)`
 * kubernetes config file
 
-#### List or watch objects in all namespaces
+### List or watch objects in all namespaces
 
 The methods `list` and `watch` can also return objects for all namespaces using `namespace='*'`.
 
-## KubeConfig
-
-::: lightkube.KubeConfig
-    :docstring:
-    :members:
+::: lightkube.config.kubeconfig.KubeConfig
+    #:docstring:
+    #:members:

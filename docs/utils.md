@@ -28,10 +28,12 @@ You may need to compare different quantities when interacting with K8s.
 ### Interface
 
 ::: lightkube.utils.quantity.parse_quantity
-    :docstring:
+    options:
+      heading_level: 4
 
 ::: lightkube.utils.quantity.equals_canonically
-    :docstring:
+    options:
+      heading_level: 4
 
 ### Examples
 
