@@ -12,12 +12,16 @@ edit_uri: ""
 nav:
   - QuickStart: index.md
   - Configuration: configuration.md
-  - Client Interface: client.md
+  - Reference:
+      - Client: reference/client.md
+      - AsyncClient: reference/async_client.md
+      - Configuration: reference/configuration.md
+      - Exceptions: reference/exceptions.md
+      - Types: reference/types.md
   - Resources & Models: resources-and-models.md
   - Async Usage: async-usage.md
   - Utils: utils.md
   - Advanced:
-      - Exceptions: exceptions.md
       - Selectors: selectors.md
       - Generic Resources: generic-resources.md
       - Load/Dump Objects: codecs.md
@@ -44,3 +48,7 @@ plugins:
           show_symbol_type_heading: true
           show_signature_annotations: true
           signature_crossrefs: true
+          show_if_no_docstring: true
+          docstring_section_style: list
+          filters: ["!^_[^_]"]
+          merge_init_into_class: true
