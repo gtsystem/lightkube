@@ -31,23 +31,22 @@ from .client import (
 class AsyncClient:
     """Create a new lightkube client
 
-    **parameters**
-
-    * **config** - Instance of `SingleConfig` or `KubeConfig`. When not set the configuration will be detected automatically
-      using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
-    * **namespace** - Default namespace to use. This attribute is used in case namespaced resources are called without
-      defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
-    * **timeout** - Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
-      is ignored when watching changes.
-    * **lazy** - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
-      accessed.
-    * **field_manager** - Name associated with the actor or entity that is making these changes.
-    * **trust_env** - Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
-      docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
-    * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-        be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-        to `kubectl` commands.
-    * **transport** - *(optional)* Custom httpx transport
+    Parameters:
+      config: Instance of `SingleConfig` or `KubeConfig`. When not set the configuration will be detected automatically
+        using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
+      namespace: Default namespace to use. This attribute is used in case namespaced resources are called without
+        defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
+      timeout: Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
+        is ignored when watching changes.
+      lazy: When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
+        accessed.
+      field_manager: Name associated with the actor or entity that is making these changes.
+      trust_env: Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
+        docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
+      dry_run: Apply server-side dry-run and guarantee that modifications will not
+          be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+          to `kubectl` commands.
+      transport: Custom httpx transport
     """
 
     def __init__(
@@ -116,24 +115,24 @@ class AsyncClient:
     ):
         """Delete an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
-        **parameters**
+        Parameters:
+          res: Resource kind.
+          name: Name of the object to delete.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          grace_period: The duration in seconds before the object should be deleted.
+              Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
+              (default), the default grace period for the specified type will be used. Defaults to a per object value if
+              not specified. Zero means delete immediately.
+          cascade: Whether and how garbage collection will be performed. Either this field or
+              OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
+              in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
 
-        * **res** - Resource kind.
-        * **name** - Name of the object to delete.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **grace_period** - *(optional)* The duration in seconds before the object should be deleted.
-            Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
-            (default), the default grace period for the specified type will be used. Defaults to a per object value if
-            not specified. Zero means delete immediately.
-        * **cascade* - *(optional)* Whether and how garbage collection will be performed. Either this field or
-            OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
-            in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
-            * 'CascadeType.ORPHAN' - orphan the dependents;
-            * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
-            * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+              * 'CascadeType.ORPHAN' - orphan the dependents;
+              * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
+              * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         return await self._client.request(
             "delete",
@@ -178,21 +177,23 @@ class AsyncClient:
     ):
         """Delete all objects of the given kind
 
-        * **res** - Resource kind.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **grace_period** - *(optional)* The duration in seconds before the object should be deleted.
-            Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
-            (default), the default grace period for the specified type will be used. Defaults to a per object value if
-            not specified. Zero means delete immediately.
-        * **cascade* - *(optional)* Whether and how garbage collection will be performed. Either this field or
-            OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
-            in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
-            * 'CascadeType.ORPHAN' - orphan the dependents;
-            * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
-            * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+        Parameters:
+          res: Resource kind.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          grace_period: The duration in seconds before the object should be deleted.
+              Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
+              (default), the default grace period for the specified type will be used. Defaults to a per object value if
+              not specified. Zero means delete immediately.
+          cascade: Whether and how garbage collection will be performed. Either this field or
+              OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
+              in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
+
+              * 'CascadeType.ORPHAN' - orphan the dependents;
+              * 'CascadeType.BACKGROUND' - allow the garbage collector to delete the dependents in the background;
+              * 'CascadeType.FOREGROUND' - a cascading policy that deletes all dependents in the foreground.
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         return await self._client.request(
             "deletecollection",
@@ -216,11 +217,10 @@ class AsyncClient:
     async def get(self, res, name, *, namespace=None):
         """Return an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
-        **parameters**
-
-        * **res** - Resource kind.
-        * **name** - Name of the object to fetch.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
+        Parameters:
+          res: Resource kind.
+          name: Name of the object to fetch.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
         """
         return await self._client.request(
             "get", res=res, name=name, namespace=namespace
@@ -250,14 +250,13 @@ class AsyncClient:
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
         """Return an iterator of objects matching the selection criteria.
 
-        **parameters**
-
-        * **res** - resource kind.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **chunk_size** - *(optional)* Limit the amount of objects returned for each rest API call.
-             This method will automatically execute all subsequent calls until no more data is available.
-        * **labels** - *(optional)* Limit the returned objects by labels. More [details](../selectors).
-        * **fields** - *(optional)* Limit the returned objects by fields. More [details](../selectors).
+        Parameters:
+          res: resource kind.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          chunk_size: Limit the amount of objects returned for each rest API call.
+            This method will automatically execute all subsequent calls until no more data is available.
+          labels: Limit the returned objects by labels. More [details](../selectors).
+          fields: Limit the returned objects by fields. More [details](../selectors).
         """
 
         br = self._client.prepare_request(
@@ -312,18 +311,17 @@ class AsyncClient:
     ):
         """Watch changes to objects
 
-        **parameters**
-
-        * **res** - resource kind.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **labels** - *(optional)* Limit the returned objects by labels. More [details](../selectors).
-        * **fields** - *(optional)* Limit the returned objects by fields. More [details](../selectors).
-        * **server_timeout** - *(optional)* Server side timeout in seconds to close a watch request.
-            This method will automatically create a new request whenever the backend close the connection
-            without errors.
-        * **resource_version** - *(optional)* When set, only modification events following this version will be returned.
-        * **on_error** - *(optional)* Function that control what to do in case of errors.
-            The default implementation will raise any error.
+        Parameters:
+          res: resource kind.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          labels: Limit the returned objects by labels. More [details](../selectors).
+          fields: Limit the returned objects by fields. More [details](../selectors).
+          server_timeout: Server side timeout in seconds to close a watch request.
+              This method will automatically create a new request whenever the backend close the connection
+              without errors.
+          resource_version: When set, only modification events following this version will be returned.
+          on_error: Function that control what to do in case of errors.
+              The default implementation will raise any error.
         """
         br = self._client.prepare_request(
             "list",
@@ -374,14 +372,13 @@ class AsyncClient:
         """Wait for specified conditions.
         Raise `lightkube.ObjectDeleted` if the object get deleted during waiting.
 
-        **parameters**
-
-        * **res** - Resource kind.
-        * **name** - Name of resource to wait for.
-        * **for_conditions** - Condition types that are considered a success and will end the wait.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **raise_for_conditions** - *(optional)* Condition types that are considered failures and will exit the wait early
-            with `lightkube.ConditionError`.
+        Parameters:
+          res: Resource kind.
+          name: Name of resource to wait for.
+          for_conditions: Condition types that are considered a success and will end the wait.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          raise_for_conditions: Condition types that are considered failures and will exit the wait early
+              with `lightkube.ConditionError`.
         """
 
         kind = r.api_info(res).plural
@@ -475,21 +472,20 @@ class AsyncClient:
     ):
         """Patch an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
-        **parameters**
-
-        * **res** - Resource kind.
-        * **name** - Name of the object to patch.
-        * **obj** - patch object.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **patch_type** - *(optional)* Type of patch to execute. Default `PatchType.STRATEGIC`.
-        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
-            This parameter overrides the corresponding `Client` initialization parameter.
-            **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
-        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
-          fields owned by other people. This parameter is ignored for non-apply patch types
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+        Parameters:
+          res: Resource kind.
+          name: Name of the object to patch.
+          obj: patch object.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          patch_type: Type of patch to execute. Default `PatchType.STRATEGIC`.
+          field_manager: Name associated with the actor or entity that is making these changes.
+              This parameter overrides the corresponding `Client` initialization parameter.
+              **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
+          force: Force is going to "force" Apply requests. It means user will re-acquire conflicting
+            fields owned by other people. This parameter is ignored for non-apply patch types
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         force_param = "true" if force and patch_type == PatchType.APPLY else None
         return await self._client.request(
@@ -548,17 +544,16 @@ class AsyncClient:
         """Create a new object and return its representation.
         Raise `lightkube.ApiError` if the object already exist.
 
-        **parameters**
-
-        * **obj** - object to create. This need to be an instance of a resource kind.
-        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-            If the namespace doesn't exist, `lightkube.ApiError` is raised.
-        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
-            This parameter overrides the corresponding `Client` initialization parameter.
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+        Parameters:
+          obj: object to create. This need to be an instance of a resource kind.
+          name: Required only for sub-resources: Name of the resource to which this object belongs.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+              If the namespace doesn't exist, `lightkube.ApiError` is raised.
+          field_manager: Name associated with the actor or entity that is making these changes.
+              This parameter overrides the corresponding `Client` initialization parameter.
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         return await self._client.request(
             "post",
@@ -612,16 +607,15 @@ class AsyncClient:
     ):
         """Replace an existing resource. Raise `lightkube.ApiError` if the object doesn't exist.
 
-        **parameters**
-
-        * **obj** - new object. This need to be an instance of a resource kind.
-        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-        * **field_manager** - *(optional)* Name associated with the actor or entity that is making these changes.
-            This parameter overrides the corresponding `Client` initialization parameter.
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+        Parameters:
+          obj: new object. This need to be an instance of a resource kind.
+          name: Required only for sub-resources: Name of the resource to which this object belongs.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+          field_manager: Name associated with the actor or entity that is making these changes.
+              This parameter overrides the corresponding `Client` initialization parameter.
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         return await self._client.request(
             "put",
@@ -662,16 +656,15 @@ class AsyncClient:
     ):
         """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist.
 
-        **parameters**
-
-        * **name** - Name of the Pod.
-        * **namespace** - *(optional)* Name of the namespace containing the Pod.
-        * **container** - *(optional)* The container for which to stream logs. Defaults to only container if there is one container in the pod.
-        * **follow** - *(optional)* If `True`, follow the log stream of the pod.
-        * **since** - *(optional)* If set, a relative time in seconds before the current time from which to fetch logs.
-        * **tail_lines** - *(optional)* If set, the number of lines from the end of the logs to fetch.
-        * **timestamps** - *(optional)* If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
-        * **newlines** - *(optional)* If `True`, each line will end with a newline, otherwise the newlines will be stripped.
+        Parameters:
+          name: Name of the Pod.
+          namespace: Name of the namespace containing the Pod.
+          container: The container for which to stream logs. Defaults to only container if there is one container in the pod.
+          follow: If `True`, follow the log stream of the pod.
+          since: If set, a relative time in seconds before the current time from which to fetch logs.
+          tail_lines: If set, the number of lines from the end of the logs to fetch.
+          timestamps: If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
+          newlines: If `True`, each line will end with a newline, otherwise the newlines will be stripped.
         """
         br = self._client.prepare_request(
             "get",
@@ -750,18 +743,17 @@ class AsyncClient:
         """Create or configure an object. This method uses the
         [server-side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) functionality.
 
-        **parameters**
-
-        * **obj** - object to create. This need to be an instance of a resource kind.
-        * **name** - *(optional)* Required only for sub-resources: Name of the resource to which this object belongs.
-        * **namespace** - *(optional)* Name of the namespace containing the object (Only for namespaced resources).
-            If the namespace doesn't exist, `lightkube.ApiError` is raised.
-        * **field_manager** - Name associated with the actor or entity that is making these changes.
-        * **force** - *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
-          fields owned by other people.
-        * **dry_run** - *(optional)* Apply server-side dry-run and guarantee that modifications will not
-            be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
-            to `kubectl` commands.
+        Parameters:
+          obj: object to create. This need to be an instance of a resource kind.
+          name: Required only for sub-resources: Name of the resource to which this object belongs.
+          namespace: Name of the namespace containing the object (Only for namespaced resources).
+              If the namespace doesn't exist, `lightkube.ApiError` is raised.
+          field_manager: Name associated with the actor or entity that is making these changes.
+          force: Force is going to "force" Apply requests. It means user will re-acquire conflicting
+              fields owned by other people.
+          dry_run: Apply server-side dry-run and guarantee that modifications will not
+              be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+              to `kubectl` commands.
         """
         if (
             namespace is None

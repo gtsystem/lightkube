@@ -28,6 +28,8 @@ DEFAULT_KUBECONFIG = "~/.kube/config"
 
 
 class SingleConfig(NamedTuple):
+    """Represents a single configuration instance as the result of selecting a context"""
+    #: name of the context
     context_name: str
     context: Context
     cluster: Cluster
@@ -36,9 +38,11 @@ class SingleConfig(NamedTuple):
 
     @property
     def namespace(self):
+        """Returns the namespace in the current context"""
         return self.context.namespace or DEFAULT_NAMESPACE
 
     def abs_file(self, fname):
+        """Return the absolute path of a relative file path, relatively to the configuration file"""
         if Path(fname).is_absolute():
             return fname
 
