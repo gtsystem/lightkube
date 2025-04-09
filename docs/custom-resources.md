@@ -9,32 +9,31 @@ If you want to work with more complex custom resources, or you want the added ty
 First you must define the models that make up your Custom Resource:
 
 ```python
-from dataclasses import dataclass, field
 from typing import Optional
 
-from lightkube.core.dataclasses_dict import DataclassDictMixIn
+from lightkube.core.schema import DictMixin, dataclass
 from lightkube.models import meta_v1
 
 
 @dataclass
-class Owner(DataclassDictMixIn):
+class Owner(DictMixin):
     name: str
 
 
 @dataclass
-class DogSpec(DataclassDictMixIn):
+class DogSpec(DictMixin):
     breed: str
     owner: Owner
 
 
 @dataclass
-class DogStatus(DataclassDictMixIn):
+class DogStatus(DictMixin):
     conditions: Optional[list[meta_v1.Condition]] = None
     observedGeneration: Optional[int] = None
 
 
 @dataclass
-class Dog(DataclassDictMixIn):
+class Dog(DictMixin):
     apiVersion: Optional[str] = None
     kind: Optional[str] = None
     metadata: Optional[meta_v1.ObjectMeta] = None
@@ -46,7 +45,10 @@ To be able to use these models as resources in the client, you must create the c
 
 ```python
 from typing import ClassVar
+
+from lightkube.codecs import resource_registry
 from lightkube.core import resource as res
+
 from ..models import dog as m_dog
 
 
@@ -61,6 +63,7 @@ class DogStatus(res.NamespacedSubResource, m_dog.Dog):
     )
 
 
+@resource_registry.register
 class Dog(res.NamespacedResourceG, m_dog.Dog):
     _api_info = res.ApiInfo(
         resource=res.ResourceDef('stable.example.com', 'v1', 'Dog'),
