@@ -24,6 +24,7 @@ nav:
   - Advanced:
       - Selectors: selectors.md
       - Generic Resources: generic-resources.md
+      - Custom Resources: custom-resources.md
       - Load/Dump Objects: codecs.md
       - List-Watch Pattern: list-watch.md
 
