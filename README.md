@@ -120,6 +120,18 @@ obj = Deployment.Scale(
 client.replace(obj)
 ```
 
+Update Status of a deployment
+```python
+from lightkube.resources.apps_v1 import Deployment
+from lightkube.models.apps_v1 import DeploymentStatus
+
+obj = Deployment.Status(
+    status=DeploymentStatus(observedGeneration=99)
+)
+client.apply(obj, name='metrics-server', namespace='kube-system')
+```
+
+
 Create and modify resources using [server side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
 
 *Note:* `field_manager` is required for server-side apply. You can specify it once in the client constructor
