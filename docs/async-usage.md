@@ -91,6 +91,21 @@ async def example():
     await client.replace(obj, 'metrics-server', namespace='kube-system')
 ```
 
+Update Status of a deployment
+```python
+from lightkube import AsyncClient
+from lightkube.resources.apps_v1 import Deployment
+from lightkube.models.apps_v1 import DeploymentStatus
+
+async def example():
+    client = AsyncClient()
+    obj = Deployment.Status(
+        status=DeploymentStatus(observedGeneration=99)
+    )
+    await client.apply(obj, name='metrics-server', namespace='kube-system')
+```
+
+
 Stream pod logs
 ```python
 from lightkube import AsyncClient
