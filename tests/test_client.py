@@ -117,6 +117,7 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_client, kubeco
         auth=user_auth.return_value,
         trust_env=False,
         transport=None,
+        proxy=None,
     )
 
 
