@@ -17,9 +17,10 @@ def Client(
     timeout: httpx.Timeout,
     trust_env: bool = True,
     transport: httpx.BaseTransport = None,
+    proxy: str = None,
 ) -> httpx.Client:
     return httpx.Client(
-        transport=transport, **httpx_parameters(config, timeout, trust_env)
+        transport=transport, **httpx_parameters(config, timeout, proxy, trust_env)
     )
 
 
@@ -28,15 +29,17 @@ def AsyncClient(
     timeout: httpx.Timeout,
     trust_env: bool = True,
     transport: httpx.AsyncBaseTransport = None,
+    proxy: str = None,
 ) -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        transport=transport, **httpx_parameters(config, timeout, trust_env)
+        transport=transport, **httpx_parameters(config, timeout, proxy, trust_env)
     )
 
 
-def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, trust_env: bool):
+def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy, trust_env: bool):
     return dict(
         timeout=timeout,
+        proxy=proxy,
         base_url=config.cluster.server,
         verify=verify_cluster(config.cluster, config.user, config.abs_file, trust_env=trust_env),
         auth=user_auth(config.user),
