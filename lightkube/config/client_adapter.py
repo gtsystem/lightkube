@@ -36,7 +36,7 @@ def AsyncClient(
     )
 
 
-def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy, trust_env: bool):
+def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool):
     return dict(
         timeout=timeout,
         proxy=proxy,
