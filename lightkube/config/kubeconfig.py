@@ -62,7 +62,13 @@ PROXY_CONF = SingleConfig(
 
 
 class KubeConfig:
-    """Class to represent a kubeconfig. See the specific constructors depending on your use case."""
+    """Class to represent a kubeconfig. See the specific constructors depending on your use case.
+
+    Attributes:
+          clusters: Dictionary of cluster name -> `Cluster` instance.
+          contexts: Dictionary of context name -> `Context` instance.
+          users: Dictionary of user name -> `User` instance.
+    """
 
     clusters: Dict[str, Cluster]
     users: Dict[str, User]
@@ -75,13 +81,12 @@ class KubeConfig:
         Create the kubernetes configuration manually. Normally this constructor should not be called directly.
         Use a specific constructor instead.
 
-        **Parameters**
-
-        * **clusters**: Dictionary of cluster name -> `Cluster` instance.
-        * **contexts**: Dictionary of context name -> `Context` instance.
-        * **users**: Dictionary of user name -> `User` instance.
-        * **current_context**: Name of the current context.
-        * **fname**: Name of the file where the configuration has been readed from.
+        Attributes:
+          clusters: Dictionary of cluster name -> `Cluster` instance.
+          contexts: Dictionary of context name -> `Context` instance.
+          users: Dictionary of user name -> `User` instance.
+          current_context: Name of the current context.
+          fname: Name of the file where the configuration has been readed from.
         """
         self.current_context = current_context
         self.clusters = clusters

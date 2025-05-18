@@ -63,6 +63,10 @@ class User(DataclassDictMixIn):
 
 @dataclass
 class Cluster(DataclassDictMixIn):
+    """
+    Attributes:
+      server: the server name
+    """
     server: str = "http://localhost:8080"
     certificate_auth: str = field(
         metadata={"json": "certificate-authority"}, default=None

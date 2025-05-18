@@ -258,8 +258,8 @@ class AsyncClient:
           namespace: Name of the namespace containing the object (Only for namespaced resources).
           chunk_size: Limit the amount of objects returned for each rest API call.
             This method will automatically execute all subsequent calls until no more data is available.
-          labels: Limit the returned objects by labels. More [details](../selectors).
-          fields: Limit the returned objects by fields. More [details](../selectors).
+          labels: Limit the returned objects by labels. More [details](../selectors.md).
+          fields: Limit the returned objects by fields. More [details](../selectors.md).
         """
 
         br = self._client.prepare_request(
@@ -317,8 +317,8 @@ class AsyncClient:
         Parameters:
           res: resource kind.
           namespace: Name of the namespace containing the object (Only for namespaced resources).
-          labels: Limit the returned objects by labels. More [details](../selectors).
-          fields: Limit the returned objects by fields. More [details](../selectors).
+          labels: Limit the returned objects by labels. More [details](../selectors.md).
+          fields: Limit the returned objects by fields. More [details](../selectors.md).
           server_timeout: Server side timeout in seconds to close a watch request.
               This method will automatically create a new request whenever the backend close the connection
               without errors.

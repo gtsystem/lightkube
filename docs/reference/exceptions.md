@@ -66,13 +66,13 @@ Status(
 ::: lightkube.LoadResourceError
 
 This exception can be raised when loading an undefined resource using `codecs.from_dict()`
-or `codecs.load_all_yaml()` (See [Load/Dump kubernetes objects](codecs.md)).
+or `codecs.load_all_yaml()` (See [Load/Dump kubernetes objects](../codecs.md)).
 
 
 ::: lightkube.NotReadyError
 
 This exception is raised when attempting to access the list response attribute `resourceVersion` 
-before the list has been consumed. For more details see [List-Watch pattern](list-watch.md)
+before the list has been consumed. For more details see [List-Watch pattern](../list-watch.md)
 
 
 ::: lightkube.exceptions.ObjectDeleted
