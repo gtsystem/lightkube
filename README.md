@@ -14,7 +14,7 @@ Modern lightweight kubernetes module for python
 * Models and resources generated from the swagger specifications using standard dataclasses.
 * Load/Dump resource objects from YAML.
 * Support for async/await
-* Support for installing a specific version of the kubernetes models (1.17 to 1.32)
+* Support for installing a specific version of the kubernetes models (1.18 to 1.33)
 * Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
