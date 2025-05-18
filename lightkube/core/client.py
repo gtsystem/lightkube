@@ -41,9 +41,9 @@ class Client:
         using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
       namespace: Default namespace to use. This attribute is used in case namespaced resources are called without
         defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
-      timeout: Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
+      timeout: Instance of `httpx.Timeout`. By default, all timeouts are set to 10 seconds. Notice that read timeout
         is ignored when watching changes.
-      lazy - When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
+      lazy: When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
         accessed.
       field_manager: Name associated with the actor or entity that is making these changes.
       trust_env: Ignore environment variables, also passed through to httpx.Client trust_env.  See its
@@ -128,12 +128,12 @@ class Client:
             name: Name of the object to delete.
             namespace: Name of the namespace containing the object (Only for namespaced resources).
             grace_period: The duration in seconds before the object should be deleted.
-              Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
-              (default), the default grace period for the specified type will be used. Defaults to a per object value if
-              not specified. Zero means delete immediately.
+                Value must be non-negative integer. The value zero indicates delete immediately. If this value is `None`
+                (default), the default grace period for the specified type will be used. Defaults to a per object value if
+                not specified. Zero means delete immediately.
             cascade: Whether and how garbage collection will be performed. Either this field or
-              OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
-              in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
+                OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set
+                in the metadata.finalizers and the resource-specific default policy. Acceptable values are:
 
                 * `CascadeType.ORPHAN` - orphan the dependents;
                 * `CascadeType.BACKGROUND` - allow the garbage collector to delete the dependents in the background;
@@ -261,8 +261,8 @@ class Client:
             namespace: Name of the namespace containing the object (Only for namespaced resources).
             chunk_size: Limit the amount of objects returned for each rest API call.
                  This method will automatically execute all subsequent calls until no more data is available.
-            labels: Limit the returned objects by labels. More [details](../selectors).
-            fields: Limit the returned objects by fields. More [details](../selectors).
+            labels: Limit the returned objects by labels. More [details](../selectors.md).
+            fields: Limit the returned objects by fields. More [details](../selectors.md).
         """
 
         br = self._client.prepare_request(
@@ -320,8 +320,8 @@ class Client:
         Parameters:
             res: resource kind.
             namespace: Name of the namespace containing the object (Only for namespaced resources).
-            labels: Limit the returned objects by labels. More [details](../selectors).
-            fields: Limit the returned objects by fields. More [details](../selectors).
+            labels: Limit the returned objects by labels. More [details](../selectors.md).
+            fields: Limit the returned objects by fields. More [details](../selectors.md).
             server_timeout: Server side timeout in seconds to close a watch request.
                 This method will automatically create a new request whenever the backend close the connection
                 without errors.
@@ -484,7 +484,7 @@ class Client:
                 This parameter overrides the corresponding `Client` initialization parameter.
                 **NOTE**: This parameter is mandatory (here or at `Client` creation time) for `PatchType.APPLY`.
             force: Force is going to "force" Apply requests. It means user will re-acquire conflicting
-              fields owned by other people. This parameter is ignored for non-apply patch types
+                fields owned by other people. This parameter is ignored for non-apply patch types
             dry_run: Apply server-side dry-run and guarantee that modifications will not
                 be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
                 to `kubectl` commands.
@@ -741,7 +741,7 @@ class Client:
                 If the namespace doesn't exist, `lightkube.ApiError` is raised.
             field_manager: Name associated with the actor or entity that is making these changes.
             force: Force is going to "force" Apply requests. It means user will re-acquire conflicting
-              fields owned by other people.
+                fields owned by other people.
             dry_run: Apply server-side dry-run and guarantee that modifications will not
                 be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
                 to `kubectl` commands.
