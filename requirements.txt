@@ -1,5 +1,5 @@
 asyncmock
-httpx >= 0.24.0
+httpx >= 0.28.1
 pytest
 pytest-asyncio
 respx
