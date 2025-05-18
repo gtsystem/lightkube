@@ -15,7 +15,7 @@ setup(
     package_data={'lightkube': ['py.typed']},
     install_requires=[
         'lightkube-models >= 1.15.12.0',
-        'httpx >= 0.24.0, < 1.0.0',
+        'httpx >= 0.28.1, < 1.0.0',
         'PyYAML'
     ],
     extras_require={
