@@ -18,9 +18,10 @@ def Client(
     trust_env: bool = True,
     transport: httpx.BaseTransport = None,
     proxy: str = None,
+    http2: bool = True
 ) -> httpx.Client:
     return httpx.Client(
-        transport=transport, **httpx_parameters(config, timeout, proxy, trust_env)
+        transport=transport, http2=True, **httpx_parameters(config, timeout, proxy, trust_env)
     )
 
 
@@ -30,9 +31,10 @@ def AsyncClient(
     trust_env: bool = True,
     transport: httpx.AsyncBaseTransport = None,
     proxy: str = None,
+    http2: bool = True
 ) -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        transport=transport, **httpx_parameters(config, timeout, proxy, trust_env)
+        transport=transport,  http2=True, **httpx_parameters(config, timeout, proxy, trust_env)
     )
 
 
