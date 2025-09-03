@@ -1,14 +1,4 @@
-from typing import (
-    Type,
-    Iterator,
-    TypeVar,
-    Union,
-    overload,
-    Dict,
-    Tuple,
-    List,
-    Iterable,
-)
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, overload
 import httpx
 from ..config.kubeconfig import SingleConfig, KubeConfig
 from .. import operators
@@ -65,7 +55,7 @@ class Client:
         trust_env: bool = True,
         dry_run: bool = False,
         transport: httpx.BaseTransport = None,
-        proxy: str = None,
+        proxy: Optional[str] = None,
     ):
         self._client = GenericSyncClient(
             config,
