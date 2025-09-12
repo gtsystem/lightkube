@@ -78,6 +78,7 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_async_client, 
         trust_env=False,
         transport=None,
         proxy=None,
+        http2=False,
     )
 
 
