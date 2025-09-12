@@ -1,15 +1,15 @@
+import asyncio.subprocess
 import json
 import os
 import ssl
 import subprocess
 from typing import Optional
-import asyncio.subprocess
 
 import httpx
 
-from .kubeconfig import SingleConfig
-from .models import Cluster, User, UserExec, FileStr
 from ..core.exceptions import ConfigError
+from .kubeconfig import SingleConfig
+from .models import Cluster, FileStr, User, UserExec
 
 
 def Client(
@@ -18,10 +18,12 @@ def Client(
     trust_env: bool = True,
     transport: httpx.BaseTransport = None,
     proxy: str = None,
-    http2: bool = True
+    http2: bool = False,
 ) -> httpx.Client:
     return httpx.Client(
-        transport=transport, http2=True, **httpx_parameters(config, timeout, proxy, trust_env)
+        transport=transport,
+        http2=http2,
+        **httpx_parameters(config, timeout, proxy, trust_env),
     )
 
 
@@ -31,19 +33,25 @@ def AsyncClient(
     trust_env: bool = True,
     transport: httpx.AsyncBaseTransport = None,
     proxy: str = None,
-    http2: bool = True
+    http2: bool = False,
 ) -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        transport=transport,  http2=True, **httpx_parameters(config, timeout, proxy, trust_env)
+        transport=transport,
+        http2=http2,
+        **httpx_parameters(config, timeout, proxy, trust_env),
     )
 
 
-def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool):
+def httpx_parameters(
+    config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool
+):
     return dict(
         timeout=timeout,
         proxy=proxy,
         base_url=config.cluster.server,
-        verify=verify_cluster(config.cluster, config.user, config.abs_file, trust_env=trust_env),
+        verify=verify_cluster(
+            config.cluster, config.user, config.abs_file, trust_env=trust_env
+        ),
         auth=user_auth(config.user),
         trust_env=trust_env,
     )
