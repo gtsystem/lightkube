@@ -1,21 +1,22 @@
-from collections import namedtuple
 import unittest.mock
 import warnings
+from collections import namedtuple
 from ssl import SSLContext
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import json
-import pytest
+
 import httpx
+import pytest
 import respx
 
 import lightkube
-from lightkube.config.kubeconfig import KubeConfig, SingleConfig, Context, Cluster, User
-from lightkube.resources.core_v1 import Pod, Node, Binding
-from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
+from lightkube.config.kubeconfig import Cluster, Context, KubeConfig, SingleConfig, User
 from lightkube.generic_resource import create_global_resource
+from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.resources.core_v1 import Binding, Node, Pod
 
 KUBECONFIG = """
 apiVersion: v1
@@ -118,6 +119,7 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_client, kubeco
         trust_env=False,
         transport=None,
         proxy=None,
+        http2=False,
     )
 
 
