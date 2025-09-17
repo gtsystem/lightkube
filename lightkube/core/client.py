@@ -650,7 +650,7 @@ class Client:
         timestamps=False,
         newlines=True,
     ):
-        """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist.
+        """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist or has not yet started.
 
         Parameters:
             name: Name of the Pod.
@@ -677,6 +677,9 @@ class Client:
         )
         req = self._client.build_adapter_request(br)
         resp = self._client.send(req, stream=follow)
+        if resp.is_error and follow:
+            # The body must be read into memory before accessing it when building the exception.
+            resp.read()
         self._client.raise_for_status(resp)
         return (l + "\n" if newlines else l for l in resp.iter_lines())
 

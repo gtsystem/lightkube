@@ -657,7 +657,7 @@ class AsyncClient:
         timestamps=False,
         newlines=True,
     ):
-        """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist.
+        """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist or has not yet started.
 
         Parameters:
           name: Name of the Pod.
@@ -686,6 +686,9 @@ class AsyncClient:
 
         async def stream_log():
             resp = await self._client.send(req, stream=follow)
+            if resp.is_error and follow:
+                # The body must be read into memory before accessing it when building the exception.
+                resp.read()
             self._client.raise_for_status(resp)
             async for line in resp.aiter_lines():
                 yield line + "\n" if newlines else line
