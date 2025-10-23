@@ -79,6 +79,8 @@ class WatchDriver:
         line = json.loads(line)
         tp = line["type"]
         obj = line["object"]
+        if tp == 'ERROR':
+            raise ApiError(status=obj)
         self._version = obj["metadata"]["resourceVersion"]
         return tp, self._convert(obj, lazy=self._lazy)
 
@@ -357,7 +359,7 @@ class GenericSyncClient(GenericClient):
                 err_count = 0
                 for line in resp.iter_lines():
                     yield wd.process_one_line(line)
-            except Exception as e:
+            except httpx.HTTPError as e:
                 err_count += 1
                 handle_error = on_error(e, err_count)
                 if handle_error.action is OnErrorAction.RAISE:
@@ -415,7 +417,7 @@ class GenericAsyncClient(GenericClient):
                 err_count = 0
                 async for line in resp.aiter_lines():
                     yield wd.process_one_line(line)
-            except Exception as e:
+            except httpx.HTTPError as e:
                 err_count += 1
                 handle_error = on_error(e, err_count)
                 if handle_error.action is OnErrorAction.RAISE:
