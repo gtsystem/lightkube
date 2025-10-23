@@ -15,7 +15,7 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube import types
 
 from .test_client import make_wait_custom, make_wait_deleted, make_wait_failed, make_wait_success, make_watch_list, \
-    json_contains
+    make_watch_error, json_contains
 
 KUBECONFIG = """
 apiVersion: v1
@@ -199,6 +199,22 @@ async def test_watch(client: lightkube.AsyncClient):
 
     assert i == 9
     assert exi.value.response.status_code == 404
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_watch_error(client: lightkube.AsyncClient):
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_error())
+
+    with pytest.raises(httpx.HTTPError):
+        async for (op, node) in client.watch(Node):
+            pass
+
+    with pytest.raises(lightkube.ApiError) as exc:
+        async for (op, node) in client.watch(Node):
+            pass
+    assert exc.value.status.code == 410
     await client.close()
 
 

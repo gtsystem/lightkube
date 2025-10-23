@@ -297,6 +297,35 @@ def test_watch(client: lightkube.Client):
     assert exi.value.response.status_code == 404
 
 
+def make_watch_error():
+    state = {
+        'type': 'ERROR',
+        'object': {
+            'apiVersion': 'v1',
+            'code': 410,
+            'kind': 'Status',
+            'message': 'too old resource version: 464635228 (464639593)',
+            'metadata': {},
+            'reason': 'Expired',
+            'status': 'Failure',
+        },
+    }
+
+    return json.dumps(state)
+
+
+@respx.mock
+def test_watch_error(client: lightkube.Client):
+    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_error())
+
+    with pytest.raises(httpx.HTTPError):
+        list(client.watch(Node))
+
+    with pytest.raises(lightkube.ApiError) as exc:
+        list(client.watch(Node))
+    assert exc.value.status.code == 410
+
+
 @respx.mock
 def test_watch_version(client: lightkube.Client):
     respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
