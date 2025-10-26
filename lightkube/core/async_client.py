@@ -1,4 +1,5 @@
 from typing import (
+    Optional,
     Type,
     Union,
     overload,
@@ -53,14 +54,14 @@ class AsyncClient:
     def __init__(
         self,
         config: Union[SingleConfig, KubeConfig, None] = None,
-        namespace: str = None,
-        timeout: httpx.Timeout = None,
-        lazy=True,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        timeout: Optional[httpx.Timeout] = None,
+        lazy: bool = True,
+        field_manager: Optional[str] = None,
         trust_env: bool = True,
         dry_run: bool = False,
-        transport: httpx.AsyncBaseTransport = None,
-        proxy: str = None,
+        transport: Optional[httpx.AsyncBaseTransport] = None,
+        proxy: Optional[str] = None,
     ):
         self._client = GenericAsyncClient(
             config,
@@ -89,8 +90,8 @@ class AsyncClient:
         self,
         res: Type[GlobalResource],
         name: str,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -100,9 +101,9 @@ class AsyncClient:
         res: Type[NamespacedResource],
         name: str,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -111,9 +112,9 @@ class AsyncClient:
         res,
         name: str,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ):
         """Delete an object. Raise `lightkube.ApiError` if the object doesn't exist.
@@ -153,8 +154,8 @@ class AsyncClient:
     async def deletecollection(
         self,
         res: Type[GlobalResource],
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -163,9 +164,9 @@ class AsyncClient:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -173,9 +174,9 @@ class AsyncClient:
         self,
         res,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ):
         """Delete all objects of the given kind
@@ -214,10 +215,10 @@ class AsyncClient:
 
     @overload
     async def get(
-        self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None
+        self, res: Type[AllNamespacedResource], name: str, *, namespace: Optional[str] = None
     ) -> AllNamespacedResource: ...
 
-    async def get(self, res, name, *, namespace=None):
+    async def get(self, res, name, *, namespace: Optional[str] = None):
         """Return an object. Raise `lightkube.ApiError` if the object doesn't exist.
 
         Parameters:
@@ -234,9 +235,9 @@ class AsyncClient:
         self,
         res: Type[GlobalResource],
         *,
-        chunk_size: int = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
+        chunk_size: Optional[int] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
     ) -> ListAsyncIterable[GlobalResource]: ...
 
     @overload
@@ -244,10 +245,10 @@ class AsyncClient:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        chunk_size: int = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
+        namespace: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
     ) -> ListAsyncIterable[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
@@ -281,10 +282,10 @@ class AsyncClient:
         self,
         res: Type[GlobalResource],
         *,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
-        server_timeout: int = None,
-        resource_version: str = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
+        server_timeout: Optional[int] = None,
+        resource_version: Optional[str] = None,
         on_error: OnErrorHandler = on_error_raise,
     ) -> AsyncIterable[Tuple[str, GlobalResource]]: ...
 
@@ -293,11 +294,11 @@ class AsyncClient:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
-        server_timeout: int = None,
-        resource_version: str = None,
+        namespace: Optional[str] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
+        server_timeout: Optional[int] = None,
+        resource_version: Optional[str] = None,
         on_error: OnErrorHandler = on_error_raise,
     ) -> AsyncIterable[Tuple[str, NamespacedResource]]: ...
 
@@ -305,12 +306,12 @@ class AsyncClient:
         self,
         res,
         *,
-        namespace=None,
-        labels=None,
-        fields=None,
-        server_timeout=None,
-        resource_version=None,
-        on_error=on_error_raise,
+        namespace: Optional[str] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
+        server_timeout: Optional[int] = None,
+        resource_version: Optional[str] = None,
+        on_error: OnErrorHandler = on_error_raise,
     ):
         """Watch changes to objects
 
@@ -359,7 +360,7 @@ class AsyncClient:
         name: str,
         *,
         for_conditions: Iterable[str],
-        namespace: str = None,
+        namespace: Optional[str] = None,
         raise_for_conditions: Iterable[str] = (),
     ) -> AllNamespacedResource: ...
 
@@ -369,7 +370,7 @@ class AsyncClient:
         name: str,
         *,
         for_conditions: Iterable[str],
-        namespace=None,
+        namespace: Optional[str] = None,
         raise_for_conditions: Iterable[str] = (),
     ):
         """Wait for specified conditions.
@@ -429,7 +430,7 @@ class AsyncClient:
         obj: Union[GlobalSubResource, Dict, List],
         *,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -442,7 +443,7 @@ class AsyncClient:
         obj: Union[GlobalResource, Dict, List],
         *,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -454,9 +455,9 @@ class AsyncClient:
         name: str,
         obj: Union[AllNamespacedResource, Dict, List],
         *,
-        namespace: str = None,
+        namespace: Optional[str] = None,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> AllNamespacedResource: ...
@@ -467,9 +468,9 @@ class AsyncClient:
         name,
         obj,
         *,
-        namespace=None,
+        namespace: Optional[str] = None,
         patch_type=PatchType.STRATEGIC,
-        field_manager=None,
+        field_manager: Optional[str] = None,
         force=False,
         dry_run: bool = False,
     ):
@@ -510,7 +511,7 @@ class AsyncClient:
         self,
         obj: GlobalSubResource,
         name: str,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
 
@@ -520,19 +521,19 @@ class AsyncClient:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
 
     @overload
     async def create(
-        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> GlobalResource: ...
 
     @overload
     async def create(
-        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> NamespacedResource: ...
 
     async def create(
@@ -540,8 +541,8 @@ class AsyncClient:
         obj,
         name=None,
         *,
-        namespace=None,
-        field_manager=None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ):
         """Create a new object and return its representation.
@@ -574,7 +575,7 @@ class AsyncClient:
         self,
         obj: GlobalSubResource,
         name: str,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
 
@@ -584,19 +585,19 @@ class AsyncClient:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
 
     @overload
     async def replace(
-        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> GlobalResource: ...
 
     @overload
     async def replace(
-        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> NamespacedResource: ...
 
     async def replace(
@@ -604,8 +605,8 @@ class AsyncClient:
         obj,
         name=None,
         *,
-        namespace=None,
-        field_manager=None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ):
         """Replace an existing resource. Raise `lightkube.ApiError` if the object doesn't exist.
@@ -649,13 +650,13 @@ class AsyncClient:
         self,
         name,
         *,
-        namespace=None,
-        container=None,
-        follow=False,
-        since=None,
-        tail_lines=None,
-        timestamps=False,
-        newlines=True,
+        namespace: Optional[str] = None,
+        container: Optional[str] = None,
+        follow: bool = False,
+        since: Optional[int] = None,
+        tail_lines: Optional[int] = None,
+        timestamps: bool = False,
+        newlines: bool = True,
     ):
         """Return log lines for the given Pod. Raise `lightkube.ApiError` if the Pod doesn't exist or has not yet started.
 
@@ -741,8 +742,8 @@ class AsyncClient:
         obj,
         name=None,
         *,
-        namespace=None,
-        field_manager=None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         force=False,
         dry_run: bool = False,
     ):
