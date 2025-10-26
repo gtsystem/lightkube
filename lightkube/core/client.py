@@ -1,4 +1,5 @@
 from typing import (
+    Optional,
     Type,
     Iterator,
     TypeVar,
@@ -58,14 +59,14 @@ class Client:
     def __init__(
         self,
         config: Union[SingleConfig, KubeConfig, None] = None,
-        namespace: str = None,
-        timeout: httpx.Timeout = None,
-        lazy=True,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        timeout: Optional[httpx.Timeout] = None,
+        lazy: bool = True,
+        field_manager: Optional[str] = None,
         trust_env: bool = True,
         dry_run: bool = False,
-        transport: httpx.BaseTransport = None,
-        proxy: str = None,
+        transport: Optional[httpx.BaseTransport] = None,
+        proxy: Optional[str] = None,
     ):
         self._client = GenericSyncClient(
             config,
@@ -94,8 +95,8 @@ class Client:
         self,
         res: Type[GlobalResource],
         name: str,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -105,9 +106,9 @@ class Client:
         res: Type[NamespacedResource],
         name: str,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -116,9 +117,9 @@ class Client:
         res,
         name: str,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ):
         """Delete an object. Raise [lightkube.ApiError][] if the object doesn't exist.
@@ -158,8 +159,8 @@ class Client:
     def deletecollection(
         self,
         res: Type[GlobalResource],
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -168,9 +169,9 @@ class Client:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ) -> None: ...
 
@@ -178,9 +179,9 @@ class Client:
         self,
         res,
         *,
-        namespace: str = None,
-        grace_period: int = None,
-        cascade: CascadeType = None,
+        namespace: Optional[str] = None,
+        grace_period: Optional[int] = None,
+        cascade: Optional[CascadeType] = None,
         dry_run: bool = False,
     ):
         """Delete all objects of the given kind
@@ -219,7 +220,7 @@ class Client:
 
     @overload
     def get(
-        self, res: Type[AllNamespacedResource], name: str, *, namespace: str = None
+        self, res: Type[AllNamespacedResource], name: str, *, namespace: Optional[str] = None
     ) -> AllNamespacedResource: ...
 
     def get(self, res, name, *, namespace=None):
@@ -237,9 +238,9 @@ class Client:
         self,
         res: Type[GlobalResource],
         *,
-        chunk_size: int = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
+        chunk_size: Optional[int] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
     ) -> ListIterable[GlobalResource]: ...
 
     @overload
@@ -247,10 +248,10 @@ class Client:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        chunk_size: int = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
+        namespace: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
     ) -> ListIterable[NamespacedResource]: ...
 
     def list(self, res, *, namespace=None, chunk_size=None, labels=None, fields=None):
@@ -284,10 +285,10 @@ class Client:
         self,
         res: Type[GlobalResource],
         *,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
-        server_timeout: int = None,
-        resource_version: str = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
+        server_timeout: Optional[int] = None,
+        resource_version: Optional[str] = None,
         on_error: OnErrorHandler = on_error_raise,
     ) -> Iterator[Tuple[str, GlobalResource]]: ...
 
@@ -296,11 +297,11 @@ class Client:
         self,
         res: Type[NamespacedResource],
         *,
-        namespace: str = None,
-        labels: LabelSelector = None,
-        fields: FieldSelector = None,
-        server_timeout: int = None,
-        resource_version: str = None,
+        namespace: Optional[str] = None,
+        labels: Optional[LabelSelector] = None,
+        fields: Optional[FieldSelector] = None,
+        server_timeout: Optional[int] = None,
+        resource_version: Optional[str] = None,
         on_error: OnErrorHandler = on_error_raise,
     ) -> Iterator[Tuple[str, NamespacedResource]]: ...
 
@@ -362,7 +363,7 @@ class Client:
         name: str,
         *,
         for_conditions: Iterable[str],
-        namespace: str = None,
+        namespace: Optional[str] = None,
         raise_for_conditions: Iterable[str] = (),
     ) -> AllNamespacedResource: ...
 
@@ -428,7 +429,7 @@ class Client:
         obj: Union[GlobalSubResource, Dict, List],
         *,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -441,7 +442,7 @@ class Client:
         obj: Union[GlobalResource, Dict, List],
         *,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -453,9 +454,9 @@ class Client:
         name: str,
         obj: Union[AllNamespacedResource, Dict, List],
         *,
-        namespace: str = None,
+        namespace: Optional[str] = None,
         patch_type: PatchType = PatchType.STRATEGIC,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> AllNamespacedResource: ...
@@ -509,7 +510,7 @@ class Client:
         self,
         obj: GlobalSubResource,
         name: str,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
 
@@ -519,19 +520,19 @@ class Client:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
 
     @overload
     def create(
-        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> GlobalResource: ...
 
     @overload
     def create(
-        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> NamespacedResource: ...
 
     def create(
@@ -567,7 +568,7 @@ class Client:
         self,
         obj: GlobalSubResource,
         name: str,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
 
@@ -577,19 +578,19 @@ class Client:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
 
     @overload
     def replace(
-        self, obj: GlobalResource, field_manager: str = None, dry_run: bool = False
+        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> GlobalResource: ...
 
     @overload
     def replace(
-        self, obj: NamespacedResource, field_manager: str = None, dry_run: bool = False
+        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
     ) -> NamespacedResource: ...
 
     def replace(
@@ -629,11 +630,11 @@ class Client:
         self,
         name: str,
         *,
-        namespace: str = None,
-        container: str = None,
+        namespace: Optional[str] = None,
+        container: Optional[str] = None,
         follow: bool = False,
-        since: int = None,
-        tail_lines: int = None,
+        since: Optional[int] = None,
+        tail_lines: Optional[int] = None,
         timestamps: bool = False,
         newlines: bool = True,
     ) -> Iterator[str]: ...
@@ -689,7 +690,7 @@ class Client:
         obj: GlobalSubResource,
         name: str,
         *,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -700,8 +701,8 @@ class Client:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
@@ -710,7 +711,7 @@ class Client:
     def apply(
         self,
         obj: GlobalResource,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -719,7 +720,7 @@ class Client:
     def apply(
         self,
         obj: NamespacedResource,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> NamespacedResource: ...
