@@ -1,30 +1,29 @@
-import time
-from typing import (
-    AsyncIterable,
-    Type,
-    Any,
-    Dict,
-    Union,
-    Iterator,
-    AsyncIterator,
-    Tuple,
-    TypeVar,
-    Iterable,
-    Optional,
-)
-import dataclasses
-from dataclasses import dataclass
-import json
 import asyncio
+import dataclasses
+import json
+import time
+from dataclasses import dataclass
+from typing import (
+    Any,
+    AsyncIterable,
+    AsyncIterator,
+    Dict,
+    Iterable,
+    Iterator,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import httpx
 
-from . import resource as r
-from ..config.kubeconfig import KubeConfig, SingleConfig, DEFAULT_KUBECONFIG
 from ..config import client_adapter
+from ..config.kubeconfig import DEFAULT_KUBECONFIG, KubeConfig, SingleConfig
+from ..types import OnErrorAction, OnErrorHandler, PatchType, on_error_raise
+from . import resource as r
 from .exceptions import ApiError, NotReadyError
-from ..types import OnErrorAction, OnErrorHandler, on_error_raise, PatchType
-
 
 ALL_NS = "*"
 
@@ -88,7 +87,6 @@ T = TypeVar("T")
 
 
 class ListIterable(Iterable[T]):
-
     _resourceVersion: Optional[str] = None
 
     @property
@@ -112,7 +110,6 @@ class ListIterable(Iterable[T]):
 
 
 class ListAsyncIterable(AsyncIterable[T]):
-
     _resourceVersion: Optional[str] = None
 
     @property
@@ -150,6 +147,7 @@ class GenericClient:
         dry_run: bool = False,
         transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport] = None,
         proxy: str = None,
+        http2: bool = False,
     ):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
         self._watch_timeout = httpx.Timeout(self._timeout)
@@ -164,7 +162,12 @@ class GenericClient:
 
         self.config = config
         self._client = self.AdapterClient(
-            config, timeout, trust_env=trust_env, transport=transport, proxy=proxy
+            config,
+            timeout,
+            trust_env=trust_env,
+            transport=transport,
+            proxy=proxy,
+            http2=http2
         )
         self._field_manager = field_manager
         self._dry_run = dry_run

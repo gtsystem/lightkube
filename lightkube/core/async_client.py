@@ -1,32 +1,33 @@
 from typing import (
+    AsyncIterable,
+    Dict,
+    Iterable,
+    List,
     Optional,
+    Tuple,
     Type,
     Union,
     overload,
-    Dict,
-    Tuple,
-    List,
-    Iterable,
-    AsyncIterable,
 )
+
 import httpx
 
-from ..config.kubeconfig import SingleConfig, KubeConfig
+from ..config.kubeconfig import KubeConfig, SingleConfig
 from ..core import resource as r
-from .generic_client import GenericAsyncClient, ListAsyncIterable
 from ..core.exceptions import ConditionError, ObjectDeleted
-from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
-from .internal_resources import core_v1
-from .selector import build_selector
+from ..types import CascadeType, OnErrorHandler, PatchType, on_error_raise
 from .client import (
-    NamespacedResource,
+    AllNamespacedResource,
+    FieldSelector,
     GlobalResource,
     GlobalSubResource,
-    NamespacedSubResource,
-    AllNamespacedResource,
     LabelSelector,
-    FieldSelector,
+    NamespacedResource,
+    NamespacedSubResource,
 )
+from .generic_client import GenericAsyncClient, ListAsyncIterable
+from .internal_resources import core_v1
+from .selector import build_selector
 
 
 class AsyncClient:
@@ -62,6 +63,7 @@ class AsyncClient:
         dry_run: bool = False,
         transport: Optional[httpx.AsyncBaseTransport] = None,
         proxy: Optional[str] = None,
+        http2: bool = False,
     ):
         self._client = GenericAsyncClient(
             config,
@@ -73,6 +75,7 @@ class AsyncClient:
             dry_run=dry_run,
             transport=transport,
             proxy=proxy,
+            http2=http2,
         )
 
     @property
@@ -215,7 +218,11 @@ class AsyncClient:
 
     @overload
     async def get(
-        self, res: Type[AllNamespacedResource], name: str, *, namespace: Optional[str] = None
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        *,
+        namespace: Optional[str] = None,
     ) -> AllNamespacedResource: ...
 
     async def get(self, res, name, *, namespace: Optional[str] = None):
@@ -394,7 +401,6 @@ class AsyncClient:
         watch = self.watch(res, namespace=namespace, fields={"metadata.name": name})
         try:
             async for op, obj in watch:
-
                 if obj.status is None:
                     continue
 
@@ -528,12 +534,18 @@ class AsyncClient:
 
     @overload
     async def create(
-        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: GlobalResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> GlobalResource: ...
 
     @overload
     async def create(
-        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: NamespacedResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> NamespacedResource: ...
 
     async def create(
@@ -592,12 +604,18 @@ class AsyncClient:
 
     @overload
     async def replace(
-        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: GlobalResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> GlobalResource: ...
 
     @overload
     async def replace(
-        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: NamespacedResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> NamespacedResource: ...
 
     async def replace(
