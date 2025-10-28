@@ -518,6 +518,7 @@ class Client:
         self,
         obj: GlobalSubResource,
         name: str,
+        *,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -537,6 +538,7 @@ class Client:
     def create(
         self,
         obj: GlobalResource,
+        *,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -545,6 +547,8 @@ class Client:
     def create(
         self,
         obj: NamespacedResource,
+        *,
+        namespace: Optional[str] = None,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedResource: ...
