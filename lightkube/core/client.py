@@ -1,22 +1,24 @@
 from typing import (
-    Optional,
-    Type,
+    Dict,
+    Iterable,
     Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
     TypeVar,
     Union,
     overload,
-    Dict,
-    Tuple,
-    List,
-    Iterable,
 )
+
 import httpx
-from ..config.kubeconfig import SingleConfig, KubeConfig
+
 from .. import operators
+from ..config.kubeconfig import KubeConfig, SingleConfig
 from ..core import resource as r
-from .generic_client import GenericSyncClient, ListIterable
 from ..core.exceptions import ConditionError, ObjectDeleted
-from ..types import OnErrorHandler, PatchType, CascadeType, on_error_raise
+from ..types import CascadeType, OnErrorHandler, PatchType, on_error_raise
+from .generic_client import GenericSyncClient, ListIterable
 from .internal_resources import core_v1
 from .selector import build_selector
 
@@ -67,6 +69,7 @@ class Client:
         dry_run: bool = False,
         transport: Optional[httpx.BaseTransport] = None,
         proxy: Optional[str] = None,
+        http2: bool = False,
     ):
         self._client = GenericSyncClient(
             config,
@@ -78,6 +81,7 @@ class Client:
             dry_run=dry_run,
             transport=transport,
             proxy=proxy,
+            http2=http2,
         )
 
     @property
@@ -220,7 +224,11 @@ class Client:
 
     @overload
     def get(
-        self, res: Type[AllNamespacedResource], name: str, *, namespace: Optional[str] = None
+        self,
+        res: Type[AllNamespacedResource],
+        name: str,
+        *,
+        namespace: Optional[str] = None,
     ) -> AllNamespacedResource: ...
 
     def get(self, res, name, *, namespace=None):
@@ -527,12 +535,18 @@ class Client:
 
     @overload
     def create(
-        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: GlobalResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> GlobalResource: ...
 
     @overload
     def create(
-        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: NamespacedResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> NamespacedResource: ...
 
     def create(
@@ -585,12 +599,18 @@ class Client:
 
     @overload
     def replace(
-        self, obj: GlobalResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: GlobalResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> GlobalResource: ...
 
     @overload
     def replace(
-        self, obj: NamespacedResource, field_manager: Optional[str] = None, dry_run: bool = False
+        self,
+        obj: NamespacedResource,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
     ) -> NamespacedResource: ...
 
     def replace(
