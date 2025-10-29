@@ -1,0 +1,64 @@
+[project]
+name = "lightkube"
+version = "0.17.3"
+description = "Lightweight kubernetes client library"
+readme = "README.md"
+authors = [
+    {name="Giuseppe Tribulato", email="gtsystem@gmail.com"},
+]
+license = "MIT"
+license-files = ["LICENSE"]
+urls = {Repository="https://github.com/gtsystem/lightkube"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "lightkube-models >= 1.15.12.0",
+    "httpx[http2] >= 0.28.1, < 1.0.0",
+    "PyYAML",
+]
+
+[project.optional-dependencies]
+jinja-templates = ["jinja2"]
+
+[dependency-groups]
+linting = [
+    "flake8",
+]
+testing = [
+    "asyncmock",
+    "pytest",
+    "pytest-asyncio",
+    "respx",
+]
+coverage = [
+    "coveralls",
+]
+dev = [
+    { include-group = "linting"},
+    { include-group = "testing"},
+    { include-group = "coverage"},
+]
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "" # TODO: Move lightkube into a proper 'src' layout
+# Can be removed when resources and models move into a proper 'lightkube_models' package
+source-exclude = ["lightkube/resources", "lightkube/models"]
+wheel-exclude = ["lightkube/resources", "lightkube/models"]
+
+[tool.pytest]
+minversion = 6.0
+testpaths = ["tests"]
