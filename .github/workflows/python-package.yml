@@ -22,11 +22,12 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest coveralls wheel pytest-asyncio jinja2 respx asyncmock setuptools
-        pip install -e .
+        uv sync --locked
+        source .venv/bin/activate
         ./setup-test-env.sh
     - name: Lint with flake8
       run: |
@@ -42,12 +43,12 @@ jobs:
       run: |
         coverage run --source=lightkube -m pytest tests/
         coveralls
-    - name: Package (bdist_wheel)
+    - name: Package (wheel)
       run: |
-        python setup.py bdist_wheel
+        uv build --wheel
     - name: Package (sdist)
       run: |
-        python setup.py sdist
+        uv build --sdist
     - name: Archive artifact
       uses: actions/upload-artifact@v4
       with:
@@ -79,11 +80,13 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.10'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio jinja2 wheel
-          pip install . "lightkube-models==${{ matrix.k8s }}.*"
+          uv sync --locked --all-extras
+          source .venv/bin/activate
+          uv pip install "lightkube-models==${{ matrix.k8s }}.*"
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: v${{ matrix.k8s }}
