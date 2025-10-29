@@ -35,9 +35,13 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 lightkube/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
+      env:
+        COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
+        COVERALLS_PARALLEL: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         coverage run --source=lightkube -m pytest tests/
-        GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} coveralls --service=github
+        coveralls
     - name: Package (bdist_wheel)
       run: |
         python setup.py bdist_wheel
@@ -50,6 +54,18 @@ jobs:
         name: dist-${{ matrix.python-version }}
         path: |
           dist
+  coveralls:
+    name: Indicate completion to coveralls.io
+    needs: build
+    runs-on: ubuntu-latest
+    container: python:3-slim
+    steps:
+    - name: Install coveralls
+      run: pip3 install --upgrade coveralls
+    - name: Finished
+      run: coveralls --finish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   e2e-test:
     strategy:
       fail-fast: false
