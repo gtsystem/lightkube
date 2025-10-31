@@ -28,22 +28,18 @@ jobs:
         ./setup-test-env.sh
     - name: Lint with flake8
       run: |
-        source .venv/bin/activate
         # stop the build if there are Python syntax errors or undefined names
-        flake8 lightkube/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        uv run flake8 lightkube/ --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 lightkube/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        uv run flake8 lightkube/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       env:
         COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
         COVERALLS_PARALLEL: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        source .venv/bin/activate
-        ls -lha
-        ls -lha lightkube
-        coverage run --source=lightkube -m pytest tests/
-        coveralls
+        uv run coverage run --source=lightkube -m pytest tests/
+        uv run coveralls
     - name: Package (wheel)
       run: |
         uv build --wheel
@@ -92,5 +88,4 @@ jobs:
           version: v${{ matrix.k8s }}
       - run: kubectl version
       - run: |
-          source .venv/bin/activate
-          pytest e2e-tests/
+          uv run pytest e2e-tests/
