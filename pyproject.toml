@@ -33,6 +33,7 @@ jinja-templates = ["jinja2"]
 [dependency-groups]
 linting = [
     "ruff",
+    "mypy>=1.14.1",
 ]
 testing = [
     "asyncmock",
@@ -83,3 +84,32 @@ select = [
     "A",   # flake8-builtins
     "I",   # isort
 ]
+
+[[tool.mypy.overrides]]
+module = [
+    "lightkube.codecs",
+    "lightkube.config.client_adapter",
+    "lightkube.config.kubeconfig",
+    "lightkube.config.models",
+    "lightkube.core.async_client",
+    "lightkube.core.client",
+    "lightkube.core.dataclasses_dict",
+    "lightkube.core.exceptions",
+    "lightkube.core.generic_client",
+    "lightkube.core.internal_models",
+    "lightkube.core.internal_resources",
+    "lightkube.core.resource",
+    "lightkube.core.selector",
+    "lightkube.core.sort_objects",
+    "lightkube.models.core_v1",
+    "lightkube.generic_resource",
+    "lightkube.utils.quantity",
+    "tests.test_async_client",
+    "tests.test_client",
+    "tests.test_codecs",
+    "tests.test_dataclasses_dict",
+    "tests.test_generic_resource",
+    "tests.test_quantity",
+    "tests.test_resource_registry",
+]
+ignore_errors = true

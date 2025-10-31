@@ -31,6 +31,10 @@ jobs:
         source .venv/bin/activate
         ruff check src tests
         ruff format --check src tests
+    - name: Typecheck with mypy
+      run: |
+        source .venv/bin/activate
+        mypy src/ tests/
     - name: Test with pytest
       env:
         COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
