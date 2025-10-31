@@ -91,4 +91,5 @@ jobs:
           version: v${{ matrix.k8s }}
       - run: kubectl version
       - run: |
-          uv run pytest e2e-tests/
+          source .venv/bin/activate
+          pytest e2e-tests/
