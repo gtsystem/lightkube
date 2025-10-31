@@ -32,7 +32,7 @@ jinja-templates = ["jinja2"]
 
 [dependency-groups]
 linting = [
-    "flake8",
+    "ruff",
 ]
 testing = [
     "asyncmock",
@@ -69,3 +69,21 @@ wheel-exclude = ["lightkube/resources", "lightkube/models"]
 [tool.pytest]
 minversion = 6.0
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 127
+
+[tool.ruff.lint]
+select = [
+    "E9",
+    "F63",
+    "F7",
+    "F82",
+#    "RUF", # Ruff-specific rules
+#    "E",   # pycodestyle Error
+#    "W",   # pycodestyle Warnings
+#    "F",   # Pyflakes / flake8
+#    "B",   # flake8-bugbear
+#    "A",   # flake8-builtins
+#    "I",   # isort
+]
