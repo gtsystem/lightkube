@@ -27,17 +27,17 @@ jobs:
         uv sync --locked
         echo BEFORE
         echo $PATH
-        which flake8
+        which flake8 || echo "flake8 not found"
         source .venv/bin/activate
         echo AFTER
         echo $PATH
-        which flake8
+        which flake8 || echo "flake8 not found"
         ./setup-test-env.sh
     - name: Lint with flake8
       run: |
         echo IN_NEXT_JOB
         echo $PATH
-        which flake8
+        which flake8 || echo "flake8 not found"
         # stop the build if there are Python syntax errors or undefined names
         flake8 lightkube/ --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
