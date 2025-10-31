@@ -40,6 +40,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         source .venv/bin/activate
+        ls -lha
+        ls -lha lightkube
         coverage run --source=lightkube -m pytest tests/
         coveralls
     - name: Package (wheel)
