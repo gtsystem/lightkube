@@ -24,7 +24,7 @@ jobs:
       uses: astral-sh/setup-uv@v6
     - name: Install dependencies
       run: |
-        uv sync --locked
+        uv sync --locked --all-extras
         ./setup-test-env.sh
     - name: Lint with flake8
       run: |
@@ -38,16 +38,6 @@ jobs:
         COVERALLS_PARALLEL: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        ls -lha lightkube
-        ls -lha .venv/lib/python3.*/site-packages
-        ls -lha .venv/lib/python3.*/site-packages/lightkube || echo "lightkube not found in site-packages"
-        cat .venv/lib/python3.*/site-packages/lightkube.pth || echo "lightkube.pth not found in site-packages"
-        ls -lha lightkube/models/
-        ls -lha lightkube/resources/
-        uv run python -c "import lightkube; print(lightkube.__path__)"
-        uv run python -c "import lightkube; print(lightkube.__file__)"
-        ls -lha $(uv run python -c "import lightkube; print(lightkube.__path__[0])")
-        ls -lha $(uv run python -c "import lightkube; print(lightkube.__path__[0])")/models/
         uv run coverage run --source=lightkube -m pytest tests/
         uv run coveralls
     - name: Package (wheel)
@@ -91,7 +81,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Install dependencies
         run: |
-          uv sync --locked --all-extras
+          uv pip install lightkube
           uv pip install "lightkube-models==${{ matrix.k8s }}.*"
       - uses: nolar/setup-k3d-k3s@v1
         with:

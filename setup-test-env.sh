@@ -7,7 +7,7 @@ set -euo pipefail
 
 if [ -d "../lightkube-models" ]; then
   echo "Found 'lightkube-models' locally."
-  SOURCE_DIR=$(python -c "import os.path; print(os.path.realpath('../lightkube-models'))")
+  SOURCE_DIR=$(uv run python -c "import os.path; print(os.path.realpath('../lightkube-models'))")
 else
   echo "Did not find 'lightkube-models' locally, will install them from upstream..."
   SOURCE_DIR=$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
