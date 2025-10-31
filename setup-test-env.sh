@@ -6,12 +6,12 @@ set -euo pipefail
 # symlinked into the source tree
 
 if [ -d "../lightkube-models" ]; then
-  echo "Found 'lightkube-models' locally."
+  echo "Found 'lightkube-models' locally. Will use that as source root."
   SOURCE_DIR=$(realpath "../lightkube-models")
 else
-  echo "Did not find 'lightkube-models' locally. Will use the venv's"
+  echo "Did not find 'lightkube-models' locally. Will use the venv's site packages folder as source root."
   SOURCE_DIR=$(uv run --no-project python -c 'import site; print(site.getsitepackages()[0])')
-  if ! uv pip show lightkube-models then
+  if ! uv pip show lightkube-models > /dev/null; then
     echo "Package 'lightkube-models' isn't installed, will install upstream version."
     uv pip install lightkube-models
   else
