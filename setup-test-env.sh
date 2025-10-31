@@ -10,7 +10,7 @@ if [ -d "../lightkube-models" ]; then
   SOURCE_DIR=$(python -c "import os.path; print(os.path.realpath('../lightkube-models'))")
 else
   echo "Did not find 'lightkube-models' locally, will install them from upstream..."
-  SOURCE_DIR=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+  SOURCE_DIR=$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
   uv pip install lightkube-models
 fi
 echo "Source dir of 'lightkube-models' is ${SOURCE_DIR}, will link that into the source tree."
