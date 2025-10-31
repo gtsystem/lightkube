@@ -54,7 +54,6 @@ requires = ["uv_build>=0.9.6,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-root = "" # TODO: Move lightkube into a proper 'src' layout
 # Can be removed when resources and models move into a proper 'lightkube_models' package
 source-exclude = ["lightkube/resources", "lightkube/models"]
 wheel-exclude = ["lightkube/resources", "lightkube/models"]

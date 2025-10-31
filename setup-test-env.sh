@@ -19,6 +19,6 @@ else
   fi
 fi
 echo "Source dir of 'lightkube-models' is ${SOURCE_DIR}, will link that into the source tree."
-rm -f lightkube/models lightkube/resources
-ln -s  $SOURCE_DIR/lightkube/models lightkube
-ln -s  $SOURCE_DIR/lightkube/resources lightkube
+rm -f src/lightkube/models src/lightkube/resources
+ln -s  $SOURCE_DIR/lightkube/models src/lightkube
+ln -s  $SOURCE_DIR/lightkube/resources src/lightkube
