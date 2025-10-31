@@ -25,19 +25,10 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --locked
-        echo BEFORE
-        echo $PATH
-        which flake8 || echo "flake8 not found"
-        source .venv/bin/activate
-        echo AFTER
-        echo $PATH
-        which flake8 || echo "flake8 not found"
         ./setup-test-env.sh
     - name: Lint with flake8
       run: |
-        echo IN_NEXT_JOB
-        echo $PATH
-        which flake8 || echo "flake8 not found"
+        source .venv/bin/activate
         # stop the build if there are Python syntax errors or undefined names
         flake8 lightkube/ --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
@@ -48,6 +39,7 @@ jobs:
         COVERALLS_PARALLEL: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        source .venv/bin/activate
         coverage run --source=lightkube -m pytest tests/
         coveralls
     - name: Package (wheel)
@@ -92,10 +84,11 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --locked --all-extras
-          source .venv/bin/activate
           uv pip install "lightkube-models==${{ matrix.k8s }}.*"
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: v${{ matrix.k8s }}
       - run: kubectl version
-      - run: pytest e2e-tests/
+      - run: |
+          source .venv/bin/activate
+          pytest e2e-tests/
