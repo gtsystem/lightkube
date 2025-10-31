@@ -83,9 +83,8 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Install dependencies
         run: |
-          uv sync --locked --all-extras
-          uv pip install "lightkube-models==${{ matrix.k8s }}.*"
-          ./setup-test-env.sh
+          uv sync --locked --all-extras --no-install-project
+          uv pip install . "lightkube-models==${{ matrix.k8s }}.*"
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: v${{ matrix.k8s }}
