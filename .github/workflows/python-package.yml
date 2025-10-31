@@ -84,6 +84,8 @@ jobs:
           uv venv
           uv pip install lightkube
           uv pip install "lightkube-models==${{ matrix.k8s }}.*"
+          ls -lha .venv/lib/python3.*/site-packages
+          ls -lha .venv/lib/python3.*/site-packages/lightkube
       - uses: nolar/setup-k3d-k3s@v1
         with:
           version: v${{ matrix.k8s }}
