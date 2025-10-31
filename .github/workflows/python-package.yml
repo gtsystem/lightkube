@@ -81,6 +81,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Install dependencies
         run: |
+          uv venv
           uv pip install lightkube
           uv pip install "lightkube-models==${{ matrix.k8s }}.*"
       - uses: nolar/setup-k3d-k3s@v1
