@@ -38,6 +38,11 @@ jobs:
         COVERALLS_PARALLEL: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        ls -lha lightkube
+        uv run python -c "import lightkube; print(lightkube.__path__)"
+        uv run python -c "import lightkube; print(lightkube.__file__)"
+        ls -lha $(uv run python -c "import lightkube; print(lightkube.__path__[0])")
+        ls -lha $(uv run python -c "import lightkube; print(lightkube.__path__[0])")/models/
         uv run coverage run --source=lightkube -m pytest tests/
         uv run coveralls
     - name: Package (wheel)
