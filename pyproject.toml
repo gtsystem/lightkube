@@ -43,6 +43,14 @@ testing = [
 coverage = [
     "coveralls",
 ]
+docs = [
+    "mkdocstrings",
+    "mkdocstrings-python",
+    "markdown",
+    "mkautodoc",
+    "markdown-include",
+    "mkdocs-material"
+]
 dev = [
     { include-group = "linting"},
     { include-group = "testing"},
