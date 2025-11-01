@@ -28,32 +28,32 @@ def cfg():
 
 def test_from_file(cfg):
     c = cfg.get()
-    assert c.context_name == 'ctx11'
-    assert c.user.username == 'u1'
-    assert c.user.password == 'p1'
-    assert c.cluster.server == 'server1'
-    assert c.context.user == 'user1'
+    assert c.context_name == "ctx11"
+    assert c.user.username == "u1"
+    assert c.user.password == "p1"
+    assert c.cluster.server == "server1"
+    assert c.context.user == "user1"
     assert c.namespace == kubeconfig.DEFAULT_NAMESPACE
 
-    c = cfg.get(context_name='ctx12')
-    assert c.context_name == 'ctx12'
-    assert c.user.token == 'ABC'
-    assert c.cluster.server == 'server1'
-    assert c.context.user == 'user2'
+    c = cfg.get(context_name="ctx12")
+    assert c.context_name == "ctx12"
+    assert c.user.token == "ABC"
+    assert c.cluster.server == "server1"
+    assert c.context.user == "user2"
     assert c.namespace == kubeconfig.DEFAULT_NAMESPACE
 
-    c = cfg.get(context_name='ctx21')
-    assert c.context_name == 'ctx21'
-    assert c.user.username == 'u1'
-    assert c.cluster.server == 'server2'
-    assert c.context.cluster == 'cl2'
-    assert c.namespace == 'ns21'
+    c = cfg.get(context_name="ctx21")
+    assert c.context_name == "ctx21"
+    assert c.user.username == "u1"
+    assert c.cluster.server == "server2"
+    assert c.context.cluster == "cl2"
+    assert c.namespace == "ns21"
 
 
 def test_from_file_miss_config(cfg):
     # non existing context raise an exception
     with pytest.raises(exceptions.ConfigError):
-        assert cfg.get(context_name='ctx22')
+        assert cfg.get(context_name="ctx22")
 
     # if default context is missing, raise an exception
     cfg.current_context = None
@@ -66,17 +66,19 @@ def test_from_file_miss_config(cfg):
 
 
 def test_from_dict():
-    cfg = kubeconfig.KubeConfig.from_dict({
-        'clusters': [{'name': 'cl1', 'cluster': {'server': 'a'}}],
-        'contexts': [{'name': 'a', 'context': {'cluster': 'cl1', 'namespace': 'ns'}}]
-    })
+    cfg = kubeconfig.KubeConfig.from_dict(
+        {
+            "clusters": [{"name": "cl1", "cluster": {"server": "a"}}],
+            "contexts": [{"name": "a", "context": {"cluster": "cl1", "namespace": "ns"}}],
+        }
+    )
     assert cfg.current_context is None
-    assert cfg.clusters['cl1'].server == 'a'
-    assert cfg.contexts['a'].namespace == 'ns'
+    assert cfg.clusters["cl1"].server == "a"
+    assert cfg.contexts["a"].namespace == "ns"
 
-    c = cfg.get('a')
-    assert c.namespace == 'ns'
-    assert c.cluster.server == 'a'
+    c = cfg.get("a")
+    assert c.namespace == "ns"
+    assert c.cluster.server == "a"
 
 
 @pytest.fixture
@@ -116,11 +118,11 @@ def test_from_env(service_account):
     with patch("lightkube.config.kubeconfig.os.environ") as environ:
         environ.get.return_value = str(Path("tests").joinpath("test_config.yaml"))
         cfg = kubeconfig.KubeConfig.from_env(service_account.joinpath("xyz"))
-        assert cfg.get().context_name == 'ctx11'
+        assert cfg.get().context_name == "ctx11"
         environ.get.assert_called_with("KUBECONFIG", kubeconfig.DEFAULT_KUBECONFIG)
 
     with patch("lightkube.config.kubeconfig.os.environ") as environ:
         environ.get.return_value = str(Path("tests").joinpath("test_config.yaml"))
-        cfg = kubeconfig.KubeConfig.from_env(service_account.joinpath("xyz"), default_config='/tmp/bla')
-        assert cfg.get().context_name == 'ctx11'
-        environ.get.assert_called_with("KUBECONFIG", '/tmp/bla')
+        cfg = kubeconfig.KubeConfig.from_env(service_account.joinpath("xyz"), default_config="/tmp/bla")
+        assert cfg.get().context_name == "ctx11"
+        environ.get.assert_called_with("KUBECONFIG", "/tmp/bla")

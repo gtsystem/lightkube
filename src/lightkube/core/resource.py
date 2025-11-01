@@ -1,5 +1,5 @@
-from typing import NamedTuple, List, Optional, Type, Union
 from dataclasses import dataclass
+from typing import List, NamedTuple, Optional, Type, Union
 
 
 class ResourceDef(NamedTuple):

@@ -1,6 +1,6 @@
 import enum
-from dataclasses import dataclass
 import typing
+from dataclasses import dataclass
 
 
 class PatchType(enum.Enum):
@@ -11,6 +11,7 @@ class PatchType(enum.Enum):
       STRATEGIC: Execute a strategic merge patch
       APPLY: Execute a [server side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
     """
+
     JSON = "application/json-patch+json"
     MERGE = "application/merge-patch+json"
     STRATEGIC = "application/strategic-merge-patch+json"
@@ -24,6 +25,7 @@ class CascadeType(enum.Enum):
       BACKGROUND: allow the garbage collector to delete the dependents in the background
       FOREGROUND: a cascading policy that deletes all dependents in the foreground
     """
+
     ORPHAN = "Orphan"
     BACKGROUND = "Background"
     FOREGROUND = "Foreground"
@@ -36,6 +38,7 @@ class OnErrorAction(enum.Enum):
       STOP: Stop silently the iterator
       RAISE: Raise the error on the caller scope
     """
+
     RETRY = 0
     STOP = 1
     RAISE = 2

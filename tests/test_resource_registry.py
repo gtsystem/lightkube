@@ -1,10 +1,11 @@
 import pytest
 
 from lightkube.codecs import resource_registry
-from lightkube.resources.core_v1 import Pod
-from lightkube.resources.apps_v1 import Deployment
-from lightkube.resources.events_v1 import Event
 from lightkube.core import resource as res
+from lightkube.resources.apps_v1 import Deployment
+from lightkube.resources.core_v1 import Pod
+from lightkube.resources.events_v1 import Event
+
 
 @pytest.fixture(autouse=True)
 def cleanup_registry():
@@ -12,9 +13,9 @@ def cleanup_registry():
     yield
     resource_registry.clear()
 
+
 @pytest.mark.parametrize(
-    "version,kind,Res",
-    [("v1", "Pod", Pod), ("apps/v1", "Deployment", Deployment), ("events.k8s.io/v1", "Event", Event)]
+    "version,kind,Res", [("v1", "Pod", Pod), ("apps/v1", "Deployment", Deployment), ("events.k8s.io/v1", "Event", Event)]
 )
 def test_register(version, kind, Res):
     assert resource_registry.get(version, kind) is None
@@ -29,18 +30,27 @@ def test_register_decorator():
     @resource_registry.register
     class Search(res.NamespacedResource):
         _api_info = res.ApiInfo(
-            resource=res.ResourceDef('test.io', 'v1', 'Search'),
-            plural='searches',
-            verbs=['delete', 'deletecollection', 'get', 'global_list', 'global_watch', 'list', 'patch', 'post', 'put',
-                   'watch']
+            resource=res.ResourceDef("test.io", "v1", "Search"),
+            plural="searches",
+            verbs=[
+                "delete",
+                "deletecollection",
+                "get",
+                "global_list",
+                "global_watch",
+                "list",
+                "patch",
+                "post",
+                "put",
+                "watch",
+            ],
         )
 
     assert resource_registry.get("test.io/v1", "Search") is Search
 
 
 @pytest.mark.parametrize(
-    "version,kind,Res",
-    [("v1", "Pod", Pod), ("apps/v1", "Deployment", Deployment), ("events.k8s.io/v1", "Event", Event)]
+    "version,kind,Res", [("v1", "Pod", Pod), ("apps/v1", "Deployment", Deployment), ("events.k8s.io/v1", "Event", Event)]
 )
 def test_load(version, kind, Res):
     assert resource_registry.get(version, kind) is None

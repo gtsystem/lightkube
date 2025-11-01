@@ -1,16 +1,16 @@
-from typing import Union, TextIO, Iterator, List, Mapping
+from typing import Iterator, List, Mapping, Optional, TextIO, Union
 
 import yaml
 
+from .core.exceptions import LoadResourceError
+from .core.resource_registry import resource_registry
 from .generic_resource import (
     GenericGlobalResource,
     GenericNamespacedResource,
     create_resources_from_crd,
 )
-from .core.exceptions import LoadResourceError
-from .core.resource_registry import resource_registry
 
-__all__ = ["from_dict", "load_all_yaml", "dump_all_yaml", "resource_registry"]
+__all__ = ["dump_all_yaml", "from_dict", "load_all_yaml", "resource_registry"]
 
 try:
     import jinja2
@@ -37,9 +37,7 @@ def from_dict(d: dict) -> AnyResource:
         raise LoadResourceError("Invalid resource definition, not a dict.")
     for attr in REQUIRED_ATTR:
         if attr not in d:
-            raise LoadResourceError(
-                f"Invalid resource definition, key '{attr}' missing."
-            )
+            raise LoadResourceError(f"Invalid resource definition, key '{attr}' missing.")
 
     model = resource_registry.load(d["apiVersion"], d["kind"])
     return model.from_dict(d)
@@ -47,7 +45,7 @@ def from_dict(d: dict) -> AnyResource:
 
 def load_all_yaml(
     stream: Union[str, TextIO],
-    context: dict = None,
+    context: Optional[dict] = None,
     template_env=None,
     create_resources_for_crds: bool = False,
 ) -> List[AnyResource]:
@@ -86,17 +84,14 @@ def load_all_yaml(
                 res = from_dict(obj)
                 resources.append(res)
 
-                if (
-                    create_resources_for_crds is True
-                    and res.kind == "CustomResourceDefinition"
-                ):
+                if create_resources_for_crds is True and res.kind == "CustomResourceDefinition":
                     create_resources_from_crd(res)
         return resources
 
     return _flatten(yaml.safe_load_all(stream))
 
 
-def dump_all_yaml(resources: List[AnyResource], stream: TextIO = None, indent=2):
+def dump_all_yaml(resources: List[AnyResource], stream: Optional[TextIO] = None, indent=2):
     """Write kubernetes resource objects as YAML into an open file.
 
     **parameters**
@@ -110,9 +105,7 @@ def dump_all_yaml(resources: List[AnyResource], stream: TextIO = None, indent=2)
     return yaml.safe_dump_all(res, stream, indent=indent)
 
 
-def _template(
-    stream: Union[str, TextIO], context: dict = None, template_env=None
-) -> List[AnyResource]:
+def _template(stream: Union[str, TextIO], context: Optional[dict] = None, template_env=None) -> List[AnyResource]:
     """
     Template a stream using jinja2 and the given context
     """
@@ -124,7 +117,5 @@ def _template(
     elif not isinstance(template_env, jinja2.Environment):
         raise LoadResourceError("template_env is not a valid jinja2 template")
 
-    tmpl = template_env.from_string(
-        stream if isinstance(stream, str) else stream.read()
-    )
+    tmpl = template_env.from_string(stream if isinstance(stream, str) else stream.read())
     return tmpl.render(**context)

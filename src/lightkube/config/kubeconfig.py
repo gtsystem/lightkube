@@ -1,10 +1,11 @@
 import os
-import yaml
-from typing import Dict, NamedTuple, Optional
 from pathlib import Path
+from typing import Dict, NamedTuple, Optional
+
+import yaml
 
 from ..core import exceptions
-from .models import Cluster, User, Context
+from .models import Cluster, Context, User
 
 """
 | behavior                  | kubectl                   | lightkube             |
@@ -29,6 +30,7 @@ DEFAULT_KUBECONFIG = "~/.kube/config"
 
 class SingleConfig(NamedTuple):
     """Represents a single configuration instance as the result of selecting a context"""
+
     #: name of the context
     context_name: str
     context: Context
@@ -47,9 +49,7 @@ class SingleConfig(NamedTuple):
             return fname
 
         if self.fname is None:
-            raise exceptions.ConfigError(
-                f"{fname} is relative, but kubeconfig path unknown"
-            )
+            raise exceptions.ConfigError(f"{fname} is relative, but kubeconfig path unknown")
 
         return self.fname.parent.joinpath(fname)
 
@@ -74,9 +74,7 @@ class KubeConfig:
     users: Dict[str, User]
     contexts: Dict[str, Context]
 
-    def __init__(
-        self, *, clusters, contexts, users=None, current_context=None, fname=None
-    ):
+    def __init__(self, *, clusters, contexts, users=None, current_context=None, fname=None):
         """
         Create the kubernetes configuration manually. Normally this constructor should not be called directly.
         Use a specific constructor instead.
@@ -112,9 +110,7 @@ class KubeConfig:
             fname=fname,
         )
 
-    def get(
-        self, context_name=None, default: SingleConfig = None
-    ) -> Optional[SingleConfig]:
+    def get(self, context_name=None, default: SingleConfig = None) -> Optional[SingleConfig]:
         """Returns a `SingleConfig` instance, representing the configuration matching the given `context_name`.
         Lightkube client will automatically call this method without parameters when an instance of `KubeConfig`
         is provided.
@@ -131,14 +127,12 @@ class KubeConfig:
             context_name = self.current_context
         if context_name is None:
             if default is None:
-                raise exceptions.ConfigError(
-                    "No current context set and no default provided"
-                )
+                raise exceptions.ConfigError("No current context set and no default provided")
             return default
         try:
             ctx = self.contexts[context_name]
-        except KeyError:
-            raise exceptions.ConfigError(f"Context '{context_name}' not found")
+        except KeyError as err:
+            raise exceptions.ConfigError(f"Context '{context_name}' not found") from err
         return SingleConfig(
             context_name=context_name,
             context=ctx,
@@ -162,9 +156,7 @@ class KubeConfig:
             return cls.from_dict(yaml.safe_load(f.read()), fname=filepath)
 
     @classmethod
-    def from_one(
-        cls, *, cluster, user=None, context_name="default", namespace=None, fname=None
-    ):
+    def from_one(cls, *, cluster, user=None, context_name="default", namespace=None, fname=None):
         """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
         context = Context(
             cluster=context_name,
@@ -199,7 +191,7 @@ class KubeConfig:
             token = account_dir.joinpath("token").read_text()
             namespace = account_dir.joinpath("namespace").read_text()
         except FileNotFoundError as e:
-            raise exceptions.ConfigError(str(e))
+            raise exceptions.ConfigError(str(e)) from e
 
         host = os.environ["KUBERNETES_SERVICE_HOST"]
         port = os.environ["KUBERNETES_SERVICE_PORT"]
@@ -215,9 +207,7 @@ class KubeConfig:
         )
 
     @classmethod
-    def from_env(
-        cls, service_account=SERVICE_ACCOUNT, default_config=DEFAULT_KUBECONFIG
-    ):
+    def from_env(cls, service_account=SERVICE_ACCOUNT, default_config=DEFAULT_KUBECONFIG):
         """Attempts to load the configuration automatically looking at the environment and filesystem.
 
         The method will attempt to load a configuration using the following order:

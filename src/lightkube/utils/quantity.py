@@ -70,8 +70,8 @@ def parse_quantity(quantity: Optional[str]) -> Optional[decimal.Decimal]:
 
     try:
         multiplier = MULTIPLIERS[unit]
-    except KeyError:
-        raise ValueError("Invalid unit suffix: {}".format(unit))
+    except KeyError as err:
+        raise ValueError("Invalid unit suffix: {}".format(unit)) from err
 
     try:
         as_decimal = value * multiplier
@@ -80,9 +80,7 @@ def parse_quantity(quantity: Optional[str]) -> Optional[decimal.Decimal]:
         raise ValueError("Invalid numerical value") from e
 
 
-def _equals_canonically(
-    first_dict: Optional[dict], second_dict: Optional[dict]
-) -> bool:
+def _equals_canonically(first_dict: Optional[dict], second_dict: Optional[dict]) -> bool:
     """Compare resource dicts such as 'limits' or 'requests'."""
     if first_dict == second_dict:
         # This covers two cases: (1) both args are None; (2) both args are identical dicts.
@@ -91,10 +89,7 @@ def _equals_canonically(
         if first_dict.keys() != second_dict.keys():
             # The dicts have different keys, so they cannot possibly be equal
             return False
-        return all(
-            parse_quantity(first_dict[k]) == parse_quantity(second_dict[k])
-            for k in first_dict.keys()
-        )
+        return all(parse_quantity(first_dict[k]) == parse_quantity(second_dict[k]) for k in first_dict.keys())
     if not first_dict and not second_dict:
         # This covers cases such as first=None and second={}
         return True
@@ -102,9 +97,7 @@ def _equals_canonically(
 
 
 @overload
-def equals_canonically(
-    first: ResourceRequirements, second: ResourceRequirements
-) -> bool: ...
+def equals_canonically(first: ResourceRequirements, second: ResourceRequirements) -> bool: ...
 
 
 @overload
@@ -140,14 +133,10 @@ def equals_canonically(first, second):
     if isinstance(first, (dict, type(None))) and isinstance(second, (dict, type(None))):
         # Args are 'limits' or 'requests' dicts
         return _equals_canonically(first, second)
-    elif isinstance(first, ResourceRequirements) and isinstance(
-        second, ResourceRequirements
-    ):
+    elif isinstance(first, ResourceRequirements) and isinstance(second, ResourceRequirements):
         # Args are ResourceRequirements, which may contain 'limits' and 'requests' dicts
         ks = ("limits", "requests")
-        return all(
-            _equals_canonically(getattr(first, k), getattr(second, k)) for k in ks
-        )
+        return all(_equals_canonically(getattr(first, k), getattr(second, k)) for k in ks)
     else:
         raise TypeError(
             "unsupported operand type(s) for canonical comparison: '{}' and '{}'".format(

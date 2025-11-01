@@ -1,10 +1,10 @@
-from .core.exceptions import ApiError, NotReadyError, ConfigError, LoadResourceError, ObjectDeleted, ConditionError
+from .core.exceptions import ApiError, ConditionError, ConfigError, LoadResourceError, NotReadyError, ObjectDeleted
 
 __all__ = [
     "ApiError",
-    "NotReadyError",
+    "ConditionError",
     "ConfigError",
     "LoadResourceError",
-    "ConditionError",
+    "NotReadyError",
     "ObjectDeleted",
 ]

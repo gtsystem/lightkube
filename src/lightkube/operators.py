@@ -1,6 +1,6 @@
 from typing import Iterable
 
-__all__ = ["in_", "not_in", "exists", "not_exists", "equal", "not_equal"]
+__all__ = ["equal", "exists", "in_", "not_equal", "not_exists", "not_in"]
 
 
 class Operator:

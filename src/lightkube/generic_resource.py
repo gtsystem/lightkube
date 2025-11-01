@@ -1,12 +1,11 @@
-from typing import Type, Any, Optional, overload
+from typing import Any, Optional, Type, overload
 
 from .core import resource as res
-from .core.client import Client
 from .core.async_client import AsyncClient
-from .core.internal_models import meta_v1, autoscaling_v1
+from .core.client import Client
+from .core.internal_models import autoscaling_v1, meta_v1
 from .core.internal_resources import apiextensions
 from .core.resource_registry import resource_registry
-
 
 __all__ = [
     "async_load_in_cluster_generic_resources",
@@ -30,9 +29,7 @@ def get_generic_resource(version, kind):
     **returns** class representing the generic resource or `None` if it's not found
     """
     resource = resource_registry.get(version, kind)
-    if resource is None or not issubclass(
-        resource, (GenericGlobalResource, GenericNamespacedResource)
-    ):
+    if resource is None or not issubclass(resource, (GenericGlobalResource, GenericNamespacedResource)):
         return None
     return resource
 
@@ -41,8 +38,8 @@ class Generic(dict):
     @overload
     def __init__(
         self,
-        apiVersion: str = None,
-        kind: str = None,
+        apiVersion: Optional[str] = None,
+        kind: Optional[str] = None,
         metadata: meta_v1.ObjectMeta = None,
         **kwargs,
     ):
@@ -102,9 +99,7 @@ def create_api_info(group, version, kind, plural, verbs=None) -> res.ApiInfo:
             "put",
             "watch",
         ]
-    return res.ApiInfo(
-        resource=res.ResourceDef(group, version, kind), plural=plural, verbs=verbs
-    )
+    return res.ApiInfo(resource=res.ResourceDef(group, version, kind), plural=plural, verbs=verbs)
 
 
 class GenericGlobalScale(res.GlobalSubResource, autoscaling_v1.Scale):
@@ -126,20 +121,14 @@ class GenericNamespacedStatus(res.NamespacedResourceG, Generic):
 def _create_subresource(main_class, parent_info: res.ApiInfo, action):
     class TmpName(main_class):
         _api_info = res.ApiInfo(
-            resource=(
-                parent_info.resource
-                if action == "status"
-                else res.ResourceDef("autoscaling", "v1", "Scale")
-            ),
+            resource=(parent_info.resource if action == "status" else res.ResourceDef("autoscaling", "v1", "Scale")),
             parent=parent_info.resource,
             plural=parent_info.plural,
             verbs=["get", "patch", "put"],
             action=action,
         )
 
-    TmpName.__name__ = TmpName.__qualname__ = (
-        f"{parent_info.resource.kind}{action.capitalize()}"
-    )
+    TmpName.__name__ = TmpName.__qualname__ = f"{parent_info.resource.kind}{action.capitalize()}"
     return TmpName
 
 
@@ -170,9 +159,7 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
         curr_namespaced = issubclass(model, res.NamespacedResource)
         curr_signature = _api_info_signature(model._api_info, curr_namespaced)
         if curr_signature != signature:
-            raise ValueError(
-                f"Resource {kind} already created but with different signature"
-            )
+            raise ValueError(f"Resource {kind} already created but with different signature")
         return model
 
     if namespaced:
@@ -198,9 +185,7 @@ def _create_resource(namespaced, group, version, kind, plural, verbs=None) -> An
     return resource_registry.register(TmpName)
 
 
-def create_global_resource(
-    group: str, version: str, kind: str, plural: str, verbs=None
-) -> Type[GenericGlobalResource]:
+def create_global_resource(group: str, version: str, kind: str, plural: str, verbs=None) -> Type[GenericGlobalResource]:
     """Create a new class representing a global resource with the provided specifications.
 
     **Parameters**
@@ -269,10 +254,7 @@ def create_resources_from_crd(crd: apiextensions.CustomResourceDefinition):
     elif crd.spec.scope == "Cluster":
         creator = create_global_resource
     else:
-        raise ValueError(
-            f"Unexpected scope for resource.  Expected 'Namespaced' or 'Cluster',"
-            f" got {crd.spec.scope}"
-        )
+        raise ValueError(f"Unexpected scope for resource.  Expected 'Namespaced' or 'Cluster', got {crd.spec.scope}")
 
     for version in crd.spec.versions:
         creator(**_crd_to_dict(crd, version.name))

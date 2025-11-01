@@ -17,7 +17,7 @@ def Client(
     timeout: httpx.Timeout,
     trust_env: bool = True,
     transport: httpx.BaseTransport = None,
-    proxy: str = None,
+    proxy: Optional[str] = None,
     http2: bool = False,
 ) -> httpx.Client:
     return httpx.Client(
@@ -32,7 +32,7 @@ def AsyncClient(
     timeout: httpx.Timeout,
     trust_env: bool = True,
     transport: httpx.AsyncBaseTransport = None,
-    proxy: str = None,
+    proxy: Optional[str] = None,
     http2: bool = False,
 ) -> httpx.AsyncClient:
     return httpx.AsyncClient(
@@ -42,16 +42,12 @@ def AsyncClient(
     )
 
 
-def httpx_parameters(
-    config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool
-):
+def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool):
     return dict(
         timeout=timeout,
         proxy=proxy,
         base_url=config.cluster.server,
-        verify=verify_cluster(
-            config.cluster, config.user, config.abs_file, trust_env=trust_env
-        ),
+        verify=verify_cluster(config.cluster, config.user, config.abs_file, trust_env=trust_env),
         auth=user_auth(config.user),
         trust_env=trust_env,
     )
@@ -68,50 +64,41 @@ class BearerAuth(httpx.Auth):
 
 async def async_check_output(command, env):
     PIPE = asyncio.subprocess.PIPE
-    proc = await asyncio.create_subprocess_exec(
-        *command, env=env, stdin=None, stdout=PIPE, stderr=PIPE
-    )
+    proc = await asyncio.create_subprocess_exec(*command, env=env, stdin=None, stdout=PIPE, stderr=PIPE)
     stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise ConfigError(
-            f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}"
-        )
+        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
     return stdout
 
 
 def sync_check_output(command, env):
-    proc = subprocess.Popen(
-        command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    proc = subprocess.Popen(command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
-        raise ConfigError(
-            f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}"
-        )
+        raise ConfigError(f"Exec {command[0]} returned {proc.returncode}: {stderr.decode()}")
     return stdout
 
 
 class ExecAuth(httpx.Auth):
-    def __init__(self, exec: UserExec):
+    # The param name `exec` shadows the Python builtin, but changing the kwarg name would potentially break users code
+    def __init__(self, exec: UserExec):  # noqa: A002
         self._exec = exec
         self._last_bearer = None
 
     def _prepare(self):
-        exec = self._exec
-        if exec.apiVersion not in (
+        _exec = self._exec
+        if _exec.apiVersion not in (
             "client.authentication.k8s.io/v1alpha1",
             "client.authentication.k8s.io/v1beta1",
         ):
-            raise ConfigError(
-                f"auth exec api version {exec.apiVersion} not implemented"
-            )
+            raise ConfigError(f"auth exec api version {_exec.apiVersion} not implemented")
         cmd_env_vars = dict(os.environ)
-        if exec.env:
-            cmd_env_vars.update((var.name, var.value) for var in exec.env)
+        if _exec.env:
+            cmd_env_vars.update((var.name, var.value) for var in _exec.env)
         # TODO: add support for passing KUBERNETES_EXEC_INFO env var
         # https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/kubectl-exec-plugins.md
-        args = exec.args if exec.args else []
-        return [exec.command] + args, cmd_env_vars
+        args = _exec.args if _exec.args else []
+        return [_exec.command, *args], cmd_env_vars
 
     def sync_auth_flow(self, request: httpx.Request):
         if self._last_bearer:

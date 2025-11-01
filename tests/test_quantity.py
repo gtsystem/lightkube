@@ -1,9 +1,9 @@
 import decimal
+
 import pytest
 
 from lightkube.models.core_v1 import ResourceRequirements
-from lightkube.utils.quantity import parse_quantity
-from lightkube.utils.quantity import equals_canonically
+from lightkube.utils.quantity import equals_canonically, parse_quantity
 
 
 def test_unitless():

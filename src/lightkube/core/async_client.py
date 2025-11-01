@@ -233,9 +233,7 @@ class AsyncClient:
           name: Name of the object to fetch.
           namespace: Name of the namespace containing the object (Only for namespaced resources).
         """
-        return await self._client.request(
-            "get", res=res, name=name, namespace=namespace
-        )
+        return await self._client.request("get", res=res, name=name, namespace=namespace)
 
     @overload
     def list(
@@ -277,9 +275,7 @@ class AsyncClient:
             params={
                 "limit": chunk_size,
                 "labelSelector": build_selector(labels) if labels else None,
-                "fieldSelector": (
-                    build_selector(fields, for_fields=True) if fields else None
-                ),
+                "fieldSelector": (build_selector(fields, for_fields=True) if fields else None),
             },
         )
         return self._client.list(br)
@@ -343,9 +339,7 @@ class AsyncClient:
                 "timeoutSeconds": server_timeout,
                 "resourceVersion": resource_version,
                 "labelSelector": build_selector(labels) if labels else None,
-                "fieldSelector": (
-                    build_selector(fields, for_fields=True) if fields else None
-                ),
+                "fieldSelector": (build_selector(fields, for_fields=True) if fields else None),
             },
         )
         return self._client.watch(br, on_error=on_error)
@@ -412,18 +406,14 @@ class AsyncClient:
                 except AttributeError:
                     status = obj.status
 
-                conditions = [
-                    c for c in status.get("conditions", []) if c["status"] == "True"
-                ]
+                conditions = [c for c in status.get("conditions", []) if c["status"] == "True"]
                 if any(c["type"] in for_conditions for c in conditions):
                     return obj
 
                 failures = [c for c in conditions if c["type"] in raise_for_conditions]
 
                 if failures:
-                    raise ConditionError(
-                        full_name, [f.get("message", f["type"]) for f in failures]
-                    )
+                    raise ConditionError(full_name, [f.get("message", f["type"]) for f in failures])
         finally:
             # we ensure the async generator is closed before returning
             await watch.aclose()
@@ -655,11 +645,11 @@ class AsyncClient:
         self,
         name: str,
         *,
-        namespace: str = None,
-        container: str = None,
+        namespace: Optional[str] = None,
+        container: Optional[str] = None,
         follow: bool = False,
-        since: int = None,
-        tail_lines: int = None,
+        since: Optional[int] = None,
+        tail_lines: Optional[int] = None,
         timestamps: bool = False,
         newlines: bool = True,
     ) -> AsyncIterable[str]: ...
@@ -720,7 +710,7 @@ class AsyncClient:
         obj: GlobalSubResource,
         name: str,
         *,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -731,8 +721,8 @@ class AsyncClient:
         obj: NamespacedSubResource,
         name: str,
         *,
-        namespace: str = None,
-        field_manager: str = None,
+        namespace: Optional[str] = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> NamespacedSubResource: ...
@@ -741,7 +731,7 @@ class AsyncClient:
     async def apply(
         self,
         obj: GlobalResource,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -750,7 +740,7 @@ class AsyncClient:
     async def apply(
         self,
         obj: NamespacedResource,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         force: bool = False,
         dry_run: bool = False,
     ) -> NamespacedResource: ...
@@ -780,11 +770,7 @@ class AsyncClient:
               be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
               to `kubectl` commands.
         """
-        if (
-            namespace is None
-            and isinstance(obj, r.NamespacedResource)
-            and obj.metadata.namespace
-        ):
+        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name
