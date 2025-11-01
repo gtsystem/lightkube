@@ -5,12 +5,10 @@ try:
 
     try:
         from ..resources import apiextensions_v1 as apiextensions
-    except:
+    except ImportError:
         from ..resources import apiextensions_v1beta1 as apiextensions
-except:
-    if (
-        sys.modules["__main__"].__package__ != "mkdocs"
-    ):  # we ignore this import error during documentation generation
+except ImportError:
+    if sys.modules["__main__"].__package__ != "mkdocs":  # we ignore this import error during documentation generation
         raise
     from unittest import mock
 

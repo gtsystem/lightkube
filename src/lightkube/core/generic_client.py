@@ -29,10 +29,7 @@ ALL_NS = "*"
 
 
 def transform_exception(e: httpx.HTTPError):
-    if (
-        isinstance(e, httpx.HTTPStatusError)
-        and e.response.headers["Content-Type"] == "application/json"
-    ):
+    if isinstance(e, httpx.HTTPStatusError) and e.response.headers["Content-Type"] == "application/json":
         return ApiError(request=e.request, response=e.response)
     return e
 
@@ -79,7 +76,7 @@ class WatchDriver:
         line = json.loads(line)
         tp = line["type"]
         obj = line["object"]
-        if tp == 'ERROR':
+        if tp == "ERROR":
             raise ApiError(status=obj)
         self._version = obj["metadata"]["resourceVersion"]
         return tp, self._convert(obj, lazy=self._lazy)
@@ -98,9 +95,7 @@ class ListIterable(Iterable[T]):
         """
         if self._resourceVersion:
             return self._resourceVersion
-        raise NotReadyError(
-            "resourceVersion", "only available after the iteration started"
-        )
+        raise NotReadyError("resourceVersion", "only available after the iteration started")
 
     def __init__(self, inner_iter: Iterator[Tuple[str, Iterator[T]]]) -> None:
         self._inner_iter = inner_iter
@@ -121,9 +116,7 @@ class ListAsyncIterable(AsyncIterable[T]):
         """
         if self._resourceVersion:
             return self._resourceVersion
-        raise NotReadyError(
-            "resourceVersion", "only available after the iteration started"
-        )
+        raise NotReadyError("resourceVersion", "only available after the iteration started")
 
     def __init__(self, inner_iter: AsyncIterator[Tuple[str, Iterator[T]]]) -> None:
         self._inner_iter = inner_iter
@@ -141,14 +134,14 @@ class GenericClient:
     def __init__(
         self,
         config: Union[SingleConfig, KubeConfig] = None,
-        namespace: str = None,
+        namespace: Optional[str] = None,
         timeout: httpx.Timeout = None,
         lazy=True,
         trust_env: bool = True,
-        field_manager: str = None,
+        field_manager: Optional[str] = None,
         dry_run: bool = False,
         transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport] = None,
-        proxy: str = None,
+        proxy: Optional[str] = None,
         http2: bool = False,
     ):
         self._timeout = httpx.Timeout(10) if timeout is None else timeout
@@ -163,14 +156,7 @@ class GenericClient:
             config = config.get()
 
         self.config = config
-        self._client = self.AdapterClient(
-            config,
-            timeout,
-            trust_env=trust_env,
-            transport=transport,
-            proxy=proxy,
-            http2=http2
-        )
+        self._client = self.AdapterClient(config, timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2)
         self._field_manager = field_manager
         self._dry_run = dry_run
         self.namespace = namespace if namespace else config.namespace
@@ -178,13 +164,13 @@ class GenericClient:
     def prepare_request(
         self,
         method,
-        res: Type[r.Resource] = None,
+        res: Optional[Type[r.Resource]] = None,
         obj=None,
         name=None,
         namespace=None,
         watch: bool = False,
-        params: dict = None,
-        headers: dict = None,
+        params: Optional[dict] = None,
+        headers: Optional[dict] = None,
     ) -> BasicRequest:
         if params is not None:
             params = {k: v for k, v in params.items() if v is not None}
@@ -195,9 +181,7 @@ class GenericClient:
         data = None
         if res is None:
             if obj is None:
-                raise ValueError(
-                    "At least a resource or an instance of a resource need to be provided"
-                )
+                raise ValueError("At least a resource or an instance of a resource need to be provided")
             res = obj.__class__
 
         namespaced = issubclass(res, (r.NamespacedResource, r.NamespacedSubResource))
@@ -206,9 +190,7 @@ class GenericClient:
             if not issubclass(res, r.NamespacedResourceG):
                 raise ValueError(f"Class {res} doesn't support global {method}")
             if method not in ("list", "watch"):
-                raise ValueError(
-                    "Only methods 'list' and 'watch' can be called for all namespaces"
-                )
+                raise ValueError("Only methods 'list' and 'watch' can be called for all namespaces")
             real_method = "global_watch" if watch else "global_" + method
         else:
             real_method = "watch" if watch else method
@@ -218,9 +200,7 @@ class GenericClient:
             if watch:
                 raise ValueError(f"Resource '{res.__name__}' is not watchable")
             else:
-                raise ValueError(
-                    f"method '{method}' not supported by resource '{res.__name__}'"
-                )
+                raise ValueError(f"method '{method}' not supported by resource '{res.__name__}'")
 
         if watch:
             params["watch"] = "true"
@@ -253,14 +233,8 @@ class GenericClient:
                 params["fieldManager"] = self._field_manager
             if self._dry_run is True and "dryRun" not in params:
                 params["dryRun"] = "All"
-            if (
-                method == "patch"
-                and headers["Content-Type"] == PatchType.APPLY.value
-                and "fieldManager" not in params
-            ):
-                raise ValueError(
-                    'Parameter "field_manager" is required for PatchType.APPLY'
-                )
+            if method == "patch" and headers["Content-Type"] == PatchType.APPLY.value and "fieldManager" not in params:
+                raise ValueError('Parameter "field_manager" is required for PatchType.APPLY')
             if obj is None:
                 raise ValueError("obj is required for post, put or patch")
 
@@ -304,12 +278,10 @@ class GenericClient:
         try:
             resp.raise_for_status()
         except httpx.HTTPError as e:
-            raise transform_exception(e)
+            raise transform_exception(e) from e
 
     def build_adapter_request(self, br: BasicRequest):
-        return self._client.build_request(
-            br.method, br.url, params=br.params, json=br.data, headers=br.headers
-        )
+        return self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
 
     def convert_to_resource(self, res: Type[r.Resource], item: dict) -> r.Resource:
         resource_def = r.api_info(res).resource
@@ -373,17 +345,15 @@ class GenericSyncClient(GenericClient):
     def request(
         self,
         method,
-        res: Type[r.Resource] = None,
+        res: Optional[Type[r.Resource]] = None,
         obj=None,
         name=None,
         namespace=None,
         watch: bool = False,
-        headers: dict = None,
-        params: dict = None,
+        headers: Optional[dict] = None,
+        params: Optional[dict] = None,
     ) -> Any:
-        br = self.prepare_request(
-            method, res, obj, name, namespace, watch, headers=headers, params=params
-        )
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers, params=params)
         req = self.build_adapter_request(br)
         resp = self.send(req)
         return self.handle_response(method, resp, br)
@@ -433,24 +403,20 @@ class GenericAsyncClient(GenericClient):
     async def request(
         self,
         method,
-        res: Type[r.Resource] = None,
+        res: Optional[Type[r.Resource]] = None,
         obj=None,
         name=None,
         namespace=None,
         watch: bool = False,
-        headers: dict = None,
-        params: dict = None,
+        headers: Optional[dict] = None,
+        params: Optional[dict] = None,
     ) -> Any:
-        br = self.prepare_request(
-            method, res, obj, name, namespace, watch, headers=headers, params=params
-        )
+        br = self.prepare_request(method, res, obj, name, namespace, watch, headers=headers, params=params)
         req = self.build_adapter_request(br)
         resp = await self.send(req)
         return self.handle_response(method, resp, br)
 
-    async def list_chunks(
-        self, br: BasicRequest
-    ) -> AsyncIterator[Tuple[str, Iterator]]:
+    async def list_chunks(self, br: BasicRequest) -> AsyncIterator[Tuple[str, Iterator]]:
         cont = True
         while cont:
             req = self.build_adapter_request(br)

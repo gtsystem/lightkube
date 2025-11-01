@@ -1,6 +1,6 @@
 _env*
-lightkube/models
-lightkube/resources
+src/lightkube/models
+src/lightkube/resources
 __pycache__
 .idea
 _build/

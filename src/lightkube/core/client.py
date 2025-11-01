@@ -26,9 +26,7 @@ NamespacedResource = TypeVar("NamespacedResource", bound=r.NamespacedResource)
 GlobalResource = TypeVar("GlobalResource", bound=r.GlobalResource)
 GlobalSubResource = TypeVar("GlobalSubResource", bound=r.GlobalSubResource)
 NamespacedSubResource = TypeVar("NamespacedSubResource", bound=r.NamespacedSubResource)
-AllNamespacedResource = TypeVar(
-    "AllNamespacedResource", bound=Union[r.NamespacedResource, r.NamespacedSubResource]
-)
+AllNamespacedResource = TypeVar("AllNamespacedResource", bound=Union[r.NamespacedResource, r.NamespacedSubResource])
 Resource = TypeVar("Resource", bound=r.Resource)
 LabelValue = Union[str, None, operators.Operator, Iterable]
 FieldValue = Union[str, operators.BinaryOperator, operators.SequenceOperator]
@@ -281,9 +279,7 @@ class Client:
             params={
                 "limit": chunk_size,
                 "labelSelector": build_selector(labels) if labels else None,
-                "fieldSelector": (
-                    build_selector(fields, for_fields=True) if fields else None
-                ),
+                "fieldSelector": (build_selector(fields, for_fields=True) if fields else None),
             },
         )
         return self._client.list(br)
@@ -347,9 +343,7 @@ class Client:
                 "timeoutSeconds": server_timeout,
                 "resourceVersion": resource_version,
                 "labelSelector": build_selector(labels) if labels else None,
-                "fieldSelector": (
-                    build_selector(fields, for_fields=True) if fields else None
-                ),
+                "fieldSelector": (build_selector(fields, for_fields=True) if fields else None),
             },
         )
         return self._client.watch(br, on_error=on_error)
@@ -402,9 +396,7 @@ class Client:
         for_conditions = list(for_conditions)
         raise_for_conditions = list(raise_for_conditions)
 
-        for op, obj in self.watch(
-            res, namespace=namespace, fields={"metadata.name": name}
-        ):
+        for op, obj in self.watch(res, namespace=namespace, fields={"metadata.name": name}):
             if obj.status is None:
                 continue
 
@@ -416,18 +408,14 @@ class Client:
             except AttributeError:
                 status = obj.status
 
-            conditions = [
-                c for c in status.get("conditions", []) if c["status"] == "True"
-            ]
+            conditions = [c for c in status.get("conditions", []) if c["status"] == "True"]
             if any(c["type"] in for_conditions for c in conditions):
                 return obj
 
             failures = [c for c in conditions if c["type"] in raise_for_conditions]
 
             if failures:
-                raise ConditionError(
-                    full_name, [f.get("message", f["type"]) for f in failures]
-                )
+                raise ConditionError(full_name, [f.get("message", f["type"]) for f in failures])
 
     @overload
     def patch(
@@ -553,9 +541,7 @@ class Client:
         dry_run: bool = False,
     ) -> NamespacedResource: ...
 
-    def create(
-        self, obj, name=None, *, namespace=None, field_manager=None, dry_run=False
-    ):
+    def create(self, obj, name=None, *, namespace=None, field_manager=None, dry_run=False):
         """Create a new object and return its representation.
         Raise lightkube.ApiError if the object already exist.
 
@@ -706,7 +692,7 @@ class Client:
             # The body must be read into memory before accessing it when building the exception.
             resp.read()
         self._client.raise_for_status(resp)
-        return (l + "\n" if newlines else l for l in resp.iter_lines())
+        return (line + "\n" if newlines else line for line in resp.iter_lines())
 
     @overload
     def apply(
@@ -774,11 +760,7 @@ class Client:
                 be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
                 to `kubectl` commands.
         """
-        if (
-            namespace is None
-            and isinstance(obj, r.NamespacedResource)
-            and obj.metadata.namespace
-        ):
+        if namespace is None and isinstance(obj, r.NamespacedResource) and obj.metadata.namespace:
             namespace = obj.metadata.namespace
         if name is None and obj.metadata.name:
             name = obj.metadata.name

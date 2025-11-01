@@ -23,10 +23,8 @@ def _load_internal_resource(version, kind):
     module = importlib.import_module(f"lightkube.resources.{module_name.lower()}")
     try:
         return getattr(module, kind)
-    except AttributeError:
-        raise LoadResourceError(
-            f"Cannot find resource kind '{kind}' in module {module.__name__}"
-        )
+    except AttributeError as err:
+        raise LoadResourceError(f"Cannot find resource kind '{kind}' in module {module.__name__}") from err
 
 
 def _maybe_internal(version):
@@ -56,20 +54,14 @@ class ResourceRegistry:
         **returns** The `resource` class provided
         """
         info = resource._api_info
-        version = (
-            f"{info.resource.group}/{info.resource.version}"
-            if info.resource.group
-            else info.resource.version
-        )
+        version = f"{info.resource.group}/{info.resource.version}" if info.resource.group else info.resource.version
         res_key = (version, info.resource.kind)
 
         if res_key in self._registry:
             registered_resource = self._registry[res_key]
             if registered_resource is resource:  # already present
                 return registered_resource
-            raise ValueError(
-                f"Another class for resource '{info.resource.kind}' is already registered"
-            )
+            raise ValueError(f"Another class for resource '{info.resource.kind}' is already registered")
 
         self._registry[res_key] = resource
         return resource
@@ -112,8 +104,7 @@ class ResourceRegistry:
                 pass
 
         raise LoadResourceError(
-            f"Cannot find resource {kind} of group {version}. "
-            "If using a CRD, ensure a generic resource is defined."
+            f"Cannot find resource {kind} of group {version}. If using a CRD, ensure a generic resource is defined."
         )
 
 

@@ -1,4 +1,5 @@
 from collections import namedtuple
+
 import pytest
 
 from lightkube import sort_objects
@@ -28,8 +29,8 @@ def resources_in_apply_order():
     "reverse",
     [
         False,  # Desired result in apply-friendly order
-        True,   # Desired order in delete-friendly order
-    ]
+        True,  # Desired order in delete-friendly order
+    ],
 )
 def test_sort_objects_by_kind(reverse, resources_in_apply_order):
     """Tests that sort_objects can kind-sort objects in both apply and delete orders."""
@@ -38,7 +39,7 @@ def test_sort_objects_by_kind(reverse, resources_in_apply_order):
         resources_expected_order = list(reversed(resources_expected_order))
 
     # Add disorder to the test input
-    resources_unordered = resources_expected_order[1:] + [resources_expected_order[0]]
+    resources_unordered = [*resources_expected_order[1:], resources_expected_order[0]]
 
     result = sort_objects(resources_unordered, reverse=reverse)
     assert result == resources_expected_order
