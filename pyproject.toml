@@ -1,6 +1,6 @@
 [project]
 name = "lightkube"
-version = "0.17.3"
+version = "0.18.0"
 description = "Lightweight kubernetes client library"
 readme = "README.md"
 authors = [
@@ -37,7 +37,7 @@ linting = [
 ]
 testing = [
     "asyncmock",
-    "pytest",
+    "pytest>=8.3.5",
     "pytest-asyncio",
     "respx",
 ]
@@ -56,6 +56,7 @@ dev = [
     { include-group = "linting"},
     { include-group = "testing"},
     { include-group = "coverage"},
+    { include-group = "docs"},
 ]
 
 [build-system]
@@ -67,8 +68,8 @@ build-backend = "uv_build"
 source-exclude = ["lightkube/resources", "lightkube/models"]
 wheel-exclude = ["lightkube/resources", "lightkube/models"]
 
-[tool.pytest]
-minversion = 6.0
+[tool.pytest.ini_options]
+minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.ruff]

@@ -507,6 +507,7 @@ class AsyncClient:
         self,
         obj: GlobalSubResource,
         name: str,
+        *,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalSubResource: ...
@@ -526,6 +527,7 @@ class AsyncClient:
     async def create(
         self,
         obj: GlobalResource,
+        *,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> GlobalResource: ...
@@ -534,6 +536,7 @@ class AsyncClient:
     async def create(
         self,
         obj: NamespacedResource,
+        *,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ) -> NamespacedResource: ...
