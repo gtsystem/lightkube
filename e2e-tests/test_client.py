@@ -1,19 +1,23 @@
 from datetime import datetime
 from pathlib import Path
-from string import ascii_lowercase
 from random import choices
+from string import ascii_lowercase
 
 import pytest
 
-from lightkube import Client, ApiError, AsyncClient
-from lightkube.types import PatchType
-from lightkube.resources.core_v1 import Pod, Node, ConfigMap, Service, Namespace
-from lightkube.resources.apps_v1 import Deployment
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.models.core_v1 import PodSpec, Container, ServiceSpec, ServicePort
+from lightkube import ApiError, AsyncClient, Client
 from lightkube.codecs import load_all_yaml
-from lightkube.generic_resource import create_namespaced_resource, get_generic_resource, \
-    load_in_cluster_generic_resources, async_load_in_cluster_generic_resources
+from lightkube.generic_resource import (
+    async_load_in_cluster_generic_resources,
+    create_namespaced_resource,
+    get_generic_resource,
+    load_in_cluster_generic_resources,
+)
+from lightkube.models.core_v1 import Container, PodSpec, ServicePort, ServiceSpec
+from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.resources.apps_v1 import Deployment
+from lightkube.resources.core_v1 import ConfigMap, Namespace, Node, Pod, Service
+from lightkube.types import PatchType
 
 uid_count = 0
 
@@ -22,7 +26,7 @@ uid_count = 0
 def obj_name():
     global uid_count
     uid_count += 1
-    return f'test-{datetime.now().strftime("%Y%m%d%H%M%S")}-{uid_count}'
+    return f"test-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uid_count}"
 
 
 def names(obj_list):
@@ -31,24 +35,24 @@ def names(obj_list):
 
 def create_pod(name, command) -> Pod:
     return Pod(
-        metadata=ObjectMeta(name=name, labels={'app-name': name}),
-        spec=PodSpec(containers=[Container(
-            name='main',
-            image='busybox',
-            args=[
-                "/bin/sh",
-                "-c",
-                command
+        metadata=ObjectMeta(name=name, labels={"app-name": name}),
+        spec=PodSpec(
+            containers=[
+                Container(
+                    name="main",
+                    image="busybox",
+                    args=["/bin/sh", "-c", command],
+                )
             ],
-        )], terminationGracePeriodSeconds=1)
+            terminationGracePeriodSeconds=1,
+        ),
     )
 
 
-def wait_pod(client, pod):
+def wait_pod(client: Client, pod):
     # watch pods
-    for etype, pod in client.watch(Pod, labels={'app-name': pod.metadata.name},
-                                   resource_version=pod.metadata.resourceVersion):
-        if pod.status.phase != 'Pending':
+    for _, p in client.watch(Pod, labels={"app-name": pod.metadata.name}, resource_version=pod.metadata.resourceVersion):
+        if p.status.phase != "Pending":
             break
 
 
@@ -56,9 +60,9 @@ def test_pod_apis(obj_name):
     client = Client()
 
     # list kube-system namespace
-    pods = [pod.metadata.name for pod in client.list(Pod, namespace='kube-system')]
+    pods = [pod.metadata.name for pod in client.list(Pod, namespace="kube-system")]
     assert len(pods) > 0
-    assert any(name.startswith('metrics-server') for name in pods)
+    assert any(name.startswith("metrics-server") for name in pods)
 
     # create a pod
     pod = client.create(create_pod(obj_name, "while true;do echo 'this is a test';sleep 5; done"))
@@ -67,12 +71,11 @@ def test_pod_apis(obj_name):
         assert pod.metadata.namespace == client.namespace
         assert pod.status.phase
 
-
         wait_pod(client, pod)
 
         # read pod logs
-        for l in client.log(obj_name, follow=True):
-            assert l == 'this is a test\n'
+        for line in client.log(obj_name, follow=True):
+            assert line == "this is a test\n"
             break
     finally:
         # delete the pod
@@ -82,13 +85,13 @@ def test_pod_apis(obj_name):
 def test_pod_not_exist():
     client = Client()
     with pytest.raises(ApiError) as exc_info:
-        client.get(Pod, name='this-pod-is-not-found')
+        client.get(Pod, name="this-pod-is-not-found")
 
     status = exc_info.value.status
     assert status.code == 404
-    assert status.details.name == 'this-pod-is-not-found'
-    assert status.reason == 'NotFound'
-    assert status.status == 'Failure'
+    assert status.details.name == "this-pod-is-not-found"
+    assert status.reason == "NotFound"
+    assert status.status == "Failure"
 
 
 def test_pod_already_exist(obj_name):
@@ -99,8 +102,8 @@ def test_pod_already_exist(obj_name):
             client.create(create_pod(obj_name, "sleep 5"))
         status = exc_info.value.status
         assert status.code == 409
-        assert status.reason == 'AlreadyExists'
-        assert status.status == 'Failure'
+        assert status.reason == "AlreadyExists"
+        assert status.status == "Failure"
     finally:
         # delete the pod
         client.delete(Pod, obj_name)
@@ -112,33 +115,30 @@ def test_global_methods():
     assert len(nodes) > 0
     node = client.get(Node, name=nodes[0])
     assert node.metadata.name == nodes[0]
-    assert node.metadata.labels['kubernetes.io/os'] == node.status.nodeInfo.operatingSystem
+    assert node.metadata.labels["kubernetes.io/os"] == node.status.nodeInfo.operatingSystem
 
 
 def test_namespaced_methods(obj_name):
     client = Client()
-    config = ConfigMap(
-        metadata=ObjectMeta(name=obj_name, namespace='default'),
-        data={'key1': 'value1', 'key2': 'value2'}
-    )
+    config = ConfigMap(metadata=ObjectMeta(name=obj_name, namespace="default"), data={"key1": "value1", "key2": "value2"})
 
     # create
     config = client.create(config)
     try:
         assert config.metadata.name == obj_name
-        assert config.data['key1'] == 'value1'
-        assert config.data['key2'] == 'value2'
+        assert config.data["key1"] == "value1"
+        assert config.data["key2"] == "value2"
 
         # replace
-        config.data['key1'] = 'new value'
+        config.data["key1"] = "new value"
         config = client.replace(config)
-        assert config.data['key1'] == 'new value'
-        assert config.data['key2'] == 'value2'
+        assert config.data["key1"] == "new value"
+        assert config.data["key2"] == "value2"
 
         # patch with PatchType.STRATEGIC
-        patch = {'metadata': {'labels': {'app': 'xyz'}}}
+        patch = {"metadata": {"labels": {"app": "xyz"}}}
         config = client.patch(ConfigMap, name=obj_name, obj=patch)
-        assert config.metadata.labels['app'] == 'xyz'
+        assert config.metadata.labels["app"] == "xyz"
 
         # get
         config2 = client.get(ConfigMap, name=obj_name)
@@ -156,24 +156,21 @@ def test_patching(obj_name):
     client = Client()
     service = Service(
         metadata=ObjectMeta(name=obj_name),
-        spec=ServiceSpec(
-            ports=[ServicePort(name='a', port=80, targetPort=8080)],
-            selector={'app': 'not-existing'}
-        )
+        spec=ServiceSpec(ports=[ServicePort(name="a", port=80, targetPort=8080)], selector={"app": "not-existing"}),
     )
 
     # create
     client.create(service)
     try:
         # patch with PatchType.STRATEGIC
-        patch = {'spec': {'ports': [{'name': 'b', 'port':81, 'targetPort': 8081}]}}
+        patch = {"spec": {"ports": [{"name": "b", "port": 81, "targetPort": 8081}]}}
         service = client.patch(Service, name=obj_name, obj=patch)
         assert len(service.spec.ports) == 2
-        assert {port.name for port in service.spec.ports} == {'a', 'b'}
+        assert {port.name for port in service.spec.ports} == {"a", "b"}
 
         # strategic - patch merge key: port
         # we also try to send a Resource type for patching
-        patch = Service(spec=ServiceSpec(ports=[ServicePort(name='b', port=81, targetPort=8082)]))
+        patch = Service(spec=ServiceSpec(ports=[ServicePort(name="b", port=81, targetPort=8082)]))
         service = client.patch(Service, name=obj_name, obj=patch)
         assert len(service.spec.ports) == 2
 
@@ -183,15 +180,13 @@ def test_patching(obj_name):
 
         # patch with PatchType.MERGE
         # merge will replace the full list
-        patch = {'spec': {'ports': [{'name': 'b', 'port': 81, 'targetPort': 8081}]}}
+        patch = {"spec": {"ports": [{"name": "b", "port": 81, "targetPort": 8081}]}}
         service = client.patch(Service, name=obj_name, obj=patch, patch_type=PatchType.MERGE)
         assert len(service.spec.ports) == 1
         assert service.spec.ports[0].port == 81
 
         # patch with PatchType.JSON
-        patch = [
-            {'op': 'add', 'path': '/spec/ports/-', 'value': {'name': 'a', 'port': 80, 'targetPort': 8080}}
-        ]
+        patch = [{"op": "add", "path": "/spec/ports/-", "value": {"name": "a", "port": 80, "targetPort": 8080}}]
         service = client.patch(Service, name=obj_name, obj=patch, patch_type=PatchType.JSON)
         assert len(service.spec.ports) == 2
         assert service.spec.ports[1].port == 80
@@ -201,29 +196,29 @@ def test_patching(obj_name):
 
 
 def test_apply(obj_name):
-    client = Client(field_manager='lightkube')
+    client = Client(field_manager="lightkube")
     config = ConfigMap(
-        apiVersion='v1',  # apiVersion and kind are required for server-side apply
-        kind='ConfigMap',
-        metadata=ObjectMeta(name=obj_name, namespace='default'),
-        data={'key1': 'value1', 'key2': 'value2'}
+        apiVersion="v1",  # apiVersion and kind are required for server-side apply
+        kind="ConfigMap",
+        metadata=ObjectMeta(name=obj_name, namespace="default"),
+        data={"key1": "value1", "key2": "value2"},
     )
 
     # create with apply
     c = client.apply(config)
     try:
         assert c.metadata.name == obj_name
-        assert c.data['key1'] == 'value1'
-        assert c.data['key2'] == 'value2'
+        assert c.data["key1"] == "value1"
+        assert c.data["key2"] == "value2"
 
         # modify
-        config.data['key2'] = 'new value'
-        del config.data['key1']
-        config.data['key3'] = 'value3'
+        config.data["key2"] = "new value"
+        del config.data["key1"]
+        config.data["key3"] = "value3"
         c = client.apply(config)
-        assert c.data['key2'] == 'new value'
-        assert c.data['key3'] == 'value3'
-        assert 'key1' not in c.data
+        assert c.data["key2"] == "new value"
+        assert c.data["key3"] == "value3"
+        assert "key1" not in c.data
 
         # remove all keys
         config.data.clear()
@@ -231,9 +226,9 @@ def test_apply(obj_name):
         assert not c.data
 
         # use the patch equivalent
-        config.data['key1'] = 'new value'
+        config.data["key1"] = "new value"
         c = client.patch(ConfigMap, obj_name, config.to_dict(), patch_type=PatchType.APPLY)
-        assert c.data['key1'] == 'new value'
+        assert c.data["key1"] == "new value"
 
     finally:
         client.delete(ConfigMap, name=obj_name)
@@ -242,10 +237,7 @@ def test_apply(obj_name):
 def test_deletecollection(obj_name):
     client = Client()
 
-    config = ConfigMap(
-        metadata=ObjectMeta(name=obj_name, namespace=obj_name),
-        data={'key1': 'value1', 'key2': 'value2'}
-    )
+    config = ConfigMap(metadata=ObjectMeta(name=obj_name, namespace=obj_name), data={"key1": "value1", "key2": "value2"})
 
     client.create(Namespace(metadata=ObjectMeta(name=obj_name)))
 
@@ -274,10 +266,7 @@ def test_list_all_ns(obj_name):
     ns1 = obj_name
     ns2 = f"{obj_name}-2"
 
-    config = ConfigMap(
-        metadata=ObjectMeta(name=obj_name),
-        data={'key1': 'value1', 'key2': 'value2'}
-    )
+    config = ConfigMap(metadata=ObjectMeta(name=obj_name), data={"key1": "value1", "key2": "value2"})
 
     client.create(Namespace(metadata=ObjectMeta(name=ns1)))
     client.create(Namespace(metadata=ObjectMeta(name=ns2)))
@@ -286,7 +275,7 @@ def test_list_all_ns(obj_name):
         client.create(config, namespace=ns1)
         client.create(config, namespace=ns2)
 
-        maps = [f"{cm.metadata.namespace}/{cm.metadata.name}" for cm in client.list(ConfigMap, namespace='*')]
+        maps = [f"{cm.metadata.namespace}/{cm.metadata.name}" for cm in client.list(ConfigMap, namespace="*")]
         assert f"{ns1}/{obj_name}" in maps
         assert f"{ns2}/{obj_name}" in maps
 
@@ -297,30 +286,28 @@ def test_list_all_ns(obj_name):
 
 def test_crd():
     client = Client()
-    fname = Path(__file__).parent.joinpath('test-crd.yaml')
+    fname = Path(__file__).parent.joinpath("test-crd.yaml")
     with fname.open() as f:
-        crd = list(load_all_yaml(f))[0]
+        crd = next(iter(load_all_yaml(f)))
 
     CronTab = create_namespaced_resource(
-        group="stable.example.com",
-        version="v1",
-        kind="CronTab",
-        plural="crontabs",
-        verbs=None
+        group="stable.example.com", version="v1", kind="CronTab", plural="crontabs", verbs=None
     )
 
     client.create(crd)
     # CRD endpoints are not ready immediately, we need to wait for condition `Established`
-    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=['Established'])
+    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=["Established"])
     try:
-        client.create(CronTab(
-            metadata={'name': 'my-cron'},
-            spec={'cronSpec': '* * * * */5', 'image': 'my-awesome-cron-image'},
-        ))
+        client.create(
+            CronTab(
+                metadata={"name": "my-cron"},
+                spec={"cronSpec": "* * * * */5", "image": "my-awesome-cron-image"},
+            )
+        )
 
-        ct = client.get(CronTab, name='my-cron')
-        assert ct.metadata.name == 'my-cron'
-        assert ct.spec['cronSpec'] == '* * * * */5'
+        ct = client.get(CronTab, name="my-cron")
+        assert ct.metadata.name == "my-cron"
+        assert ct.spec["cronSpec"] == "* * * * */5"
     finally:
         client.delete(crd.__class__, name=crd.metadata.name)
 
@@ -364,9 +351,7 @@ WAIT_NAMESPACED_PARAMS = [
 def test_wait_namespaced(resource, for_condition, spec):
     client = Client()
 
-    requested = resource.from_dict(
-        {"metadata": {"generateName": "e2e-test-"}, "spec": spec}
-    )
+    requested = resource.from_dict({"metadata": {"generateName": "e2e-test-"}, "spec": spec})
     created = client.create(requested)
     client.wait(
         resource,
@@ -381,9 +366,7 @@ def test_wait_namespaced(resource, for_condition, spec):
 async def test_wait_namespaced_async(resource, for_condition, spec):
     client = AsyncClient()
 
-    requested = resource.from_dict(
-        {"metadata": {"generateName": "e2e-test-"}, "spec": spec}
-    )
+    requested = resource.from_dict({"metadata": {"generateName": "e2e-test-"}, "spec": spec})
     created = await client.create(requested)
     await client.wait(
         resource,
@@ -398,9 +381,9 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
 @pytest.fixture(scope="function")
 def sample_crd():
     client = Client()
-    fname = Path(__file__).parent.joinpath('test-crd.yaml')
+    fname = Path(__file__).parent.joinpath("test-crd.yaml")
     with fname.open() as f:
-        crd = list(load_all_yaml(f))[0]
+        crd = next(iter(load_all_yaml(f)))
 
     # modify the crd to be unique, avoiding collision with other tests
     prefix = "".join(choices(ascii_lowercase, k=5))
@@ -413,7 +396,7 @@ def sample_crd():
 
     client.create(crd)
     # CRD endpoints are not ready immediately, we need to wait for condition `Established`
-    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=['Established'])
+    client.wait(crd.__class__, name=crd.metadata.name, for_conditions=["Established"])
 
     yield crd
 
