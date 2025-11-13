@@ -1,16 +1,8 @@
-from typing import (
-    AsyncIterable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-    overload,
-)
+from typing import AsyncIterable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import httpx
+
+from lightkube.config.client_adapter import ConnectionParams
 
 from ..config.kubeconfig import KubeConfig, SingleConfig
 from ..core import resource as r
@@ -66,16 +58,12 @@ class AsyncClient:
         http2: bool = False,
     ):
         self._client = GenericAsyncClient(
+            ConnectionParams(timeout=timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2),
             config,
             namespace=namespace,
-            timeout=timeout,
             lazy=lazy,
             field_manager=field_manager,
-            trust_env=trust_env,
             dry_run=dry_run,
-            transport=transport,
-            proxy=proxy,
-            http2=http2,
         )
 
     @property

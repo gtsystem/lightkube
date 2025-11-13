@@ -3,19 +3,7 @@ import dataclasses
 import json
 import time
 from dataclasses import dataclass
-from typing import (
-    Any,
-    AsyncIterable,
-    AsyncIterator,
-    Dict,
-    Iterable,
-    Iterator,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, AsyncIterable, AsyncIterator, Dict, Iterable, Iterator, Optional, Tuple, Type, TypeVar, Union
 
 import httpx
 
@@ -133,30 +121,25 @@ class GenericClient:
 
     def __init__(
         self,
+        conn_params: client_adapter.ConnectionParams,
         config: Union[SingleConfig, KubeConfig] = None,
         namespace: Optional[str] = None,
-        timeout: httpx.Timeout = None,
         lazy=True,
-        trust_env: bool = True,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
-        transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport] = None,
-        proxy: Optional[str] = None,
-        http2: bool = False,
     ):
-        self._timeout = httpx.Timeout(10) if timeout is None else timeout
-        self._watch_timeout = httpx.Timeout(self._timeout)
+        self._watch_timeout = httpx.Timeout(conn_params.timeout)
         self._watch_timeout.read = None
         self._lazy = lazy
-        if config is None and trust_env:
+        if config is None and conn_params.trust_env:
             config = KubeConfig.from_env().get()
-        elif config is None and not trust_env:
+        elif config is None and not conn_params.trust_env:
             config = KubeConfig.from_file(DEFAULT_KUBECONFIG).get()
         elif isinstance(config, KubeConfig):
             config = config.get()
 
         self.config = config
-        self._client = self.AdapterClient(config, timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2)
+        self._client = self.AdapterClient(config, conn_params)
         self._field_manager = field_manager
         self._dry_run = dry_run
         self.namespace = namespace if namespace else config.namespace

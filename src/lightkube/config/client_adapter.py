@@ -3,6 +3,7 @@ import json
 import os
 import ssl
 import subprocess
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 import httpx
@@ -12,45 +13,29 @@ from .kubeconfig import SingleConfig
 from .models import Cluster, FileStr, User, UserExec
 
 
-def Client(
-    config: SingleConfig,
-    timeout: httpx.Timeout,
-    trust_env: bool = True,
-    transport: httpx.BaseTransport = None,
-    proxy: Optional[str] = None,
-    http2: bool = False,
-) -> httpx.Client:
-    return httpx.Client(
-        transport=transport,
-        http2=http2,
-        **httpx_parameters(config, timeout, proxy, trust_env),
-    )
+@dataclass
+class ConnectionParams:
+    """All connection parameters used by Client and AsyncClient"""
+
+    timeout: Optional[httpx.Timeout] = field(default_factory=lambda: httpx.Timeout(10))
+    trust_env: bool = True
+    transport: Optional[httpx.BaseTransport] = None
+    proxy: Optional[str] = None
+    http2: bool = False
+
+    def httpx_params(self, config: SingleConfig) -> dict:
+        base_url = config.cluster.server
+        verify = verify_cluster(config.cluster, config.user, config.abs_file, trust_env=self.trust_env)
+        auth = user_auth(config.user)
+        return dict(base_url=base_url, verify=verify, auth=auth, **asdict(self))
 
 
-def AsyncClient(
-    config: SingleConfig,
-    timeout: httpx.Timeout,
-    trust_env: bool = True,
-    transport: httpx.AsyncBaseTransport = None,
-    proxy: Optional[str] = None,
-    http2: bool = False,
-) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=transport,
-        http2=http2,
-        **httpx_parameters(config, timeout, proxy, trust_env),
-    )
+def Client(config: SingleConfig, conn_parameters: ConnectionParams) -> httpx.Client:
+    return httpx.Client(**conn_parameters.httpx_params(config))
 
 
-def httpx_parameters(config: SingleConfig, timeout: httpx.Timeout, proxy: str, trust_env: bool):
-    return dict(
-        timeout=timeout,
-        proxy=proxy,
-        base_url=config.cluster.server,
-        verify=verify_cluster(config.cluster, config.user, config.abs_file, trust_env=trust_env),
-        auth=user_auth(config.user),
-        trust_env=trust_env,
-    )
+def AsyncClient(config: SingleConfig, conn_parameters: ConnectionParams) -> httpx.AsyncClient:
+    return httpx.AsyncClient(**conn_parameters.httpx_params(config))
 
 
 class BearerAuth(httpx.Auth):
@@ -127,7 +112,7 @@ class ExecAuth(httpx.Auth):
         yield request
 
 
-def user_auth(user: Optional[User]):
+def user_auth(user: Optional[User]) -> httpx.Auth:
     if user is None:
         return None
 
