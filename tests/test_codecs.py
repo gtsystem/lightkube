@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Union
 
 import pytest
 import yaml
@@ -236,7 +236,7 @@ def test_dump_all_yaml() -> None:
     db = Mydb(apiVersion="myapp.com/v1", kind="Mydb", metadata=ObjectMeta(name="db1"), xyz={"a": "b"})
 
     # TODO: Unfortunately, `ConfigMap` doesn't seem to properly inherit from GenericGlobalResource | GenericNamespacedResource
-    resources_list: list[GenericGlobalResource | GenericNamespacedResource] = [cm, db]  # type: ignore[list-item]
+    resources_list: list[Union[GenericGlobalResource, GenericNamespacedResource]] = [cm, db]  # type: ignore[list-item]
     res = codecs.dump_all_yaml(resources_list)
     expected = textwrap.dedent("""
         apiVersion: v1
