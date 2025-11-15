@@ -66,7 +66,7 @@ class ResourceRegistry:
         self._registry[res_key] = resource
         return resource
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the registry from all registered resources"""
         self._registry.clear()
 

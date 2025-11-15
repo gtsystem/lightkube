@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional, Union
 
 import yaml
 
@@ -39,7 +39,7 @@ class SingleConfig(NamedTuple):
     fname: Path = None
 
     @property
-    def namespace(self):
+    def namespace(self) -> str:
         """Returns the namespace in the current context"""
         return self.context.namespace or DEFAULT_NAMESPACE
 
@@ -142,7 +142,7 @@ class KubeConfig:
         )
 
     @classmethod
-    def from_file(cls, fname):
+    def from_file(cls, fname: Union[str, os.PathLike[str]]) -> "KubeConfig":
         """Creates an instance of the KubeConfig class from a kubeconfig file in YAML format.
 
         **Parameters**
@@ -156,7 +156,15 @@ class KubeConfig:
             return cls.from_dict(yaml.safe_load(f.read()), fname=filepath)
 
     @classmethod
-    def from_one(cls, *, cluster, user=None, context_name="default", namespace=None, fname=None):
+    def from_one(
+        cls,
+        *,
+        cluster: Cluster,
+        user: Optional[User] = None,
+        context_name: str = "default",
+        namespace: Optional[str] = None,
+        fname: Optional[str | os.PathLike[str]] = None,
+    ):
         """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
         context = Context(
             cluster=context_name,

@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from random import choices
 from string import ascii_lowercase
+from typing import Iterator
 
 import pytest
 
@@ -12,6 +13,8 @@ from lightkube.generic_resource import (
     create_namespaced_resource,
     get_generic_resource,
     load_in_cluster_generic_resources,
+    GenericNamespacedResource,
+    GenericGlobalResource,
 )
 from lightkube.models.core_v1 import Container, PodSpec, ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
@@ -23,17 +26,17 @@ uid_count = 0
 
 
 @pytest.fixture
-def obj_name():
+def obj_name() -> str:
     global uid_count
     uid_count += 1
     return f"test-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uid_count}"
 
 
-def names(obj_list):
+def names(obj_list) -> list[str]:
     return [obj.metadata.name for obj in obj_list]
 
 
-def create_pod(name, command) -> Pod:
+def create_pod(name: str, command: str) -> Pod:
     return Pod(
         metadata=ObjectMeta(name=name, labels={"app-name": name}),
         spec=PodSpec(
@@ -82,7 +85,7 @@ def test_pod_apis(obj_name):
         client.delete(Pod, obj_name)
 
 
-def test_pod_not_exist():
+def test_pod_not_exist() -> None:
     client = Client()
     with pytest.raises(ApiError) as exc_info:
         client.get(Pod, name="this-pod-is-not-found")
@@ -109,7 +112,7 @@ def test_pod_already_exist(obj_name):
         client.delete(Pod, obj_name)
 
 
-def test_global_methods():
+def test_global_methods() -> None:
     client = Client()
     nodes = [node.metadata.name for node in client.list(Node)]
     assert len(nodes) > 0
@@ -284,7 +287,7 @@ def test_list_all_ns(obj_name):
         client.delete(Namespace, name=ns2)
 
 
-def test_crd():
+def test_crd() -> None:
     client = Client()
     fname = Path(__file__).parent.joinpath("test-crd.yaml")
     with fname.open() as f:
@@ -379,7 +382,7 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
 
 
 @pytest.fixture(scope="function")
-def sample_crd():
+def sample_crd() -> Iterator[GenericNamespacedResource | GenericGlobalResource]:
     client = Client()
     fname = Path(__file__).parent.joinpath("test-crd.yaml")
     with fname.open() as f:
