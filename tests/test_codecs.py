@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from typing import Iterator, Union, List
+from typing import Iterator, List, Union
 
 import pytest
 import yaml
