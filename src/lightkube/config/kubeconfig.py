@@ -163,7 +163,7 @@ class KubeConfig:
         user: Optional[User] = None,
         context_name: str = "default",
         namespace: Optional[str] = None,
-        fname: Optional[str | os.PathLike[str]] = None,
+        fname: Optional[Union[str, os.PathLike[str]]] = None,
     ):
         """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
         context = Context(
