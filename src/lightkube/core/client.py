@@ -489,6 +489,64 @@ class Client:
         )
 
     @overload
+    def set(
+        self,
+        res: Type[GlobalResource],
+        name: str,
+        *,
+        labels: Optional[Dict[str, str]] = None,
+        annotations: Optional[Dict[str, str]] = None,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
+    ) -> GlobalResource: ...
+
+    @overload
+    def set(
+        self,
+        res: Type[NamespacedResource],
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
+        annotations: Optional[Dict[str, str]] = None,
+        field_manager: Optional[str] = None,
+        dry_run: bool = False,
+    ) -> NamespacedResource: ...
+
+    def set(
+        self,
+        res,
+        name,
+        *,
+        namespace=None,
+        labels=None,
+        annotations=None,
+        field_manager=None,
+        dry_run=False,
+    ):
+        """Set labels and annotations to an object. Raise lightkube.ApiError if the object doesn't exist.
+        This is a convenience method that use `patch` internally.
+
+        Parameters:
+            res: Resource kind.
+            name: Name of the object to patch.
+            namespace: Name of the namespace containing the object (Only for namespaced resources).
+            labels: Labels to set. Labels are defined as key/value pairs. To remove a label, set its value to `None`.
+            annotations: Annotations to set. Annotations are defined as key/value pairs. To remove an annotation,
+                set its value to `None`.
+            field_manager: Name associated with the actor or entity that is making these changes.
+                This parameter overrides the corresponding `Client` initialization parameter.
+            dry_run: Apply server-side dry-run and guarantee that modifications will not
+                be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
+                to `kubectl` commands.
+        """
+        metadata = [("labels", labels), ("annotations", annotations)]
+        payload = {"metadata": {k: v for k, v in metadata if v is not None}}
+        return self.patch(
+            res, name, payload, namespace=namespace, field_manager=field_manager, dry_run=dry_run, patch_type=PatchType.MERGE
+        )
+
+    @overload
     def create(
         self,
         obj: GlobalSubResource,

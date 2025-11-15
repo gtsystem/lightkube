@@ -581,6 +581,26 @@ def test_patch_global(client: lightkube.Client):
 
 
 @respx.mock
+def test_set_namespaced(client: lightkube.Client):
+    req = respx.patch(
+        "https://localhost:9443/api/v1/namespaces/other/pods/xx", json={"metadata": {"labels": {"env": "prod"}}}
+    ).respond(json={"metadata": {"name": "xx", "labels": {"env": "prod"}}})
+    pod = client.set(Pod, "xx", namespace="other", labels={"env": "prod"})
+    assert pod.metadata.name == "xx"
+    assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
+
+
+@respx.mock
+def test_set_global(client: lightkube.Client):
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xz", json={"metadata": {"annotations": {"env": "prod"}}}).respond(
+        json={"metadata": {"name": "xz", "annotations": {"env": "prod"}}}
+    )
+    pod = client.set(Node, "xz", annotations={"env": "prod"})
+    assert pod.metadata.name == "xz"
+    assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
+
+
+@respx.mock
 def test_field_manager(kubeconfig):
     config = KubeConfig.from_file(str(kubeconfig))
     client = lightkube.Client(config=config, field_manager="lightkube")
