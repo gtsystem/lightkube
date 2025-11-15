@@ -9,12 +9,12 @@ import pytest
 from lightkube import ApiError, AsyncClient, Client
 from lightkube.codecs import load_all_yaml
 from lightkube.generic_resource import (
+    GenericGlobalResource,
+    GenericNamespacedResource,
     async_load_in_cluster_generic_resources,
     create_namespaced_resource,
     get_generic_resource,
     load_in_cluster_generic_resources,
-    GenericNamespacedResource,
-    GenericGlobalResource,
 )
 from lightkube.models.core_v1 import Container, PodSpec, ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
