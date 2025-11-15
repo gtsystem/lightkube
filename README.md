@@ -79,17 +79,27 @@ config.data['key1'] = 'new value'
 client.replace(config)
 ```
 
-Patch an existing config adding a label
+Patch an existing config adding more data
 ```python
-patch = {'metadata': {'labels': {'app': 'xyz'}}}
-client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
+patch = {"data": {"key3": "value3"}}
+cm = client.patch(ConfigMap, name="my-config", obj=patch)
 ```
 
-Remove the label `app`
+Remove the just added data key `key3`
 ```python
-# When using PatchType.STRATEGIC (default), setting a value of a key/value to None, will remove the current item 
-patch = {'metadata': {'labels': {'app': None}}}
-client.patch(ConfigMap, name='my-config', namespace='default', obj=patch)
+# When using PatchType.MERGE, setting a value of a key/value to None, will remove the current item 
+patch = {'metadata': {"key3": None}}
+client.patch(ConfigMap, name='my-config', namespace='default', obj=patch, patch_type=PatchType.MERGE)
+```
+
+Add a label
+```python
+cm = client.set(ConfigMap, name="my-config", labels={'env': 'prod'})
+```
+
+Remove a label
+```python
+cm = client.set(ConfigMap, name="my-config", labels={'env': None})
 ```
 
 Delete a namespaced resource

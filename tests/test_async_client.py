@@ -349,6 +349,28 @@ async def test_patch_global(client: lightkube.AsyncClient):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_set_namespaced(client: lightkube.AsyncClient):
+    req = respx.patch(
+        "https://localhost:9443/api/v1/namespaces/other/pods/xx", json={"metadata": {"labels": {"env": "prod"}}}
+    ).respond(json={"metadata": {"name": "xx", "labels": {"env": "prod"}}})
+    pod = await client.set(Pod, "xx", namespace="other", labels={"env": "prod"})
+    assert pod.metadata.name == "xx"
+    assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_set_global(client: lightkube.AsyncClient):
+    req = respx.patch("https://localhost:9443/api/v1/nodes/xz", json={"metadata": {"annotations": {"env": "prod"}}}).respond(
+        json={"metadata": {"name": "xz", "annotations": {"env": "prod"}}}
+    )
+    pod = await client.set(Node, "xz", annotations={"env": "prod"})
+    assert pod.metadata.name == "xz"
+    assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_create_global(client: lightkube.AsyncClient):
     req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
