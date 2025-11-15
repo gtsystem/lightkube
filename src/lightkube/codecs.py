@@ -1,4 +1,4 @@
-from typing import Iterator, List, Mapping, Optional, TextIO, Union
+from typing import Any, Iterator, List, Mapping, Optional, TextIO, Union
 
 import yaml
 
@@ -11,18 +11,12 @@ from .generic_resource import (
 )
 
 __all__ = ["dump_all_yaml", "from_dict", "load_all_yaml", "resource_registry"]
-
-try:
-    import jinja2
-except ImportError:
-    jinja2 = None
-
 REQUIRED_ATTR = ("apiVersion", "kind")
 
 AnyResource = Union[GenericGlobalResource, GenericNamespacedResource]
 
 
-def from_dict(d: dict) -> AnyResource:
+def from_dict(d: dict[str, Any]) -> AnyResource:
     """Converts a kubernetes resource defined as python dict to the corresponding resource object.
     If the dict represent a standard resource, the function will automatically load the appropriate
     resource type. Generic resources are also supported and used assuming they were defined prior to
@@ -40,6 +34,8 @@ def from_dict(d: dict) -> AnyResource:
             raise LoadResourceError(f"Invalid resource definition, key '{attr}' missing.")
 
     model = resource_registry.load(d["apiVersion"], d["kind"])
+    if not model:
+        raise LoadResourceError(f"Cannot find resource kind '{d['kind']}' in resource registry.")
     return model.from_dict(d)
 
 
@@ -91,7 +87,7 @@ def load_all_yaml(
     return _flatten(yaml.safe_load_all(stream))
 
 
-def dump_all_yaml(resources: List[AnyResource], stream: Optional[TextIO] = None, indent=2):
+def dump_all_yaml(resources: List[AnyResource], stream: Optional[TextIO] = None, indent: int = 2) -> Union[str, None]:
     """Write kubernetes resource objects as YAML into an open file.
 
     **parameters**
@@ -105,12 +101,14 @@ def dump_all_yaml(resources: List[AnyResource], stream: Optional[TextIO] = None,
     return yaml.safe_dump_all(res, stream, indent=indent)
 
 
-def _template(stream: Union[str, TextIO], context: Optional[dict] = None, template_env=None) -> List[AnyResource]:
+def _template(stream: Union[str, TextIO], context: Optional[dict] = None, template_env=None) -> str:
     """
     Template a stream using jinja2 and the given context
     """
-    if jinja2 is None:
-        raise ImportError("load_from_template requires jinja2 to be installed")
+    try:
+        import jinja2
+    except ImportError as e:
+        raise ImportError("load_from_template requires jinja2 to be installed") from e
 
     if template_env is None:
         template_env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True)

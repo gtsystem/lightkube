@@ -53,16 +53,16 @@ class OnErrorResult:
 OnErrorHandler = typing.Callable[[Exception, int], OnErrorResult]
 
 
-def on_error_raise(e: Exception, count: int):
+def on_error_raise(e: Exception, count: int) -> OnErrorResult:
     """Raise the error on the caller scope"""
     return OnErrorResult(OnErrorAction.RAISE)
 
 
-def on_error_stop(e: Exception, count: int):
+def on_error_stop(e: Exception, count: int) -> OnErrorResult:
     """Stop silently the iterator"""
     return OnErrorResult(OnErrorAction.STOP)
 
 
-def on_error_retry(e: Exception, count: int):
+def on_error_retry(e: Exception, count: int) -> OnErrorResult:
     """Retry to perform the API call again from the last version"""
     return OnErrorResult(OnErrorAction.RETRY)

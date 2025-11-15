@@ -1,6 +1,8 @@
 import json
 import unittest.mock
 import warnings
+from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -8,7 +10,8 @@ import respx
 
 import lightkube
 from lightkube import types
-from lightkube.config.kubeconfig import Cluster, Context, KubeConfig, SingleConfig, User
+from lightkube.config.kubeconfig import KubeConfig, SingleConfig
+from lightkube.config.models import Cluster, Context, User
 from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Binding, Node, Pod
@@ -32,7 +35,7 @@ users:
 """
 
 
-def json_contains(json_str, data: dict):
+def json_contains(json_str: str, data: dict[str, Any]) -> None:
     obj = json.loads(json_str)
     for key, value in data.items():
         assert key in obj
@@ -40,26 +43,28 @@ def json_contains(json_str, data: dict):
 
 
 @pytest.fixture
-def kubeconfig(tmpdir):
-    kubeconfig = tmpdir.join("kubeconfig")
-    kubeconfig.write(KUBECONFIG)
+def kubeconfig(tmp_path: Path) -> Path:
+    tmp_path.mkdir(exist_ok=True)
+    kubeconfig = tmp_path / "kubeconfig"
+    kubeconfig.write_text(KUBECONFIG)
     return kubeconfig
 
 
 @pytest.fixture
-def kubeconfig_ns(tmpdir):
-    kubeconfig = tmpdir.join("kubeconfig")
-    kubeconfig.write(KUBECONFIG.replace("user: test", "user: test, namespace: ns1"))
+def kubeconfig_ns(tmp_path: Path) -> Path:
+    tmp_path.mkdir(exist_ok=True)
+    kubeconfig = tmp_path / "kubeconfig"
+    kubeconfig.write_text(KUBECONFIG.replace("user: test", "user: test, namespace: ns1"))
     return kubeconfig
 
 
 @pytest.fixture
-def client(kubeconfig):
+def client(kubeconfig: Path) -> lightkube.Client:
     config = KubeConfig.from_file(str(kubeconfig))
     return lightkube.Client(config=config)
 
 
-def test_namespace(client: lightkube.Client, kubeconfig_ns):
+def test_namespace(client: lightkube.Client, kubeconfig_ns: Path) -> None:
     assert client.namespace == "default"
 
     config = KubeConfig.from_file(str(kubeconfig_ns))
@@ -67,7 +72,7 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
     assert client.namespace == "ns1"
 
 
-def test_client_config_attribute(kubeconfig):
+def test_client_config_attribute(kubeconfig: Path) -> None:
     config = KubeConfig.from_file(kubeconfig)
     client = lightkube.Client(config=config)
     assert client.config == config.get()
@@ -78,7 +83,7 @@ def test_client_config_attribute(kubeconfig):
 
 
 @unittest.mock.patch("lightkube.core.generic_client.KubeConfig")
-def test_client_default_config_construction(mock_kube_config):
+def test_client_default_config_construction(mock_kube_config) -> None:
     config = SingleConfig(
         context_name="test",
         context=Context(cluster="test", user="test"),
@@ -103,7 +108,7 @@ def test_client_default_config_construction(mock_kube_config):
 @unittest.mock.patch("httpx.Client")
 @unittest.mock.patch("lightkube.config.client_adapter.user_auth")
 @unittest.mock.patch("lightkube.config.client_adapter.verify_cluster")
-def test_client_httpx_attributes(verify_cluster, user_auth, httpx_client, kubeconfig):
+def test_client_httpx_attributes(verify_cluster, user_auth, httpx_client, kubeconfig: Path) -> None:
     config = KubeConfig.from_file(kubeconfig)
     single_conf = config.get()
     lightkube.Client(config=single_conf, trust_env=False)
@@ -121,7 +126,7 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_client, kubeco
 
 
 @respx.mock
-def test_get_namespaced(client: lightkube.Client):
+def test_get_namespaced(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={"metadata": {"name": "xx"}})
     pod = client.get(Pod, name="xx")
     assert pod.metadata.name == "xx"
@@ -132,7 +137,7 @@ def test_get_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_get_global(client: lightkube.Client):
+def test_get_global(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes/n1").respond(json={"metadata": {"name": "n1"}})
     pod = client.get(Node, name="n1")
     assert pod.metadata.name == "n1"
@@ -143,7 +148,7 @@ def test_get_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_list_namespaced(client: lightkube.Client):
+def test_list_namespaced(client: lightkube.Client) -> None:
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}], "metadata": {"resourceVersion": "42"}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     pods = client.list(Pod)
@@ -162,7 +167,7 @@ def test_list_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_list_crd(client: lightkube.Client):
+def test_list_crd(client: lightkube.Client) -> None:
     """CRD list seems to return always the 'continue' metadata attribute"""
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}], "metadata": {"continue": ""}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
@@ -171,7 +176,7 @@ def test_list_crd(client: lightkube.Client):
 
 
 @respx.mock
-def test_list_global(client: lightkube.Client):
+def test_list_global(client: lightkube.Client) -> None:
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}]}
     respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
@@ -187,7 +192,7 @@ def test_list_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_list_chunk_size(client: lightkube.Client):
+def test_list_chunk_size(client: lightkube.Client) -> None:
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}], "metadata": {"continue": "yes"}}
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
     resp = {"items": [{"metadata": {"name": "zz"}}]}
@@ -197,7 +202,7 @@ def test_list_chunk_size(client: lightkube.Client):
 
 
 @respx.mock
-def test_delete_namespaced(client: lightkube.Client):
+def test_delete_namespaced(client: lightkube.Client) -> None:
     respx.delete("https://localhost:9443/api/v1/namespaces/default/pods/xx")
     client.delete(Pod, name="xx")
 
@@ -219,7 +224,7 @@ def test_delete_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_delete_global(client: lightkube.Client):
+def test_delete_global(client: lightkube.Client) -> None:
     respx.delete("https://localhost:9443/api/v1/nodes/xx")
     client.delete(Node, name="xx")
 
@@ -230,7 +235,7 @@ def test_delete_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_delete_collection_namespaced(client: lightkube.Client):
+def test_delete_collection_namespaced(client: lightkube.Client) -> None:
     # test dry_run parameter
     req_dry = respx.delete("https://localhost:9443/api/v1/namespaces/other/pods?dryRun=All")
     client.deletecollection(Pod, namespace="other", dry_run=True)
@@ -252,7 +257,7 @@ def test_delete_collection_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_deletecollection_global(client: lightkube.Client):
+def test_deletecollection_global(client: lightkube.Client) -> None:
     # test dry_run parameter
     req_dry = respx.delete("https://localhost:9443/api/v1/nodes?dryRun=All")
     client.deletecollection(Node, dry_run=True)
@@ -263,7 +268,7 @@ def test_deletecollection_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_errors(client: lightkube.Client):
+def test_errors(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(content="Error", status_code=409)
     respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(
         json={"message": "got problems"}, status_code=409
@@ -276,7 +281,7 @@ def test_errors(client: lightkube.Client):
     assert exc.value.status.message == "got problems"
 
 
-def make_watch_list(count=10):
+def make_watch_list(count: int = 10) -> str:
     resp = "\n".join(
         json.dumps({"type": "ADDED", "object": {"metadata": {"name": f"p{i}", "resourceVersion": "1"}}}) for i in range(count)
     )
@@ -284,7 +289,7 @@ def make_watch_list(count=10):
 
 
 @respx.mock
-def test_watch(client: lightkube.Client):
+def test_watch(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
@@ -297,7 +302,7 @@ def test_watch(client: lightkube.Client):
     assert exi.value.response.status_code == 404
 
 
-def make_watch_error():
+def make_watch_error() -> str:
     state = {
         "type": "ERROR",
         "object": {
@@ -315,7 +320,7 @@ def make_watch_error():
 
 
 @respx.mock
-def test_watch_error(client: lightkube.Client):
+def test_watch_error(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_error())
 
     with pytest.raises(httpx.HTTPError):
@@ -327,7 +332,7 @@ def test_watch_error(client: lightkube.Client):
 
 
 @respx.mock
-def test_watch_version(client: lightkube.Client):
+def test_watch_version(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
     respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
 
@@ -342,7 +347,7 @@ def test_watch_version(client: lightkube.Client):
 
 
 @respx.mock
-def test_watch_on_error(client: lightkube.Client):
+def test_watch_on_error(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
@@ -354,7 +359,7 @@ def test_watch_on_error(client: lightkube.Client):
 
 
 @respx.mock
-def test_watch_stop_iter(client: lightkube.Client):
+def test_watch_stop_iter(client: lightkube.Client) -> None:
     respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
     respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
 
@@ -362,7 +367,7 @@ def test_watch_stop_iter(client: lightkube.Client):
     next(it)
 
 
-def make_wait_success():
+def make_wait_success() -> str:
     states = [
         {
             "type": "ADDED",
@@ -383,7 +388,7 @@ def make_wait_success():
     return "\n".join(map(json.dumps, states))
 
 
-def make_wait_deleted():
+def make_wait_deleted() -> str:
     state = {
         "type": "DELETED",
         "object": {
@@ -395,7 +400,7 @@ def make_wait_deleted():
     return json.dumps(state)
 
 
-def make_wait_failed():
+def make_wait_failed() -> str:
     state = {
         "type": "ADDED",
         "object": {
@@ -407,7 +412,7 @@ def make_wait_failed():
     return json.dumps(state)
 
 
-def make_wait_custom():
+def make_wait_custom() -> str:
     state = {
         "type": "ADDED",
         "object": {
@@ -420,7 +425,7 @@ def make_wait_custom():
 
 
 @respx.mock
-def test_wait_success(client: lightkube.Client):
+def test_wait_success(client: lightkube.Client) -> None:
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
     respx.get(base_url).respond(content=make_wait_success())
@@ -432,7 +437,7 @@ def test_wait_success(client: lightkube.Client):
 
 
 @respx.mock
-def test_wait_deleted(client: lightkube.Client):
+def test_wait_deleted(client: lightkube.Client) -> None:
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
     respx.get(base_url).respond(content=make_wait_deleted())
@@ -444,7 +449,7 @@ def test_wait_deleted(client: lightkube.Client):
 
 
 @respx.mock
-def test_wait_failed(client: lightkube.Client):
+def test_wait_failed(client: lightkube.Client) -> None:
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
     respx.get(base_url).respond(content=make_wait_failed())
@@ -456,7 +461,7 @@ def test_wait_failed(client: lightkube.Client):
 
 
 @respx.mock
-def test_wait_custom(client: lightkube.Client):
+def test_wait_custom(client: lightkube.Client) -> None:
     base_url = "https://localhost:9443/apis/custom.org/v1/customs?fieldSelector=metadata.name%3Dcustom-resource&watch=true"
 
     Custom = create_global_resource(group="custom.org", version="v1", kind="Custom", plural="customs")
@@ -467,7 +472,7 @@ def test_wait_custom(client: lightkube.Client):
 
 
 @respx.mock
-def test_patch_namespaced(client: lightkube.Client):
+def test_patch_namespaced(client: lightkube.Client) -> None:
     # Default PatchType.STRATEGIC
     req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={"metadata": {"name": "xx"}})
     pod = client.patch(Pod, "xx", Pod(metadata=ObjectMeta(labels={"l": "ok"})))
@@ -542,7 +547,7 @@ def test_patch_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_patch_global(client: lightkube.Client):
+def test_patch_global(client: lightkube.Client) -> None:
     req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     node = client.patch(
         Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}], patch_type=types.PatchType.JSON
@@ -581,7 +586,7 @@ def test_patch_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_set_namespaced(client: lightkube.Client):
+def test_set_namespaced(client: lightkube.Client) -> None:
     req = respx.patch(
         "https://localhost:9443/api/v1/namespaces/other/pods/xx", json={"metadata": {"labels": {"env": "prod"}}}
     ).respond(json={"metadata": {"name": "xx", "labels": {"env": "prod"}}})
@@ -591,7 +596,7 @@ def test_set_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_set_global(client: lightkube.Client):
+def test_set_global(client: lightkube.Client) -> None:
     req = respx.patch("https://localhost:9443/api/v1/nodes/xz", json={"metadata": {"annotations": {"env": "prod"}}}).respond(
         json={"metadata": {"name": "xz", "annotations": {"env": "prod"}}}
     )
@@ -601,7 +606,7 @@ def test_set_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_field_manager(kubeconfig):
+def test_field_manager(kubeconfig) -> None:
     config = KubeConfig.from_file(str(kubeconfig))
     client = lightkube.Client(config=config, field_manager="lightkube")
     respx.patch("https://localhost:9443/api/v1/nodes/xx?fieldManager=lightkube").respond(json={"metadata": {"name": "xx"}})
@@ -624,7 +629,7 @@ def test_field_manager(kubeconfig):
 
 
 @respx.mock
-def test_create_namespaced(client: lightkube.Client):
+def test_create_namespaced(client: lightkube.Client) -> None:
     req = respx.post("https://localhost:9443/api/v1/namespaces/default/pods").respond(json={"metadata": {"name": "xx"}})
     pod = client.create(Pod(metadata=ObjectMeta(name="xx", labels={"l": "ok"})))
     json_contains(req.calls[0][0].read(), {"metadata": {"labels": {"l": "ok"}, "name": "xx"}})
@@ -645,7 +650,7 @@ def test_create_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_create_global(client: lightkube.Client):
+def test_create_global(client: lightkube.Client) -> None:
     req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
     pod = client.create(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
@@ -658,7 +663,7 @@ def test_create_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_replace_namespaced(client: lightkube.Client):
+def test_replace_namespaced(client: lightkube.Client) -> None:
     req = respx.put("https://localhost:9443/api/v1/namespaces/default/pods/xy").respond(json={"metadata": {"name": "xy"}})
     pod = client.replace(Pod(metadata=ObjectMeta(name="xy")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xy"}})
@@ -680,7 +685,7 @@ def test_replace_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_replace_global(client: lightkube.Client):
+def test_replace_global(client: lightkube.Client) -> None:
     req = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     pod = client.replace(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}, "apiVersion": "v1", "kind": "Node"})
@@ -693,7 +698,7 @@ def test_replace_global(client: lightkube.Client):
 
 
 @respx.mock
-def test_pod_log(client: lightkube.Client):
+def test_pod_log(client: lightkube.Client) -> None:
     result = ["line1\n", "line2\n", "line3\n"]
     content = "".join(result)
 
@@ -725,7 +730,7 @@ def test_pod_log(client: lightkube.Client):
 
 
 @respx.mock
-def test_apply_namespaced(client: lightkube.Client):
+def test_apply_namespaced(client: lightkube.Client) -> None:
     req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=test").respond(
         json={"metadata": {"name": "xy"}}
     )
@@ -751,7 +756,7 @@ def test_apply_namespaced(client: lightkube.Client):
 
 
 @respx.mock
-def test_apply_global(client: lightkube.Client):
+def test_apply_global(client: lightkube.Client) -> None:
     req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test").respond(json={"metadata": {"name": "xy"}})
     node = client.apply(Node(metadata=ObjectMeta(name="xy")), field_manager="test")
     assert node.metadata.name == "xy"

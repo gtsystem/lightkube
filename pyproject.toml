@@ -35,11 +35,13 @@ jinja-templates = ["jinja2"]
 linting = [
     "ruff",
     "mypy>=1.14.1",
+    "types-PyYAML",
 ]
 testing = [
     "asyncmock",
     "pytest>=8.3.5",
     "pytest-asyncio",
+    "pytest-missing-modules",
     "respx",
 ]
 coverage = [
@@ -101,14 +103,12 @@ module = [
     "lightkube.core.internal_models",
     "lightkube.core.internal_resources",
     "lightkube.core.resource",
-    "lightkube.core.selector",
     "lightkube.core.sort_objects",
     "lightkube.models.core_v1",
     "lightkube.generic_resource",
     "lightkube.utils.quantity",
     "tests.test_async_client",
     "tests.test_client",
-    "tests.test_codecs",
     "tests.test_dataclasses_dict",
     "tests.test_generic_resource",
     "tests.test_quantity",
