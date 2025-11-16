@@ -92,9 +92,6 @@ select = [
 [[tool.mypy.overrides]]
 module = [
     "lightkube.codecs",
-    "lightkube.config.client_adapter",
-    "lightkube.config.kubeconfig",
-    "lightkube.config.models",
     "lightkube.core.async_client",
     "lightkube.core.client",
     "lightkube.core.dataclasses_dict",

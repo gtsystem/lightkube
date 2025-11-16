@@ -1,4 +1,4 @@
-from typing import Any, Iterator, List, Mapping, Optional, TextIO, Union
+from typing import Any, Iterator, List, Mapping, Optional, TextIO, Union, Dict
 
 import yaml
 
@@ -16,7 +16,7 @@ REQUIRED_ATTR = ("apiVersion", "kind")
 AnyResource = Union[GenericGlobalResource, GenericNamespacedResource]
 
 
-def from_dict(d: dict[str, Any]) -> AnyResource:
+def from_dict(d: Dict[str, Any]) -> AnyResource:
     """Converts a kubernetes resource defined as python dict to the corresponding resource object.
     If the dict represent a standard resource, the function will automatically load the appropriate
     resource type. Generic resources are also supported and used assuming they were defined prior to
