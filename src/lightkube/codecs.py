@@ -1,4 +1,4 @@
-from typing import Any, Iterator, List, Mapping, Optional, TextIO, Union, Dict
+from typing import Any, Dict, Iterator, List, Mapping, Optional, TextIO, Union
 
 import yaml
 
