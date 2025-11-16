@@ -2,7 +2,7 @@ import json
 import unittest.mock
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import httpx
 import pytest
@@ -35,7 +35,7 @@ users:
 """
 
 
-def json_contains(json_str: str, data: dict[str, Any]) -> None:
+def json_contains(json_str: str, data: Dict[str, Any]) -> None:
     obj = json.loads(json_str)
     for key, value in data.items():
         assert key in obj

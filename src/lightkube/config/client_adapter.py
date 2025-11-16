@@ -4,7 +4,19 @@ import os
 import ssl
 import subprocess
 from dataclasses import asdict, dataclass, field
-from typing import Optional
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    overload,
+)
 
 import httpx
 
@@ -25,6 +37,7 @@ class ConnectionParams:
 
     def httpx_params(self, config: SingleConfig) -> dict:
         base_url = config.cluster.server
+        assert config.user, "Missing user"
         verify = verify_cluster(config.cluster, config.user, config.abs_file, trust_env=self.trust_env)
         auth = user_auth(config.user)
         return dict(base_url=base_url, verify=verify, auth=auth, **asdict(self))
@@ -39,15 +52,15 @@ def AsyncClient(config: SingleConfig, conn_parameters: ConnectionParams) -> http
 
 
 class BearerAuth(httpx.Auth):
-    def __init__(self, token):
+    def __init__(self, token: str) -> None:
         self._bearer = f"Bearer {token}"
 
-    def auth_flow(self, request: httpx.Request):
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
         request.headers["Authorization"] = self._bearer
         yield request
 
 
-async def async_check_output(command, env):
+async def async_check_output(command: Sequence[str], env: Mapping[str, str]) -> bytes:
     PIPE = asyncio.subprocess.PIPE
     proc = await asyncio.create_subprocess_exec(*command, env=env, stdin=None, stdout=PIPE, stderr=PIPE)
     stdout, stderr = await proc.communicate()
@@ -56,7 +69,7 @@ async def async_check_output(command, env):
     return stdout
 
 
-def sync_check_output(command, env):
+def sync_check_output(command: Sequence[str], env: Mapping[str, str]) -> bytes:
     proc = subprocess.Popen(command, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
@@ -66,11 +79,11 @@ def sync_check_output(command, env):
 
 class ExecAuth(httpx.Auth):
     # The param name `exec` shadows the Python builtin, but changing the kwarg name would potentially break users code
-    def __init__(self, exec: UserExec):  # noqa: A002
+    def __init__(self, exec: UserExec) -> None:  # noqa: A002
         self._exec = exec
-        self._last_bearer = None
+        self._last_bearer: Optional[str] = None
 
-    def _prepare(self):
+    def _prepare(self) -> Tuple[List[str], Dict[str, str]]:
         _exec = self._exec
         if _exec.apiVersion not in (
             "client.authentication.k8s.io/v1alpha1",
@@ -85,7 +98,7 @@ class ExecAuth(httpx.Auth):
         args = _exec.args if _exec.args else []
         return [_exec.command, *args], cmd_env_vars
 
-    def sync_auth_flow(self, request: httpx.Request):
+    def sync_auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
         if self._last_bearer:
             request.headers["Authorization"] = self._last_bearer
             response = yield request
@@ -98,7 +111,7 @@ class ExecAuth(httpx.Auth):
         request.headers["Authorization"] = self._last_bearer = f"Bearer {token}"
         yield request
 
-    async def async_auth_flow(self, request: httpx.Request):
+    async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
         if self._last_bearer:
             request.headers["Authorization"] = self._last_bearer
             response = yield request
@@ -112,7 +125,15 @@ class ExecAuth(httpx.Auth):
         yield request
 
 
-def user_auth(user: Optional[User]) -> httpx.Auth:
+@overload
+def user_auth(user: User) -> Optional[httpx.Auth]: ...
+
+
+@overload
+def user_auth(user: None) -> None: ...
+
+
+def user_auth(user: Optional[User]) -> Optional[httpx.Auth]:
     if user is None:
         return None
 
@@ -128,18 +149,28 @@ def user_auth(user: Optional[User]) -> httpx.Auth:
     if user.auth_provider:
         raise ConfigError("auth-provider not supported")
 
+    # TODO: Is this intended? Previously, a return statement was just missing entirely.
+    return None
 
-def user_cert(user: User, abs_file):
+
+def user_cert(
+    user: User, abs_file: Callable[[Union[str, "os.PathLike[str]"]], Union[str, "os.PathLike[str]"]]
+) -> Optional[Tuple[Union[str, "os.PathLike[str]"], Union[str, "os.PathLike[str]"]]]:
     """Extract user certificates"""
     if user.client_cert or user.client_cert_data:
         return (
-            FileStr(user.client_cert_data) or abs_file(user.client_cert),
-            FileStr(user.client_key_data) or abs_file(user.client_key),
+            FileStr(user.client_cert_data) or abs_file(user.client_cert),  # type: ignore[arg-type]
+            FileStr(user.client_key_data) or abs_file(user.client_key),  # type: ignore[arg-type]
         )
     return None
 
 
-def verify_cluster(cluster: Cluster, user: User, abs_file, trust_env: bool = True):
+def verify_cluster(
+    cluster: Cluster,
+    user: User,
+    abs_file: Callable[[Union[str, "os.PathLike[str]"]], Union[str, "os.PathLike[str]"]],
+    trust_env: bool = True,
+) -> ssl.SSLContext:
     """setup certificate verification"""
     if cluster.certificate_auth:
         ctx = ssl.create_default_context(cafile=abs_file(cluster.certificate_auth))
