@@ -1,4 +1,4 @@
-from typing import AsyncIterable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
+from typing import AsyncIterable, AsyncIterator, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import httpx
 
@@ -742,7 +742,7 @@ class AsyncClient:
         )
         req = self._client.build_adapter_request(br)
 
-        async def stream_log():
+        async def stream_log() -> AsyncIterator[str]:
             resp = await self._client.send(req, stream=follow)
             if resp.is_error and follow:
                 # The body must be read into memory before accessing it when building the exception.
