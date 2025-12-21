@@ -4,11 +4,7 @@ import yaml
 
 from .core.exceptions import LoadResourceError
 from .core.resource_registry import resource_registry
-from .generic_resource import (
-    GenericGlobalResource,
-    GenericNamespacedResource,
-    create_resources_from_crd,
-)
+from .generic_resource import GenericGlobalResource, GenericNamespacedResource, create_resources_from_crd
 
 __all__ = ["dump_all_yaml", "from_dict", "load_all_yaml", "resource_registry"]
 REQUIRED_ATTR = ("apiVersion", "kind")

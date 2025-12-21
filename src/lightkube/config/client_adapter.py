@@ -4,24 +4,12 @@ import os
 import ssl
 import subprocess
 from dataclasses import asdict, dataclass, field
-from typing import (
-    AsyncGenerator,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    overload,
-)
+from typing import AsyncGenerator, Callable, Dict, Generator, List, Mapping, Optional, Sequence, Tuple, overload
 
 import httpx
 
 from ..core.exceptions import ConfigError
-from .kubeconfig import SingleConfig
+from .kubeconfig import SingleConfig, StrOrPath
 from .models import Cluster, FileStr, User, UserExec
 
 
@@ -153,9 +141,7 @@ def user_auth(user: Optional[User]) -> Optional[httpx.Auth]:
     return None
 
 
-def user_cert(
-    user: User, abs_file: Callable[[Union[str, "os.PathLike[str]"]], Union[str, "os.PathLike[str]"]]
-) -> Optional[Tuple[Union[str, "os.PathLike[str]"], Union[str, "os.PathLike[str]"]]]:
+def user_cert(user: User, abs_file: Callable[[StrOrPath], StrOrPath]) -> Optional[Tuple[StrOrPath, StrOrPath]]:
     """Extract user certificates"""
     if user.client_cert or user.client_cert_data:
         return (
@@ -168,7 +154,7 @@ def user_cert(
 def verify_cluster(
     cluster: Cluster,
     user: User,
-    abs_file: Callable[[Union[str, "os.PathLike[str]"]], Union[str, "os.PathLike[str]"]],
+    abs_file: Callable[[StrOrPath], StrOrPath],
     trust_env: bool = True,
 ) -> ssl.SSLContext:
     """setup certificate verification"""

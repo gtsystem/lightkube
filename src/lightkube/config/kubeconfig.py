@@ -7,6 +7,9 @@ import yaml
 from ..core import exceptions
 from .models import Cluster, Context, User
 
+StrOrPath = Union[str, "os.PathLike[str]"]
+
+
 if TYPE_CHECKING:
     from typing_extensions import Self
 
@@ -52,7 +55,7 @@ class SingleConfig(NamedTuple):
         """Returns the namespace in the current context"""
         return self.context.namespace or DEFAULT_NAMESPACE
 
-    def abs_file(self, fname: Union[str, "os.PathLike[str]"]) -> Union[str, "os.PathLike[str]"]:
+    def abs_file(self, fname: StrOrPath) -> StrOrPath:
         """Return the absolute path of a relative file path, relatively to the configuration file"""
         if Path(fname).is_absolute():
             return fname
@@ -90,7 +93,7 @@ class KubeConfig:
         contexts: Dict[str, Context],
         users: Optional[Dict[str, User]] = None,
         current_context: Optional[str] = None,
-        fname: Optional[Union[str, "os.PathLike[str]"]] = None,
+        fname: Optional[StrOrPath] = None,
     ) -> None:
         """
         Create the kubernetes configuration manually. Normally this constructor should not be called directly.
@@ -110,7 +113,7 @@ class KubeConfig:
         self.fname = Path(fname) if fname else None
 
     @classmethod
-    def from_dict(cls, conf: Dict, fname: Optional[Union[str, "os.PathLike[str]"]] = None) -> "KubeConfig":
+    def from_dict(cls, conf: Dict, fname: Optional[StrOrPath] = None) -> "KubeConfig":
         """Creates a KubeConfig instance from the content of a dictionary structure.
 
         **Parameters**
@@ -159,7 +162,7 @@ class KubeConfig:
         )
 
     @classmethod
-    def from_file(cls, fname: Union[str, "os.PathLike[str]"]) -> "KubeConfig":
+    def from_file(cls, fname: StrOrPath) -> "KubeConfig":
         """Creates an instance of the KubeConfig class from a kubeconfig file in YAML format.
 
         **Parameters**
@@ -180,7 +183,7 @@ class KubeConfig:
         user: Optional[User] = None,
         context_name: str = "default",
         namespace: Optional[str] = None,
-        fname: Optional[Union[str, "os.PathLike[str]"]] = None,
+        fname: Optional[StrOrPath] = None,
     ) -> "KubeConfig":
         """Creates an instance of the KubeConfig class from one cluster and one user configuration"""
         context = Context(
@@ -202,7 +205,7 @@ class KubeConfig:
         return cls.from_one(cluster=Cluster(server=url), namespace=namespace)
 
     @classmethod
-    def from_service_account(cls, service_account: Union[str, "os.PathLike[str]"] = SERVICE_ACCOUNT) -> "KubeConfig":
+    def from_service_account(cls, service_account: StrOrPath = SERVICE_ACCOUNT) -> "KubeConfig":
         """Creates a configuration from in-cluster service account information.
 
         **Parameters**
@@ -234,8 +237,8 @@ class KubeConfig:
     @classmethod
     def from_env(
         cls,
-        service_account: Union[str, "os.PathLike[str]"] = SERVICE_ACCOUNT,
-        default_config: Union[str, "os.PathLike[str]"] = DEFAULT_KUBECONFIG,
+        service_account: StrOrPath = SERVICE_ACCOUNT,
+        default_config: StrOrPath = DEFAULT_KUBECONFIG,
     ) -> "KubeConfig":
         """Attempts to load the configuration automatically looking at the environment and filesystem.
 
