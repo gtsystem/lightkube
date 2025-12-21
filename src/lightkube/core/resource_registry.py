@@ -82,7 +82,7 @@ class ResourceRegistry:
         """
         return self._registry.get((version, kind))
 
-    def load(self, version, kind) -> Optional[Type[AnyResource]]:
+    def load(self, version, kind) -> Type[AnyResource]:
         """Load a standard resource from `lightkube.resources` given `version` and `kind`.
         This method look up the registry first and import the resource from the module only if it's not available there.
 
