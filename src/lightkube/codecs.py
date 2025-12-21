@@ -34,8 +34,6 @@ def from_dict(d: Dict[str, Any]) -> AnyResource:
             raise LoadResourceError(f"Invalid resource definition, key '{attr}' missing.")
 
     model = resource_registry.load(d["apiVersion"], d["kind"])
-    if not model:
-        raise LoadResourceError(f"Cannot find resource kind '{d['kind']}' in resource registry.")
     return model.from_dict(d)
 
 
