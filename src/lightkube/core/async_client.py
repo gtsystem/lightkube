@@ -57,6 +57,8 @@ class AsyncClient:
         proxy: Optional[str] = None,
         http2: bool = False,
     ):
+        if timeout is None:
+            timeout = httpx.Timeout(10.0)
         self._client = GenericAsyncClient(
             ConnectionParams(timeout=timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2),
             config,
