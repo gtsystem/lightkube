@@ -78,7 +78,7 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_async_client, 
     lightkube.AsyncClient(config=single_conf, trust_env=False)
     verify_cluster.assert_called_once_with(single_conf.cluster, single_conf.user, single_conf.abs_file, trust_env=False)
     httpx_async_client.assert_called_once_with(
-        timeout=None,
+        timeout=httpx.Timeout(timeout=10.0),
         base_url=single_conf.cluster.server,
         verify=verify_cluster.return_value,
         auth=user_auth.return_value,
