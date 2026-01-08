@@ -89,6 +89,9 @@ select = [
     "I",   # isort
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["lightkube"]
+
 [[tool.mypy.overrides]]
 module = [
     "lightkube.codecs",

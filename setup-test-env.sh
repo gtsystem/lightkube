@@ -7,7 +7,7 @@ set -euo pipefail
 
 if [ -d "../lightkube-models" ]; then
   echo "Found 'lightkube-models' locally. Will use that as source root."
-  SOURCE_DIR=$(realpath "../lightkube-models")
+  SOURCE_DIR=$(realpath "../lightkube-models/src")
 else
   echo "Did not find 'lightkube-models' locally. Will use the venv's site packages folder as source root."
   SOURCE_DIR=$(uv run --no-project python -c 'import site; print(site.getsitepackages()[0])')
