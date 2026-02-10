@@ -756,7 +756,7 @@ class AsyncClient:
 
         return stream_log()
 
-    async def exec(
+    async def pod_exec(
         self,
         name: str,
         *,
