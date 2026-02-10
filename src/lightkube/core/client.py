@@ -751,6 +751,7 @@ class Client:
         stdin: Union[str, bytes, BinaryIO, None] = None,
         stdout: Union[BinaryIO, bool] = False,
         stderr: Union[BinaryIO, bool] = False,
+        decode: Optional[str] = None,
         raise_on_error: bool = False,
     ) -> ExecResponse:
         """Execute a command in a Pod and return stdout/stderr.
@@ -765,12 +766,15 @@ class Client:
               If a binary stream is passed, the command's stdout will be written to it instead.
             stderr: If `True`, the command's stderr will be captured and returned in the response.
               If a binary stream is passed, the command's stderr will be written to it instead.
+            decode: If set, decode captured stdout/stderr using this encoding and return strings.
             raise_on_error: If `True`, an exception will be raised if the command exits with a non-zero status code.
               Note that other exceptions may still be raised for other types of errors, such as connection issues, missing pod or timeouts.
         """
         commands = [command] if isinstance(command, str) else list(command)
         params = {"command": commands, "stdout": stdout, "stderr": stderr, "stdin": stdin}
-        return self._client.ws_request("exec", name=name, namespace=namespace, params=params, raise_on_error=raise_on_error)
+        return self._client.ws_request(
+            "exec", name=name, namespace=namespace, params=params, raise_on_error=raise_on_error, decode=decode
+        )
 
     @overload
     def apply(

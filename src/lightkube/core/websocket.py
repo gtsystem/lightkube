@@ -33,8 +33,8 @@ class ExecResponse(NamedTuple):
         exit_code: The command's exit code.
     """
 
-    stdout: Optional[bytes] = None
-    stderr: Optional[bytes] = None
+    stdout: Optional[Union[str, bytes]] = None
+    stderr: Optional[Union[str, bytes]] = None
     exit_code: int = 0
 
 
@@ -78,16 +78,22 @@ class WebsocketDriver:
         stdin: Union[str, bytes, BinaryIO, None] = None,
         stdout: Union[BinaryIO, bool] = False,
         stderr: Union[BinaryIO, bool] = False,
+        decode: Optional[str] = None,
         raise_on_error: bool = False,
     ) -> ExecResponse:
         with self._ws as ws:
             if stdin is not None:
                 self.write_stdin(ws, stdin, close=True)
 
-            return self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error)
+            return self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
 
     def read_output(
-        self, ws, stdout: Union[BinaryIO, bool] = False, stderr: Union[BinaryIO, bool] = False, raise_on_error: bool = False
+        self,
+        ws,
+        stdout: Union[BinaryIO, bool] = False,
+        stderr: Union[BinaryIO, bool] = False,
+        raise_on_error: bool = False,
+        decode: Optional[str] = None,
     ) -> ExecResponse:
         capture_stdout = capture_stderr = False
         if stdout is True:
@@ -116,11 +122,12 @@ class WebsocketDriver:
                     if details and details.causes:
                         exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
 
-                return ExecResponse(
-                    stdout=stdout.getvalue() if capture_stdout else None,
-                    stderr=stderr.getvalue() if capture_stderr else None,
-                    exit_code=exit_code,
-                )
+                stdout_value = stderr_value = None
+                if capture_stdout:
+                    stdout_value = stdout.getvalue() if decode is None else stdout.getvalue().decode(decode)
+                if capture_stderr:
+                    stderr_value = stderr.getvalue() if decode is None else stderr.getvalue().decode(decode)
+                return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
 
 
 class AsyncWebsocketDriver:
@@ -163,16 +170,22 @@ class AsyncWebsocketDriver:
         stdin: Union[str, bytes, BinaryIO, None] = None,
         stdout: Union[BinaryIO, bool] = False,
         stderr: Union[BinaryIO, bool] = False,
+        decode: Optional[str] = None,
         raise_on_error: bool = False,
     ) -> ExecResponse:
         async with self._ws as ws:
             if stdin is not None:
                 await self.write_stdin(ws, stdin, close=True)
 
-            return await self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error)
+            return await self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
 
     async def read_output(
-        self, ws, stdout: Union[BinaryIO, bool] = False, stderr: Union[BinaryIO, bool] = False, raise_on_error: bool = False
+        self,
+        ws,
+        stdout: Union[BinaryIO, bool] = False,
+        stderr: Union[BinaryIO, bool] = False,
+        raise_on_error: bool = False,
+        decode: Optional[str] = None,
     ) -> ExecResponse:
         capture_stdout = capture_stderr = False
         if stdout is True:
@@ -200,8 +213,10 @@ class AsyncWebsocketDriver:
                     if details and details.causes:
                         exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
 
-                return ExecResponse(
-                    stdout=stdout.getvalue() if capture_stdout else None,
-                    stderr=stderr.getvalue() if capture_stderr else None,
-                    exit_code=exit_code,
-                )
+                stdout_value = stderr_value = None
+                if capture_stdout:
+                    stdout_value = stdout.getvalue() if decode is None else stdout.getvalue().decode(decode)
+                if capture_stderr:
+                    stderr_value = stderr.getvalue() if decode is None else stderr.getvalue().decode(decode)
+
+                return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
