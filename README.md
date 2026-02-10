@@ -181,10 +181,27 @@ for line in client.log('my-pod', follow=True):
     print(line)
 ```
 
+Execute a command inside a pod
+```python
+from lightkube import Client
+
+client = Client()
+
+# Capture stdout/stderr and get the exit code
+res = client.exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
+    stdout=True, raise_on_error=True)
+print(res.stdout.decode('utf-8'))
+
+# Send data to stdin and capture output
+res = client.exec('my-pod', namespace='default', command=['cat'], 
+    stdin='hello\n', stdout=True)
+print(res.stdout.decode('utf-8'))
+print(res.exit_code)
+```
+
 ## Unsupported features
 
 The following features are not supported at the moment:
 
-* Special subresources `attach`, `exec`, `portforward` and `proxy`.
-* `auth-provider` authentication method is not supported. The supported
-  authentication methods are `token`, `username` + `password` and `exec`.
+* Special subresources `attach`, `portforward` and `proxy`.
+* `auth-provider` authentication method is not supported. The supported authentication methods are `token`, `username` + `password` and `exec`.
