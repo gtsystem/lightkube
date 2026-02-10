@@ -187,13 +187,13 @@ from lightkube import Client
 
 client = Client()
 
-# Capture stdout/stderr and get the exit code
-res = client.exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
+# Capture stdout or raise ApiError if error code is != 0
+res = client.pod_exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
     stdout=True, raise_on_error=True)
 print(res.stdout.decode('utf-8'))
 
 # Send data to stdin and capture output
-res = client.exec('my-pod', namespace='default', command=['cat'], 
+res = client.pod_exec('my-pod', namespace='default', command=['cat'], 
     stdin='hello\n', stdout=True)
 print(res.stdout.decode('utf-8'))
 print(res.exit_code)
