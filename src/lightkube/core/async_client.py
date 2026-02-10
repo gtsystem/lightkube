@@ -1,4 +1,4 @@
-from typing import AsyncIterable, AsyncIterator, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
+from typing import AsyncIterable, AsyncIterator, BinaryIO, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import httpx
 
@@ -20,6 +20,7 @@ from .client import (
 from .generic_client import GenericAsyncClient, ListAsyncIterable
 from .internal_resources import core_v1
 from .selector import build_selector
+from .websocket import ExecResponse
 
 
 class AsyncClient:
@@ -754,6 +755,38 @@ class AsyncClient:
                 yield line + "\n" if newlines else line
 
         return stream_log()
+
+    async def exec(
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        command: Union[str, Iterable[str]],
+        stdin: Union[str, bytes, BinaryIO, None] = None,
+        stdout: Union[BinaryIO, bool] = False,
+        stderr: Union[BinaryIO, bool] = False,
+        raise_on_error: bool = False,
+    ) -> ExecResponse:
+        """Execute a command in a Pod and return stdout/stderr.
+
+        Parameters:
+          name: Name of the Pod.
+          namespace: Name of the namespace containing the Pod.
+          command: Command to execute in the Pod.
+          stdin: Data to send to stdin. This can be either a string, bytes or a binary stream.
+            Strings will be encoded as utf-8 before sending.
+          stdout: If `True`, the command's stdout will be captured and returned in the response.
+            If a binary stream is passed, the command's stdout will be written to it instead.
+          stderr: If `True`, the command's stderr will be captured and returned in the response.
+            If a binary stream is passed, the command's stderr will be written to it instead.
+          raise_on_error: If `True`, an exception will be raised if the command exits with a non-zero status code.
+            Note that other exceptions may still be raised for other types of errors, such as connection issues, missing pod or timeouts.
+        """
+        commands = [command] if isinstance(command, str) else list(command)
+        params = {"command": commands, "stdout": stdout, "stderr": stderr, "stdin": stdin}
+        return await self._client.ws_request(
+            "exec", name=name, namespace=namespace, params=params, raise_on_error=raise_on_error
+        )
 
     @overload
     async def apply(

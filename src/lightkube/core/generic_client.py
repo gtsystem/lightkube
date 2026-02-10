@@ -12,6 +12,8 @@ from ..config.kubeconfig import DEFAULT_KUBECONFIG, KubeConfig, SingleConfig
 from ..types import OnErrorAction, OnErrorHandler, PatchType, on_error_raise
 from . import resource as r
 from .exceptions import ApiError, NotReadyError
+from .internal_models import core_v1_res
+from .websocket import AsyncWebsocketDriver, ExecResponse, WebsocketDriver
 
 ALL_NS = "*"
 
@@ -33,6 +35,7 @@ METHOD_MAPPING = {
     "post": "POST",
     "put": "PUT",
     "watch": "GET",
+    "exec": "GET",
 }
 
 
@@ -179,7 +182,7 @@ class GenericClient:
             real_method = "watch" if watch else method
 
         api_info = r.api_info(res)
-        if real_method not in api_info.verbs:
+        if real_method not in api_info.verbs and real_method != "exec":
             if watch:
                 raise ValueError(f"Resource '{res.__name__}' is not watchable")
             else:
@@ -233,7 +236,7 @@ class GenericClient:
                     data["kind"] = api_info.resource.kind
 
         path.append(api_info.plural)
-        if method in ("delete", "get", "patch", "put") or api_info.action:
+        if method in ("delete", "get", "patch", "put", "exec") or api_info.action:
             if name is None and method == "put":
                 name = obj.metadata.name
             if name is None:
@@ -242,6 +245,8 @@ class GenericClient:
 
         if api_info.action:
             path.append(api_info.action)
+        elif method == "exec":
+            path.append("exec")
 
         http_method = METHOD_MAPPING[method]
         if http_method == "DELETE":
@@ -263,7 +268,7 @@ class GenericClient:
         except httpx.HTTPError as e:
             raise transform_exception(e) from e
 
-    def build_adapter_request(self, br: BasicRequest):
+    def build_adapter_request(self, br: BasicRequest) -> httpx.Request:
         return self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
 
     def convert_to_resource(self, res: Type[r.Resource], item: dict) -> r.Resource:
@@ -341,6 +346,24 @@ class GenericSyncClient(GenericClient):
         resp = self.send(req)
         return self.handle_response(method, resp, br)
 
+    def ws_request(
+        self, method, name=None, namespace=None, params: Optional[dict] = None, raise_on_error: bool = False
+    ) -> ExecResponse:
+        stdin = stdout = stderr = None
+        if "stdin" in params:
+            stdin = params["stdin"]
+            params["stdin"] = True
+        if "stdout" in params:
+            stdout = params["stdout"]
+            params["stdout"] = True
+        if "stderr" in params:
+            stderr = params["stderr"]
+            params["stderr"] = True
+        br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
+        return WebsocketDriver(self._client, br).write_and_read(
+            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error
+        )
+
     def list_chunks(self, br: BasicRequest) -> Iterator[Tuple[str, Iterator]]:
         cont = True
         while cont:
@@ -398,6 +421,24 @@ class GenericAsyncClient(GenericClient):
         req = self.build_adapter_request(br)
         resp = await self.send(req)
         return self.handle_response(method, resp, br)
+
+    async def ws_request(
+        self, method, name=None, namespace=None, params: Optional[dict] = None, raise_on_error: bool = False
+    ) -> ExecResponse:
+        stdin = stdout = stderr = None
+        if "stdin" in params:
+            stdin = params["stdin"]
+            params["stdin"] = True
+        if "stdout" in params:
+            stdout = params["stdout"]
+            params["stdout"] = True
+        if "stderr" in params:
+            stderr = params["stderr"]
+            params["stderr"] = True
+        br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
+        return await AsyncWebsocketDriver(self._client, br).write_and_read(
+            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error
+        )
 
     async def list_chunks(self, br: BasicRequest) -> AsyncIterator[Tuple[str, Iterator]]:
         cont = True

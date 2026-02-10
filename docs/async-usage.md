@@ -115,3 +115,22 @@ async def example():
     async for line in client.log('my-pod', follow=True):
         print(line)
 ```
+
+Execute a command inside a pod
+```python
+from lightkube import AsyncClient
+
+async def example():
+    client = AsyncClient()
+
+    # List a directory
+    res = await client.exec('my-pod', namespace='default', command=['/bin/ls', '/'], 
+        stdout=True, raise_on_error=True)
+    print(res.stdout.decode('utf-8'))
+
+    # Send data to stdin and capture output
+    res = await client.exec('my-pod', namespace='default', command=['cat'], 
+        stdin='hello\n', stdout=True)
+    print(res.stdout.decode('utf-8'))
+    print(res.exit_code)
+```
