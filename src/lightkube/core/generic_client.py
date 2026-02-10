@@ -347,7 +347,13 @@ class GenericSyncClient(GenericClient):
         return self.handle_response(method, resp, br)
 
     def ws_request(
-        self, method, name=None, namespace=None, params: Optional[dict] = None, raise_on_error: bool = False
+        self,
+        method,
+        name=None,
+        namespace=None,
+        params: Optional[dict] = None,
+        raise_on_error: bool = False,
+        decode: Optional[str] = None,
     ) -> ExecResponse:
         stdin = stdout = stderr = None
         if "stdin" in params:
@@ -361,7 +367,7 @@ class GenericSyncClient(GenericClient):
             params["stderr"] = True
         br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
         return WebsocketDriver(self._client, br).write_and_read(
-            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error
+            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
     def list_chunks(self, br: BasicRequest) -> Iterator[Tuple[str, Iterator]]:
@@ -423,7 +429,13 @@ class GenericAsyncClient(GenericClient):
         return self.handle_response(method, resp, br)
 
     async def ws_request(
-        self, method, name=None, namespace=None, params: Optional[dict] = None, raise_on_error: bool = False
+        self,
+        method,
+        name=None,
+        namespace=None,
+        params: Optional[dict] = None,
+        raise_on_error: bool = False,
+        decode: Optional[str] = None,
     ) -> ExecResponse:
         stdin = stdout = stderr = None
         if "stdin" in params:
@@ -437,7 +449,7 @@ class GenericAsyncClient(GenericClient):
             params["stderr"] = True
         br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
         return await AsyncWebsocketDriver(self._client, br).write_and_read(
-            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error
+            stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
     async def list_chunks(self, br: BasicRequest) -> AsyncIterator[Tuple[str, Iterator]]:

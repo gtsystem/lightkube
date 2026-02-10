@@ -792,6 +792,13 @@ def test_exec_captures_stdout_stderr(client: lightkube.Client, monkeypatch) -> N
     assert res.stderr == b"err"
     assert res.exit_code == 0
 
+    messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
+    monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
+    res = client.pod_exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode="utf-8")
+    assert res.stdout == "out"
+    assert res.stderr == "err"
+    assert res.exit_code == 0
+
     res = client.pod_exec("pod-1", command=["/bin/echo", "hi"])
     assert res.stdout is None
     assert res.stderr is None
