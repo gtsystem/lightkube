@@ -95,39 +95,14 @@ class WebsocketDriver:
         raise_on_error: bool = False,
         decode: Optional[str] = None,
     ) -> ExecResponse:
-        capture_stdout = capture_stderr = False
-        if stdout is True:
-            stdout = io.BytesIO()
-            capture_stdout = True
-        if stderr is True:
-            stderr = io.BytesIO()
-            capture_stderr = True
+        accumulator = ExecAccumulator(stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
         while True:
             message = ws.receive_bytes()
             channel, message = message[0], message[1:]
             print(channel, len(message))
-            if channel == STDOUT_CHANNEL:
-                if stdout:
-                    stdout.write(message)
-            elif channel == STDERR_CHANNEL:
-                if stderr:
-                    stderr.write(message)
-            elif channel == ERROR_CHANNEL:
-                exit_code = 0
-                error = ApiError(status=json.loads(message))
-                if error.status.status == "Failure":
-                    if error.status.reason != "NonZeroExitCode" or raise_on_error:
-                        raise error
-                    details = error.status.details
-                    if details and details.causes:
-                        exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
-
-                stdout_value = stderr_value = None
-                if capture_stdout:
-                    stdout_value = stdout.getvalue() if decode is None else stdout.getvalue().decode(decode)
-                if capture_stderr:
-                    stderr_value = stderr.getvalue() if decode is None else stderr.getvalue().decode(decode)
-                return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
+            response = accumulator.feed(channel, message)
+            if response is not None:
+                return response
 
 
 class AsyncWebsocketDriver:
@@ -187,36 +162,56 @@ class AsyncWebsocketDriver:
         raise_on_error: bool = False,
         decode: Optional[str] = None,
     ) -> ExecResponse:
-        capture_stdout = capture_stderr = False
-        if stdout is True:
-            stdout = io.BytesIO()
-            capture_stdout = True
-        if stderr is True:
-            stderr = io.BytesIO()
-            capture_stderr = True
+        accumulator = ExecAccumulator(stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
         while True:
             message = await ws.receive_bytes()
             channel, message = message[0], message[1:]
-            if channel == STDOUT_CHANNEL:
-                if stdout:
-                    stdout.write(message)
-            elif channel == STDERR_CHANNEL:
-                if stderr:
-                    stderr.write(message)
-            elif channel == ERROR_CHANNEL:
-                exit_code = 0
-                error = ApiError(status=json.loads(message))
-                if error.status.status == "Failure":
-                    if error.status.reason != "NonZeroExitCode" or raise_on_error:
-                        raise error
-                    details = error.status.details
-                    if details and details.causes:
-                        exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
+            response = accumulator.feed(channel, message)
+            if response is not None:
+                return response
 
-                stdout_value = stderr_value = None
-                if capture_stdout:
-                    stdout_value = stdout.getvalue() if decode is None else stdout.getvalue().decode(decode)
-                if capture_stderr:
-                    stderr_value = stderr.getvalue() if decode is None else stderr.getvalue().decode(decode)
 
-                return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
+class ExecAccumulator:
+    def __init__(
+        self,
+        *,
+        stdout: Union[BinaryIO, bool],
+        stderr: Union[BinaryIO, bool],
+        raise_on_error: bool,
+        decode: Optional[str],
+    ) -> None:
+        self._raise_on_error = raise_on_error
+        self._decode = decode
+        self._capture_stdout = stdout is True
+        self._capture_stderr = stderr is True
+        self._stdout = io.BytesIO() if stdout is True else stdout
+        self._stderr = io.BytesIO() if stderr is True else stderr
+
+    def feed(self, channel: int, message: bytes) -> Optional[ExecResponse]:
+        if channel == STDOUT_CHANNEL:
+            if self._stdout:
+                self._stdout.write(message)
+            return None
+        if channel == STDERR_CHANNEL:
+            if self._stderr:
+                self._stderr.write(message)
+            return None
+        if channel != ERROR_CHANNEL:
+            return None
+
+        exit_code = 0
+        error = ApiError(status=json.loads(message))
+        if error.status.status == "Failure":
+            if error.status.reason != "NonZeroExitCode" or self._raise_on_error:
+                raise error
+            details = error.status.details
+            if details and details.causes:
+                exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
+
+        stdout_value = stderr_value = None
+        if self._capture_stdout:
+            stdout_value = self._stdout.getvalue() if self._decode is None else self._stdout.getvalue().decode(self._decode)
+        if self._capture_stderr:
+            stderr_value = self._stderr.getvalue() if self._decode is None else self._stderr.getvalue().decode(self._decode)
+
+        return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
