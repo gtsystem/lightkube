@@ -124,12 +124,12 @@ async def example():
     client = AsyncClient()
 
     # List a directory
-    res = await client.pod_exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
+    res = await client.exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
         stdout=True, raise_on_error=True, decode='utf-8')
     print(res.stdout)
 
     # Send data to stdin and capture output
-    res = await client.pod_exec('my-pod', namespace='default', command=['cat'], 
+    res = await client.exec('my-pod', namespace='default', command=['cat'], 
         stdin='hello\n', stdout=True, decode='utf-8')
     print(res.stdout)
     print(res.exit_code)
