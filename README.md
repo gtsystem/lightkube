@@ -189,12 +189,12 @@ client = Client()
 
 # Capture stdout or raise ApiError if error code is != 0
 res = client.exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
-    stdout=True, raise_on_error=True, decode='utf-8')
+    stdout=True, raise_on_error=True)
 print(res.stdout)
 
 # Send data to stdin and capture output
 res = client.exec('my-pod', namespace='default', command=['cat'], 
-    stdin='hello\n', stdout=True, decode='utf-8')
+    stdin='hello\n', stdout=True)
 print(res.stdout)
 print(res.exit_code)
 ```

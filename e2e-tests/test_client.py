@@ -452,7 +452,7 @@ def test_exec_integration_ls_and_cat():
             stdout=True,
             raise_on_error=True,
         )
-        assert b"bin" in ls_res.stdout.split()
+        assert "bin" in ls_res.stdout.split()
 
         try:
             cat_res = client.exec(
@@ -467,7 +467,7 @@ def test_exec_integration_ls_and_cat():
             if "Only subprotocol v5.channel.k8s.io" in str(exc):
                 pytest.skip("stdin not supported without v5.channel.k8s.io protocol")
             raise
-        assert cat_res.stdout == b"hello from stdin\n"
+        assert cat_res.stdout == "hello from stdin\n"
         assert cat_res.exit_code == 0
     finally:
         client.delete(Pod, pod.metadata.name)
@@ -487,7 +487,7 @@ async def test_exec_integration_ls_and_cat_async():
             stdout=True,
             raise_on_error=True,
         )
-        assert b"bin" in ls_res.stdout.split()
+        assert "bin" in ls_res.stdout.split()
 
         try:
             cat_res = await client.exec(
@@ -502,7 +502,7 @@ async def test_exec_integration_ls_and_cat_async():
             if "Only subprotocol v5.channel.k8s.io" in str(exc):
                 pytest.skip("stdin not supported without v5.channel.k8s.io protocol")
             raise
-        assert cat_res.stdout == b"hello from stdin\n"
+        assert cat_res.stdout == "hello from stdin\n"
     finally:
         await client.delete(Pod, pod.metadata.name)
         await client.close()
