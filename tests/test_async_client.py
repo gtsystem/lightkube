@@ -492,14 +492,14 @@ async def test_exec_captures_stdout_stderr(client: lightkube.AsyncClient, monkey
 
     monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=0))
 
-    res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
+    res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode=None)
     assert res.stdout == b"out"
     assert res.stderr == b"err"
     assert res.exit_code == 0
 
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
     monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=0))
-    res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode="utf-8")
+    res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
     assert res.stdout == "out"
     assert res.stderr == "err"
     assert res.exit_code == 0
