@@ -1062,7 +1062,7 @@ wheels = [
 
 [[package]]
 name = "lightkube"
-version = "0.19.1"
+version = "0.20.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
