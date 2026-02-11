@@ -787,19 +787,19 @@ def test_exec_captures_stdout_stderr(client: lightkube.Client, monkeypatch) -> N
 
     monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
 
-    res = client.pod_exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
+    res = client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
     assert res.stdout == b"out"
     assert res.stderr == b"err"
     assert res.exit_code == 0
 
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
     monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
-    res = client.pod_exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode="utf-8")
+    res = client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode="utf-8")
     assert res.stdout == "out"
     assert res.stderr == "err"
     assert res.exit_code == 0
 
-    res = client.pod_exec("pod-1", command=["/bin/echo", "hi"])
+    res = client.exec("pod-1", command=["/bin/echo", "hi"])
     assert res.stdout is None
     assert res.stderr is None
     assert res.exit_code == 0
@@ -813,9 +813,9 @@ def test_exec_raises_on_non_zero_exit(client: lightkube.Client, monkeypatch) -> 
     monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=12))
 
     with pytest.raises(lightkube.ApiError):
-        client.pod_exec("pod-1", command="/bin/false", raise_on_error=True)
+        client.exec("pod-1", command="/bin/false", raise_on_error=True)
 
-    res = client.pod_exec("pod-1", command="/bin/false", raise_on_error=False)
+    res = client.exec("pod-1", command="/bin/false", raise_on_error=False)
     assert res.exit_code == 12
 
 
@@ -833,7 +833,7 @@ def test_exec_writes_to_provided_streams(client: lightkube.Client, monkeypatch) 
     out_stream = io.BytesIO()
     err_stream = io.BytesIO()
 
-    res = client.pod_exec("pod-stream", command=["/bin/echo"], stdout=out_stream, stderr=err_stream)
+    res = client.exec("pod-stream", command=["/bin/echo"], stdout=out_stream, stderr=err_stream)
 
     # When passing streams, ExecResponse stdout/stderr are None, but streams receive data
     assert isinstance(res, ExecResponse)
@@ -852,25 +852,25 @@ def test_exec_stdin_variants(client: lightkube.Client, monkeypatch) -> None:
     # bytes
     ws = FakeWS(messages, exit_code=0)
     monkeypatch.setattr(httpx_ws, "connect_ws", ws.as_connect())
-    client.pod_exec("pod-stdin", command=["/bin/cmd"], stdin=b"byte-input")
+    client.exec("pod-stdin", command=["/bin/cmd"], stdin=b"byte-input")
     assert any(b"byte-input" in s for s in ws.sent)
 
     # str
     ws2 = FakeWS(messages, exit_code=0)
     monkeypatch.setattr(httpx_ws, "connect_ws", ws2.as_connect())
-    client.pod_exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
+    client.exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
     assert any(b"text-input" in s for s in ws2.sent)
 
     # file-like
     ws3 = FakeWS(messages, exit_code=0)
     monkeypatch.setattr(httpx_ws, "connect_ws", ws3.as_connect())
-    client.pod_exec("pod-stdin", command=["/bin/cmd"], stdin=io.BytesIO(b"stream-input"))
+    client.exec("pod-stdin", command=["/bin/cmd"], stdin=io.BytesIO(b"stream-input"))
     assert any(b"stream-input" in s for s in ws3.sent)
 
     # None (no stdin) -> nothing sent
     ws4 = FakeWS(messages, exit_code=0)
     monkeypatch.setattr(httpx_ws, "connect_ws", ws4.as_connect())
-    client.pod_exec("pod-stdin", command=["/bin/cmd"], stdin=None)
+    client.exec("pod-stdin", command=["/bin/cmd"], stdin=None)
     assert ws4.sent == []
 
 

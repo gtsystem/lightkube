@@ -742,7 +742,7 @@ class Client:
         self._client.raise_for_status(resp)
         return (line + "\n" if newlines else line for line in resp.iter_lines())
 
-    def pod_exec(
+    def exec(
         self,
         name: str,
         *,

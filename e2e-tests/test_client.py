@@ -445,7 +445,7 @@ def test_exec_integration_ls_and_cat():
     try:
         client.wait(Pod, pod.metadata.name, for_conditions=["Ready"])
 
-        ls_res = client.pod_exec(
+        ls_res = client.exec(
             pod.metadata.name,
             namespace=pod.metadata.namespace,
             command=["/bin/sh", "-c", "ls /"],
@@ -455,7 +455,7 @@ def test_exec_integration_ls_and_cat():
         assert b"bin" in ls_res.stdout.split()
 
         try:
-            cat_res = client.pod_exec(
+            cat_res = client.exec(
                 pod.metadata.name,
                 namespace=pod.metadata.namespace,
                 command=["/bin/cat"],
@@ -480,7 +480,7 @@ async def test_exec_integration_ls_and_cat_async():
     try:
         await client.wait(Pod, pod.metadata.name, for_conditions=["Ready"])
 
-        ls_res = await client.pod_exec(
+        ls_res = await client.exec(
             pod.metadata.name,
             namespace=pod.metadata.namespace,
             command=["/bin/sh", "-c", "ls /"],
@@ -490,7 +490,7 @@ async def test_exec_integration_ls_and_cat_async():
         assert b"bin" in ls_res.stdout.split()
 
         try:
-            cat_res = await client.pod_exec(
+            cat_res = await client.exec(
                 pod.metadata.name,
                 namespace=pod.metadata.namespace,
                 command=["/bin/cat"],
