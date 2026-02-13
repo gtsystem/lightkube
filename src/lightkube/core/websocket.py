@@ -1,9 +1,13 @@
 import io
 import json
-from typing import TYPE_CHECKING, BinaryIO, Iterable, NamedTuple, Optional, TypeVar, Union
+import queue
+from time import monotonic
+from typing import TYPE_CHECKING, BinaryIO, Iterable, Optional, TypeVar, Union
 
 import httpx
+from httpx_ws import aconnect_ws, connect_ws
 
+from ..types import ExecResponse
 from .exceptions import ApiError
 
 if TYPE_CHECKING:
@@ -23,35 +27,35 @@ def first(iterable: Iterable[T], default: Optional[T] = None) -> Optional[T]:
     return next(iterator, default)
 
 
-class ExecResponse(NamedTuple):
-    """
-    Response from an exec command, containing stdout, stderr and exit code.
+class BudgetTimer:
+    def __init__(self, timeout: Optional[float], timeout_msg: str) -> None:
+        self._deadline = monotonic() + timeout if timeout is not None else None
+        self._timeout_msg = timeout_msg
 
-    Attributes:
-        stdout: The command's stdout, if captured.
-        stderr: The command's stderr, if captured.
-        exit_code: The command's exit code.
-    """
-
-    stdout: Optional[Union[str, bytes]] = None
-    stderr: Optional[Union[str, bytes]] = None
-    exit_code: int = 0
+    def budget(self) -> Optional[float]:
+        if self._deadline is None:
+            return None
+        budget = self._deadline - monotonic()
+        if budget <= 0:
+            raise httpx.ReadTimeout(self._timeout_msg)
+        return budget
 
 
-class WebsocketDriver:
+class BaseWebsocketDriver:
     PROTOCOLS = ("v5.channel.k8s.io", "v4.channel.k8s.io")
+    _TIMEOUT_MSG = "Timeout while waiting complete response from exec command"
 
-    def __init__(self, client: Optional[httpx.Client], br: "BasicRequest"):
-        from httpx_ws import connect_ws
-
-        self._ws = connect_ws(
+    def __init__(self, client: Union[httpx.Client, httpx.AsyncClient], br: "BasicRequest", timeout: Optional[float] = None):
+        self._timeout = timeout
+        ws_func = connect_ws if isinstance(client, httpx.Client) else aconnect_ws
+        self._ws = ws_func(
             br.url,
             client,
             subprotocols=self.PROTOCOLS,
             params=br.params,
         )
 
-    def write_stdin(self, ws, msg: Union[str, bytes, BinaryIO], close: bool = False):
+    def ensure_stdin_supported(self, ws):
         if ws.subprotocol != self.PROTOCOLS[0]:
             raise ApiError(
                 status={
@@ -59,17 +63,26 @@ class WebsocketDriver:
                     "message": f"Only subprotocol {self.PROTOCOLS[0]} supports writing to stdin",
                 }
             )
-        stdin_channel = STDIN_CHANNEL.to_bytes()
+
+    def chunk_stdin(self, msg: Union[str, bytes, BinaryIO], chunk_size: int = 128 * 1024) -> Iterable[bytes]:
         if hasattr(msg, "read"):
             while True:
-                content = msg.read(128 * 1024)  # Read up to 128KB at a time
+                content = msg.read(chunk_size)
                 if not content:
                     break
-                ws.send_bytes(stdin_channel + content)
+                yield content
         else:
             if isinstance(msg, str):
                 msg = msg.encode("utf-8")
-            ws.send_bytes(stdin_channel + msg)
+            yield msg
+
+
+class WebsocketDriver(BaseWebsocketDriver):
+    def write_stdin(self, ws, msg: Union[str, bytes, BinaryIO], close: bool = False):
+        self.ensure_stdin_supported(ws)
+        stdin_channel = STDIN_CHANNEL.to_bytes(1)
+        for chunk in self.chunk_stdin(msg):
+            ws.send_bytes(stdin_channel + chunk)
         if close:
             ws.send_bytes(CLOSE_STDIN)  # Close connection
 
@@ -96,47 +109,25 @@ class WebsocketDriver:
         decode: Optional[str] = None,
     ) -> ExecResponse:
         accumulator = ExecAccumulator(stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
+        timer = BudgetTimer(self._timeout, self._TIMEOUT_MSG)
         while True:
-            message = ws.receive_bytes()
+            budget = timer.budget()
+            try:
+                message = ws.receive_bytes(timeout=budget)
+            except queue.Empty as e:
+                raise httpx.ReadTimeout(self._TIMEOUT_MSG) from e
             channel, message = message[0], message[1:]
-            print(channel, len(message))
             response = accumulator.feed(channel, message)
             if response is not None:
                 return response
 
 
-class AsyncWebsocketDriver:
-    PROTOCOLS = ("v5.channel.k8s.io", "v4.channel.k8s.io")
-
-    def __init__(self, client: Optional[httpx.AsyncClient], br: "BasicRequest"):
-        from httpx_ws import aconnect_ws
-
-        self._ws = aconnect_ws(
-            br.url,
-            client,
-            subprotocols=self.PROTOCOLS,
-            params=br.params,
-        )
-
+class AsyncWebsocketDriver(BaseWebsocketDriver):
     async def write_stdin(self, ws, msg: Union[str, bytes, BinaryIO], close: bool = False):
-        if ws.subprotocol != self.PROTOCOLS[0]:
-            raise ApiError(
-                status={
-                    "status": "Failure",
-                    "message": f"Only subprotocol {self.PROTOCOLS[0]} supports writing to stdin",
-                }
-            )
-        stdin_channel = STDIN_CHANNEL.to_bytes()
-        if hasattr(msg, "read"):
-            while True:
-                content = msg.read(128 * 1024)  # Read up to 128KB at a time
-                if not content:
-                    break
-                await ws.send_bytes(stdin_channel + content)
-        else:
-            if isinstance(msg, str):
-                msg = msg.encode("utf-8")
-            await ws.send_bytes(stdin_channel + msg)
+        self.ensure_stdin_supported(ws)
+        stdin_channel = STDIN_CHANNEL.to_bytes(1)
+        for chunk in self.chunk_stdin(msg):
+            await ws.send_bytes(stdin_channel + chunk)
         if close:
             await ws.send_bytes(CLOSE_STDIN)  # Close connection
 
@@ -163,8 +154,13 @@ class AsyncWebsocketDriver:
         decode: Optional[str] = None,
     ) -> ExecResponse:
         accumulator = ExecAccumulator(stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
+        timer = BudgetTimer(self._timeout, self._TIMEOUT_MSG)
         while True:
-            message = await ws.receive_bytes()
+            budget = timer.budget()
+            try:
+                message = await ws.receive_bytes(timeout=budget)
+            except TimeoutError as e:
+                raise httpx.ReadTimeout(self._TIMEOUT_MSG) from e
             channel, message = message[0], message[1:]
             response = accumulator.feed(channel, message)
             if response is not None:

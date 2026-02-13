@@ -1,4 +1,4 @@
-import json
+import io
 import unittest.mock
 import warnings
 
@@ -9,10 +9,14 @@ import respx
 import lightkube
 from lightkube import types
 from lightkube.config.kubeconfig import KubeConfig
+from lightkube.core import websocket
+from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
 from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Binding, Node, Pod
+from lightkube.types import ExecResponse
 
+from .fake_ws import FakeWS
 from .test_client import (
     json_contains,
     make_wait_custom,
@@ -406,55 +410,6 @@ async def alist(aiter):
     return [item async for item in aiter]
 
 
-class AsyncFakeWS:
-    subprotocol = "v5.channel.k8s.io"
-
-    def __init__(self, messages, exit_code: int = 0):
-        # messages: list of (channel, payload) tuples
-        self._messages = []
-        for ch, payload in messages:
-            if isinstance(payload, str):
-                payload = payload.encode("utf-8")
-            self._messages.append(bytes([ch]) + payload)
-        # append an ERROR channel status message reflecting exit_code
-        if exit_code == 0:
-            status = {"status": "Success"}
-        else:
-            status = {
-                "status": "Failure",
-                "reason": "NonZeroExitCode",
-                "details": {"causes": [{"reason": "ExitCode", "message": str(exit_code)}]},
-                "message": "command exited",
-            }
-        self._messages.append(bytes([3]) + json.dumps(status).encode("utf-8"))
-        self.sent = []
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    async def receive_bytes(self):
-        return self._messages.pop(0)
-
-    async def send_bytes(self, data):
-        self.sent.append(data)
-
-    @staticmethod
-    def make_connect(messages, exit_code: int = 0):
-        def _connect(url, client, subprotocols, params):
-            return AsyncFakeWS(messages, exit_code)
-
-        return _connect
-
-    def as_connect(self):
-        def _connect(url, client, subprotocols, params):
-            return self
-
-        return _connect
-
-
 @respx.mock
 @pytest.mark.asyncio
 async def test_pod_log(client: lightkube.AsyncClient):
@@ -484,13 +439,9 @@ async def test_pod_log(client: lightkube.AsyncClient):
 
 @pytest.mark.asyncio
 async def test_exec_captures_stdout_stderr(client: lightkube.AsyncClient, monkeypatch) -> None:
-    from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
-
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
 
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "aconnect_ws", FakeWS.make_connect(messages, exit_code=0))
 
     res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode=None)
     assert res.stdout == b"out"
@@ -498,7 +449,7 @@ async def test_exec_captures_stdout_stderr(client: lightkube.AsyncClient, monkey
     assert res.exit_code == 0
 
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "aconnect_ws", FakeWS.make_connect(messages, exit_code=0))
     res = await client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
     assert res.stdout == "out"
     assert res.stderr == "err"
@@ -514,9 +465,7 @@ async def test_exec_captures_stdout_stderr(client: lightkube.AsyncClient, monkey
 async def test_exec_raises_on_non_zero_exit(client: lightkube.AsyncClient, monkeypatch) -> None:
     messages = []
 
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=12))
+    monkeypatch.setattr(websocket, "aconnect_ws", FakeWS.make_connect(messages, exit_code=12))
 
     with pytest.raises(lightkube.ApiError):
         await client.exec("pod-1", command="/bin/false", raise_on_error=True)
@@ -527,15 +476,10 @@ async def test_exec_raises_on_non_zero_exit(client: lightkube.AsyncClient, monke
 
 @pytest.mark.asyncio
 async def test_exec_writes_to_provided_streams(client: lightkube.AsyncClient, monkeypatch) -> None:
-    import io
-
-    from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL, ExecResponse
+    from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
 
     messages = [(STDOUT_CHANNEL, b"out-stream"), (STDERR_CHANNEL, b"err-stream")]
-
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", AsyncFakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "aconnect_ws", FakeWS.make_connect(messages, exit_code=0))
 
     out_stream = io.BytesIO()
     err_stream = io.BytesIO()
@@ -551,33 +495,29 @@ async def test_exec_writes_to_provided_streams(client: lightkube.AsyncClient, mo
 
 @pytest.mark.asyncio
 async def test_exec_stdin_variants(client: lightkube.AsyncClient, monkeypatch) -> None:
-    import io
-
     messages = []
 
-    import httpx_ws
-
     # bytes
-    ws = AsyncFakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", ws.as_connect())
+    ws = FakeWS(messages, exit_code=0)
+    monkeypatch.setattr(websocket, "aconnect_ws", ws.as_connect())
     await client.exec("pod-stdin", command=["/bin/cmd"], stdin=b"byte-input")
     assert any(b"byte-input" in s for s in ws.sent)
 
     # str
-    ws2 = AsyncFakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", ws2.as_connect())
+    ws2 = FakeWS(messages, exit_code=0)
+    monkeypatch.setattr(websocket, "aconnect_ws", ws2.as_connect())
     await client.exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
     assert any(b"text-input" in s for s in ws2.sent)
 
     # file-like
-    ws3 = AsyncFakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", ws3.as_connect())
+    ws3 = FakeWS(messages, exit_code=0)
+    monkeypatch.setattr(websocket, "aconnect_ws", ws3.as_connect())
     await client.exec("pod-stdin", command=["/bin/cmd"], stdin=io.BytesIO(b"stream-input"))
     assert any(b"stream-input" in s for s in ws3.sent)
 
     # None (no stdin) -> nothing sent
-    ws4 = AsyncFakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "aconnect_ws", ws4.as_connect())
+    ws4 = FakeWS(messages, exit_code=0)
+    monkeypatch.setattr(websocket, "aconnect_ws", ws4.as_connect())
     await client.exec("pod-stdin", command=["/bin/cmd"], stdin=None)
     assert ws4.sent == []
 

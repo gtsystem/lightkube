@@ -1,6 +1,7 @@
 import enum
 import typing
 from dataclasses import dataclass
+from typing import NamedTuple, Optional, Union
 
 
 class PatchType(enum.Enum):
@@ -66,3 +67,18 @@ def on_error_stop(e: Exception, count: int) -> OnErrorResult:
 def on_error_retry(e: Exception, count: int) -> OnErrorResult:
     """Retry to perform the API call again from the last version"""
     return OnErrorResult(OnErrorAction.RETRY)
+
+
+class ExecResponse(NamedTuple):
+    """
+    Response from an exec command, containing stdout, stderr and exit code.
+
+    Attributes:
+        stdout: The command's stdout, if captured.
+        stderr: The command's stderr, if captured.
+        exit_code: The command's exit code.
+    """
+
+    stdout: Optional[Union[str, bytes]] = None
+    stderr: Optional[Union[str, bytes]] = None
+    exit_code: int = 0

@@ -1,3 +1,4 @@
+import io
 import json
 import unittest.mock
 import warnings
@@ -12,9 +13,14 @@ import lightkube
 from lightkube import types
 from lightkube.config.kubeconfig import KubeConfig, SingleConfig
 from lightkube.config.models import Cluster, Context, User
+from lightkube.core import websocket
+from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
 from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Binding, Node, Pod
+from lightkube.types import ExecResponse
+
+from .fake_ws import FakeWS
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -729,63 +735,10 @@ def test_pod_log(client: lightkube.Client) -> None:
     assert lines == result
 
 
-class FakeWS:
-    subprotocol = "v5.channel.k8s.io"
-
-    def __init__(self, messages, exit_code: int = 0):
-        # messages: list of (channel, payload) tuples
-        self._messages = []
-        for ch, payload in messages:
-            if isinstance(payload, str):
-                payload = payload.encode("utf-8")
-            self._messages.append(bytes([ch]) + payload)
-        # append an ERROR channel status message reflecting exit_code
-        if exit_code == 0:
-            status = {"status": "Success"}
-        else:
-            status = {
-                "status": "Failure",
-                "reason": "NonZeroExitCode",
-                "details": {"causes": [{"reason": "ExitCode", "message": str(exit_code)}]},
-                "message": "command exited",
-            }
-        self._messages.append(bytes([3]) + json.dumps(status).encode("utf-8"))
-        self.sent = []
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def receive_bytes(self):
-        return self._messages.pop(0)
-
-    def send_bytes(self, data):
-        self.sent.append(data)
-
-    @staticmethod
-    def make_connect(messages, exit_code: int = 0):
-        def _connect(url, client, subprotocols, params):
-            return FakeWS(messages, exit_code)
-
-        return _connect
-
-    def as_connect(self):
-        def _connect(url, client, subprotocols, params):
-            return self
-
-        return _connect
-
-
 def test_exec_captures_stdout_stderr(client: lightkube.Client, monkeypatch) -> None:
-    from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
-
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
 
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
 
     res = client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True, decode=None)
     assert res.stdout == b"out"
@@ -793,7 +746,7 @@ def test_exec_captures_stdout_stderr(client: lightkube.Client, monkeypatch) -> N
     assert res.exit_code == 0
 
     messages = [(STDOUT_CHANNEL, b"out"), (STDERR_CHANNEL, b"err")]
-    monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
     res = client.exec("pod-1", command=["/bin/echo", "hi"], stdout=True, stderr=True)
     assert res.stdout == "out"
     assert res.stderr == "err"
@@ -807,10 +760,9 @@ def test_exec_captures_stdout_stderr(client: lightkube.Client, monkeypatch) -> N
 
 def test_exec_raises_on_non_zero_exit(client: lightkube.Client, monkeypatch) -> None:
     messages = []
+    from lightkube.core import websocket
 
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=12))
+    monkeypatch.setattr(websocket, "connect_ws", FakeWS.make_connect(messages, exit_code=12))
 
     with pytest.raises(lightkube.ApiError):
         client.exec("pod-1", command="/bin/false", raise_on_error=True)
@@ -822,13 +774,9 @@ def test_exec_raises_on_non_zero_exit(client: lightkube.Client, monkeypatch) -> 
 def test_exec_writes_to_provided_streams(client: lightkube.Client, monkeypatch) -> None:
     import io
 
-    from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL, ExecResponse
-
     messages = [(STDOUT_CHANNEL, b"out-stream"), (STDERR_CHANNEL, b"err-stream")]
 
-    import httpx_ws
-
-    monkeypatch.setattr(httpx_ws, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
+    monkeypatch.setattr(websocket, "connect_ws", FakeWS.make_connect(messages, exit_code=0))
 
     out_stream = io.BytesIO()
     err_stream = io.BytesIO()
@@ -843,33 +791,29 @@ def test_exec_writes_to_provided_streams(client: lightkube.Client, monkeypatch) 
 
 
 def test_exec_stdin_variants(client: lightkube.Client, monkeypatch) -> None:
-    import io
-
     messages = []
-
-    import httpx_ws
 
     # bytes
     ws = FakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "connect_ws", ws.as_connect())
+    monkeypatch.setattr(websocket, "connect_ws", ws.as_connect())
     client.exec("pod-stdin", command=["/bin/cmd"], stdin=b"byte-input")
     assert any(b"byte-input" in s for s in ws.sent)
 
     # str
     ws2 = FakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "connect_ws", ws2.as_connect())
+    monkeypatch.setattr(websocket, "connect_ws", ws2.as_connect())
     client.exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
     assert any(b"text-input" in s for s in ws2.sent)
 
     # file-like
     ws3 = FakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "connect_ws", ws3.as_connect())
+    monkeypatch.setattr(websocket, "connect_ws", ws3.as_connect())
     client.exec("pod-stdin", command=["/bin/cmd"], stdin=io.BytesIO(b"stream-input"))
     assert any(b"stream-input" in s for s in ws3.sent)
 
     # None (no stdin) -> nothing sent
     ws4 = FakeWS(messages, exit_code=0)
-    monkeypatch.setattr(httpx_ws, "connect_ws", ws4.as_connect())
+    monkeypatch.setattr(websocket, "connect_ws", ws4.as_connect())
     client.exec("pod-stdin", command=["/bin/cmd"], stdin=None)
     assert ws4.sent == []
 
