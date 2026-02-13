@@ -2,7 +2,7 @@ import io
 import json
 import queue
 from time import monotonic
-from typing import TYPE_CHECKING, BinaryIO, Iterable, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, Optional, TypeVar, Union, overload
 
 import httpx
 from httpx_ws import aconnect_ws, connect_ws
@@ -20,6 +20,14 @@ ERROR_CHANNEL: int = 3
 CLOSE_STDIN: bytes = bytes([255, STDIN_CHANNEL])
 
 T = TypeVar("T")
+
+
+@overload
+def first(iterable: Iterable[T], default: None) -> Optional[T]: ...
+
+
+@overload
+def first(iterable: Iterable[T], default: T) -> T: ...
 
 
 def first(iterable: Iterable[T], default: Optional[T] = None) -> Optional[T]:
@@ -42,15 +50,16 @@ class BudgetTimer:
 
 
 class BaseWebsocketDriver:
-    PROTOCOLS = ("v5.channel.k8s.io", "v4.channel.k8s.io")
-    _TIMEOUT_MSG = "Timeout while waiting complete response from exec command"
+    PROTOCOLS: ClassVar[list[str]] = ["v5.channel.k8s.io", "v4.channel.k8s.io"]
+    _TIMEOUT_MSG: ClassVar[str] = "Timeout while waiting complete response from exec command"
+    _ws: Any
 
     def __init__(self, client: Union[httpx.Client, httpx.AsyncClient], br: "BasicRequest", timeout: Optional[float] = None):
         self._timeout = timeout
         ws_func = connect_ws if isinstance(client, httpx.Client) else aconnect_ws
         self._ws = ws_func(
             br.url,
-            client,
+            client,  # type: ignore # this is either httpx.Client or httpx.AsyncClient, both of which are accepted by the respective connect_ws function
             subprotocols=self.PROTOCOLS,
             params=br.params,
         )
@@ -202,12 +211,14 @@ class ExecAccumulator:
                 raise error
             details = error.status.details
             if details and details.causes:
-                exit_code = first((int(cause.message) for cause in details.causes if cause.reason == "ExitCode"), -1)
+                exit_code = first(
+                    (int(cause.message) for cause in details.causes if cause.reason == "ExitCode" and cause.message), -1
+                )
 
         stdout_value = stderr_value = None
         if self._capture_stdout:
-            stdout_value = self._stdout.getvalue() if self._decode is None else self._stdout.getvalue().decode(self._decode)
+            stdout_value = self._stdout.getvalue() if self._decode is None else self._stdout.getvalue().decode(self._decode)  # type: ignore # _stdout is always BytesIO when _capture_stdout is True, so it has getvalue() method
         if self._capture_stderr:
-            stderr_value = self._stderr.getvalue() if self._decode is None else self._stderr.getvalue().decode(self._decode)
+            stderr_value = self._stderr.getvalue() if self._decode is None else self._stderr.getvalue().decode(self._decode)  # type: ignore # _stdout is always BytesIO when _capture_stderr is True, so it has getvalue() method
 
         return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
