@@ -9,11 +9,11 @@ import httpx
 
 from ..config import client_adapter
 from ..config.kubeconfig import DEFAULT_KUBECONFIG, KubeConfig, SingleConfig
-from ..types import OnErrorAction, OnErrorHandler, PatchType, on_error_raise
+from ..types import ExecResponse, OnErrorAction, OnErrorHandler, PatchType, on_error_raise
 from . import resource as r
 from .exceptions import ApiError, NotReadyError
 from .internal_models import core_v1_res
-from .websocket import AsyncWebsocketDriver, ExecResponse, WebsocketDriver
+from .websocket import AsyncWebsocketDriver, WebsocketDriver
 
 ALL_NS = "*"
 
@@ -354,6 +354,7 @@ class GenericSyncClient(GenericClient):
         params: Optional[dict] = None,
         raise_on_error: bool = False,
         decode: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> ExecResponse:
         stdin = stdout = stderr = None
         if "stdin" in params:
@@ -366,7 +367,7 @@ class GenericSyncClient(GenericClient):
             stderr = params["stderr"]
             params["stderr"] = True
         br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
-        return WebsocketDriver(self._client, br).write_and_read(
+        return WebsocketDriver(self._client, br, timeout=timeout).write_and_read(
             stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
@@ -436,6 +437,7 @@ class GenericAsyncClient(GenericClient):
         params: Optional[dict] = None,
         raise_on_error: bool = False,
         decode: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> ExecResponse:
         stdin = stdout = stderr = None
         if "stdin" in params:
@@ -448,7 +450,7 @@ class GenericAsyncClient(GenericClient):
             stderr = params["stderr"]
             params["stderr"] = True
         br = self.prepare_request(method, core_v1_res.Pod, None, name, namespace, params=params)
-        return await AsyncWebsocketDriver(self._client, br).write_and_read(
+        return await AsyncWebsocketDriver(self._client, br, timeout=timeout).write_and_read(
             stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
