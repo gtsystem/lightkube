@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Dict, List, Optional
 
 
 class _AwaitableResult:
@@ -39,7 +39,7 @@ class FakeWS:
                 payload = payload.encode("utf-8")
             self._messages.append(bytes([ch]) + payload)
         # append an ERROR channel status message reflecting exit_code
-        status: dict[str, object]
+        status: Dict[str, object]
         if exit_code == 0:
             status = {"status": "Success"}
         else:
@@ -50,7 +50,7 @@ class FakeWS:
                 "message": "command exited",
             }
         self._messages.append(bytes([3]) + json.dumps(status).encode("utf-8"))
-        self.sent: list[bytes] = []
+        self.sent: List[bytes] = []
 
     def __enter__(self):
         return self
