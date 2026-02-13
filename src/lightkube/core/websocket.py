@@ -2,7 +2,7 @@ import io
 import json
 import queue
 from time import monotonic
-from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, List, Optional, TypeVar, Union, overload
 
 import httpx
 from httpx_ws import aconnect_ws, connect_ws
@@ -17,7 +17,8 @@ STDIN_CHANNEL: int = 0
 STDOUT_CHANNEL: int = 1
 STDERR_CHANNEL: int = 2
 ERROR_CHANNEL: int = 3
-CLOSE_STDIN: bytes = bytes([255, STDIN_CHANNEL])
+CLOSE_STDIN: bytes = bytes((255, STDIN_CHANNEL))
+STDIN_BYTES: bytes = bytes((STDIN_CHANNEL,))
 
 T = TypeVar("T")
 
@@ -50,7 +51,7 @@ class BudgetTimer:
 
 
 class BaseWebsocketDriver:
-    PROTOCOLS: ClassVar[list[str]] = ["v5.channel.k8s.io", "v4.channel.k8s.io"]
+    PROTOCOLS: ClassVar[List[str]] = ["v5.channel.k8s.io", "v4.channel.k8s.io"]
     _TIMEOUT_MSG: ClassVar[str] = "Timeout while waiting complete response from exec command"
     _ws: Any
 
@@ -89,9 +90,8 @@ class BaseWebsocketDriver:
 class WebsocketDriver(BaseWebsocketDriver):
     def write_stdin(self, ws, msg: Union[str, bytes, BinaryIO], close: bool = False):
         self.ensure_stdin_supported(ws)
-        stdin_channel = STDIN_CHANNEL.to_bytes(1)
         for chunk in self.chunk_stdin(msg):
-            ws.send_bytes(stdin_channel + chunk)
+            ws.send_bytes(STDIN_BYTES + chunk)
         if close:
             ws.send_bytes(CLOSE_STDIN)  # Close connection
 
@@ -134,9 +134,8 @@ class WebsocketDriver(BaseWebsocketDriver):
 class AsyncWebsocketDriver(BaseWebsocketDriver):
     async def write_stdin(self, ws, msg: Union[str, bytes, BinaryIO], close: bool = False):
         self.ensure_stdin_supported(ws)
-        stdin_channel = STDIN_CHANNEL.to_bytes(1)
         for chunk in self.chunk_stdin(msg):
-            await ws.send_bytes(stdin_channel + chunk)
+            await ws.send_bytes(STDIN_BYTES + chunk)
         if close:
             await ws.send_bytes(CLOSE_STDIN)  # Close connection
 

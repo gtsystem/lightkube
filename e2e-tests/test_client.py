@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from random import choices
 from string import ascii_lowercase
-from typing import Iterator
+from typing import Iterator, Union
 
 import pytest
 
@@ -382,7 +382,7 @@ async def test_wait_namespaced_async(resource, for_condition, spec):
 
 
 @pytest.fixture(scope="function")
-def sample_crd() -> Iterator[GenericNamespacedResource | GenericGlobalResource]:
+def sample_crd() -> Iterator[Union[GenericNamespacedResource, GenericGlobalResource]]:
     client = Client()
     fname = Path(__file__).parent.joinpath("test-crd.yaml")
     with fname.open() as f:
