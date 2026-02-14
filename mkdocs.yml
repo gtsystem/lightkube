@@ -4,6 +4,9 @@ theme:
   hljs_style: monokai
   palette:
     primary: deep purple
+  features:
+    - content.tabs.link
+    - content.code.copy
 
 repo_name: gtsystem/lightkube
 repo_url: https://github.com/gtsystem/lightkube
@@ -19,7 +22,6 @@ nav:
       - Exceptions: reference/exceptions.md
       - Types: reference/types.md
   - Resources & Models: resources-and-models.md
-  - Async Usage: async-usage.md
   - Utils: utils.md
   - Advanced:
       - Selectors: selectors.md
@@ -35,6 +37,8 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - markdown_include.include:
       base_path: .
 
