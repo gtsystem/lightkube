@@ -37,6 +37,8 @@ This module requires python >= 3.8
 
 ## Usage
 
+### List
+
 Read a pod
 
 === "Sync"
@@ -83,28 +85,7 @@ List nodes
             print(node.metadata.name)
     ```
 
-Watch deployments
-
-=== "Sync"
-    ```python
-    from lightkube import Client
-    from lightkube.resources.apps_v1 import Deployment
-
-    client = Client()
-    for op, dep in client.watch(Deployment, namespace="default"):
-        print(f"{dep.namespace.name} {dep.spec.replicas}")
-    ```
-
-=== "Async"
-    ```python
-    from lightkube import AsyncClient
-    from lightkube.resources.apps_v1 import Deployment
-
-    async def example():
-        client = AsyncClient()
-        async for op, dep in client.watch(Deployment, namespace="default"):
-            print(f"{dep.namespace.name} {dep.spec.replicas}")
-    ```
+### Create
 
 Create a config map
 
@@ -137,6 +118,31 @@ Create a config map
         )
         await client.create(config)
     ```
+
+Create resources defined in a file
+
+=== "Sync"
+    ```python
+    from lightkube import Client, codecs
+
+    client = Client()
+    with open('deployment.yaml') as f:
+        for obj in codecs.load_all_yaml(f):
+            client.create(obj)
+    ```
+
+=== "Async"
+    ```python
+    from lightkube import AsyncClient, codecs
+
+    async def example():
+        client = AsyncClient()
+        with open('deployment.yaml') as f:
+            for obj in codecs.load_all_yaml(f):
+                await client.create(obj)
+    ```
+
+### Modify
 
 Replace the previous config with a different content
 
@@ -206,41 +212,6 @@ Remove a label
     await client.set(ConfigMap, name="my-config", labels={'env': None})
     ```
 
-Delete a namespaced resource
-
-=== "Sync"
-    ```python
-    client.delete(ConfigMap, name='my-config', namespace='default')
-    ```
-
-=== "Async"
-    ```python
-    await client.delete(ConfigMap, name='my-config', namespace='default')
-    ```
-
-Create resources defined in a file
-
-=== "Sync"
-    ```python
-    from lightkube import Client, codecs
-
-    client = Client()
-    with open('deployment.yaml') as f:
-        for obj in codecs.load_all_yaml(f):
-            client.create(obj)
-    ```
-
-=== "Async"
-    ```python
-    from lightkube import AsyncClient, codecs
-
-    async def example():
-        client = AsyncClient()
-        with open('deployment.yaml') as f:
-            for obj in codecs.load_all_yaml(f):
-                await client.create(obj)
-    ```
-
 Scale a deployment
 
 === "Sync"
@@ -303,7 +274,6 @@ Update Status of a deployment
         await client.apply(obj, name='metrics-server', namespace='kube-system')
     ```
 
-
 Create and modify resources using [server side apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
 
 *Note:* `field_manager` is required for server-side apply. You can specify it once in the client constructor
@@ -361,6 +331,45 @@ the object definition.
         # prints {'key2': 'value2', 'key3': 'value3'}
     ```
 
+### Delete
+
+Delete a namespaced resource
+
+=== "Sync"
+    ```python
+    client.delete(ConfigMap, name='my-config', namespace='default')
+    ```
+
+=== "Async"
+    ```python
+    await client.delete(ConfigMap, name='my-config', namespace='default')
+    ```
+
+### Monitoring & Interaction
+
+Watch deployments
+
+=== "Sync"
+    ```python
+    from lightkube import Client
+    from lightkube.resources.apps_v1 import Deployment
+
+    client = Client()
+    for op, dep in client.watch(Deployment, namespace="default"):
+        print(f"{dep.namespace.name} {dep.spec.replicas}")
+    ```
+
+=== "Async"
+    ```python
+    from lightkube import AsyncClient
+    from lightkube.resources.apps_v1 import Deployment
+
+    async def example():
+        client = AsyncClient()
+        async for op, dep in client.watch(Deployment, namespace="default"):
+            print(f"{dep.namespace.name} {dep.spec.replicas}")
+    ```
+
 Stream pod logs
 
 === "Sync"
@@ -416,7 +425,7 @@ Execute a command inside a pod
 
         # Send data to stdin and capture output
         res = await client.exec('my-pod', namespace='default', command=['cat'], 
-            stdin='hello\n', stdout=True)
+            stdin='hello\\n', stdout=True)
         print(res.stdout)
         print(res.exit_code)
     ```
