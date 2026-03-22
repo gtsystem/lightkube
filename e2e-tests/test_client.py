@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
 from pathlib import Path
 from random import choices
@@ -59,6 +60,30 @@ def wait_pod(client: Client, pod):
             break
 
 
+@contextmanager
+def pod_context(client: Client, pod: Pod, for_conditions=None):
+    created = client.create(pod)
+    try:
+        if for_conditions:
+            client.wait(Pod, created.metadata.name, for_conditions=for_conditions)
+        else:
+            wait_pod(client, created)
+        yield created
+    finally:
+        client.delete(Pod, created.metadata.name)
+
+
+@asynccontextmanager
+async def pod_context_async(client: AsyncClient, pod: Pod, for_conditions=None):
+    created = await client.create(pod)
+    try:
+        if for_conditions:
+            await client.wait(Pod, created.metadata.name, for_conditions=for_conditions)
+        yield created
+    finally:
+        await client.delete(Pod, created.metadata.name)
+
+
 def test_pod_apis(obj_name):
     client = Client()
 
@@ -67,22 +92,15 @@ def test_pod_apis(obj_name):
     assert len(pods) > 0
     assert any(name.startswith("metrics-server") for name in pods)
 
-    # create a pod
-    pod = client.create(create_pod(obj_name, "while true;do echo 'this is a test';sleep 5; done"))
-    try:
+    with pod_context(client, create_pod(obj_name, "while true;do echo 'this is a test';sleep 5; done")) as pod:
         assert pod.metadata.name == obj_name
         assert pod.metadata.namespace == client.namespace
         assert pod.status.phase
 
-        wait_pod(client, pod)
-
         # read pod logs
-        for line in client.log(obj_name, follow=True):
+        for line in client.log(pod.metadata.name, follow=True):
             assert line == "this is a test\n"
             break
-    finally:
-        # delete the pod
-        client.delete(Pod, obj_name)
 
 
 def test_pod_not_exist() -> None:
@@ -441,10 +459,7 @@ async def test_load_in_cluster_generic_resources_async(sample_crd):
 
 def test_exec_integration_ls_and_cat():
     client = Client()
-    pod = client.create(create_pod("exec-busybox", "sleep 300"))
-    try:
-        client.wait(Pod, pod.metadata.name, for_conditions=["Ready"])
-
+    with pod_context(client, create_pod("exec-busybox", "sleep 300"), for_conditions=["Ready"]) as pod:
         ls_res = client.exec(
             pod.metadata.name,
             namespace=pod.metadata.namespace,
@@ -469,40 +484,35 @@ def test_exec_integration_ls_and_cat():
             raise
         assert cat_res.stdout == "hello from stdin\n"
         assert cat_res.exit_code == 0
-    finally:
-        client.delete(Pod, pod.metadata.name)
 
 
 @pytest.mark.asyncio
 async def test_exec_integration_ls_and_cat_async():
     client = AsyncClient()
-    pod = await client.create(create_pod("exec-busybox-async", "sleep 300"))
     try:
-        await client.wait(Pod, pod.metadata.name, for_conditions=["Ready"])
-
-        ls_res = await client.exec(
-            pod.metadata.name,
-            namespace=pod.metadata.namespace,
-            command=["/bin/sh", "-c", "ls /"],
-            stdout=True,
-            raise_on_error=True,
-        )
-        assert "bin" in ls_res.stdout.split()
-
-        try:
-            cat_res = await client.exec(
+        async with pod_context_async(client, create_pod("exec-busybox-async", "sleep 300"), for_conditions=["Ready"]) as pod:
+            ls_res = await client.exec(
                 pod.metadata.name,
                 namespace=pod.metadata.namespace,
-                command=["/bin/cat"],
-                stdin="hello from stdin\n",
+                command=["/bin/sh", "-c", "ls /"],
                 stdout=True,
                 raise_on_error=True,
             )
-        except ApiError as exc:
-            if "Only subprotocol v5.channel.k8s.io" in str(exc):
-                pytest.skip("stdin not supported without v5.channel.k8s.io protocol")
-            raise
-        assert cat_res.stdout == "hello from stdin\n"
+            assert "bin" in ls_res.stdout.split()
+
+            try:
+                cat_res = await client.exec(
+                    pod.metadata.name,
+                    namespace=pod.metadata.namespace,
+                    command=["/bin/cat"],
+                    stdin="hello from stdin\n",
+                    stdout=True,
+                    raise_on_error=True,
+                )
+            except ApiError as exc:
+                if "Only subprotocol v5.channel.k8s.io" in str(exc):
+                    pytest.skip("stdin not supported without v5.channel.k8s.io protocol")
+                raise
+            assert cat_res.stdout == "hello from stdin\n"
     finally:
-        await client.delete(Pod, pod.metadata.name)
         await client.close()
