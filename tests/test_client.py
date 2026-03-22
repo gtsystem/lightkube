@@ -790,6 +790,22 @@ def test_exec_writes_to_provided_streams(client: lightkube.Client, monkeypatch) 
     assert err_stream.getvalue() == b"err-stream"
 
 
+def test_exec_supports_container_selection(client: lightkube.Client, monkeypatch) -> None:
+    messages = []
+    captured = {}
+
+    def connect(url, http_client, subprotocols, params):
+        captured["url"] = url
+        captured["params"] = params
+        return FakeWS(messages, exit_code=0)
+
+    monkeypatch.setattr(websocket, "connect_ws", connect)
+
+    client.exec("pod-container", namespace="default", container="main", command=["/bin/echo"], stdout=True)
+
+    assert captured["params"]["container"] == "main"
+
+
 def test_exec_stdin_variants(client: lightkube.Client, monkeypatch) -> None:
     messages = []
 

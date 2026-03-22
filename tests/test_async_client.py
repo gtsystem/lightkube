@@ -494,6 +494,23 @@ async def test_exec_writes_to_provided_streams(client: lightkube.AsyncClient, mo
 
 
 @pytest.mark.asyncio
+async def test_exec_supports_container_selection(client: lightkube.AsyncClient, monkeypatch) -> None:
+    messages = []
+    captured = {}
+
+    def connect(url, http_client, subprotocols, params):
+        captured["url"] = url
+        captured["params"] = params
+        return FakeWS(messages, exit_code=0)
+
+    monkeypatch.setattr(websocket, "aconnect_ws", connect)
+
+    await client.exec("pod-container", namespace="default", container="main", command=["/bin/echo"], stdout=True)
+
+    assert captured["params"]["container"] == "main"
+
+
+@pytest.mark.asyncio
 async def test_exec_stdin_variants(client: lightkube.AsyncClient, monkeypatch) -> None:
     messages = []
 
