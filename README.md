@@ -219,12 +219,12 @@ from lightkube import Client
 client = Client()
 
 # Capture stdout or raise ApiError if error code is != 0
-res = client.exec('my-pod', namespace='default', command=['ls', '-l', '/'], 
+res = client.exec('my-pod', namespace='default', container='main', command=['ls', '-l', '/'], 
     stdout=True, raise_on_error=True)
 print(res.stdout)
 
 # Send data to stdin and capture output
-res = client.exec('my-pod', namespace='default', command=['cat'], 
+res = client.exec('my-pod', namespace='default', container='main', command=['cat'], 
     stdin='hello\n', stdout=True)
 print(res.stdout)
 print(res.exit_code)

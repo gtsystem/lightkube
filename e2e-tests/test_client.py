@@ -17,7 +17,7 @@ from lightkube.generic_resource import (
     get_generic_resource,
     load_in_cluster_generic_resources,
 )
-from lightkube.models.core_v1 import Container, PodSpec, ServicePort, ServiceSpec
+from lightkube.models.core_v1 import Container, EnvVar, PodSpec, ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import Deployment
 from lightkube.resources.core_v1 import ConfigMap, Namespace, Node, Pod, Service
@@ -47,6 +47,29 @@ def create_pod(name: str, command: str) -> Pod:
                     image="busybox",
                     args=["/bin/sh", "-c", command],
                 )
+            ],
+            terminationGracePeriodSeconds=1,
+        ),
+    )
+
+
+def create_exec_pod(name: str) -> Pod:
+    return Pod(
+        metadata=ObjectMeta(name=name, labels={"app-name": name}),
+        spec=PodSpec(
+            containers=[
+                Container(
+                    name="main",
+                    image="busybox",
+                    command=["/bin/sh", "-c", "sleep 300"],
+                    env=[EnvVar(name="TARGET_CONTAINER", value="main")],
+                ),
+                Container(
+                    name="sidecar",
+                    image="busybox",
+                    command=["/bin/sh", "-c", "sleep 300"],
+                    env=[EnvVar(name="TARGET_CONTAINER", value="sidecar")],
+                ),
             ],
             terminationGracePeriodSeconds=1,
         ),
@@ -486,6 +509,30 @@ def test_exec_integration_ls_and_cat():
         assert cat_res.exit_code == 0
 
 
+def test_exec_integration_container_selection():
+    client = Client()
+    with pod_context(client, create_exec_pod("exec-multi-container"), for_conditions=["Ready"]) as pod:
+        main_res = client.exec(
+            pod.metadata.name,
+            namespace=pod.metadata.namespace,
+            container="main",
+            command=["/bin/sh", "-c", 'printf %s "$TARGET_CONTAINER"'],
+            stdout=True,
+            raise_on_error=True,
+        )
+        assert main_res.stdout == "main"
+
+        sidecar_res = client.exec(
+            pod.metadata.name,
+            namespace=pod.metadata.namespace,
+            container="sidecar",
+            command=["/bin/sh", "-c", 'printf %s "$TARGET_CONTAINER"'],
+            stdout=True,
+            raise_on_error=True,
+        )
+        assert sidecar_res.stdout == "sidecar"
+
+
 @pytest.mark.asyncio
 async def test_exec_integration_ls_and_cat_async():
     client = AsyncClient()
@@ -514,5 +561,33 @@ async def test_exec_integration_ls_and_cat_async():
                     pytest.skip("stdin not supported without v5.channel.k8s.io protocol")
                 raise
             assert cat_res.stdout == "hello from stdin\n"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_exec_integration_container_selection_async():
+    client = AsyncClient()
+    try:
+        async with pod_context_async(client, create_exec_pod("exec-multi-container-async"), for_conditions=["Ready"]) as pod:
+            main_res = await client.exec(
+                pod.metadata.name,
+                namespace=pod.metadata.namespace,
+                container="main",
+                command=["/bin/sh", "-c", 'printf %s "$TARGET_CONTAINER"'],
+                stdout=True,
+                raise_on_error=True,
+            )
+            assert main_res.stdout == "main"
+
+            sidecar_res = await client.exec(
+                pod.metadata.name,
+                namespace=pod.metadata.namespace,
+                container="sidecar",
+                command=["/bin/sh", "-c", 'printf %s "$TARGET_CONTAINER"'],
+                stdout=True,
+                raise_on_error=True,
+            )
+            assert sidecar_res.stdout == "sidecar"
     finally:
         await client.close()

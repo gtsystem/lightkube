@@ -746,6 +746,7 @@ class Client:
         name: str,
         *,
         namespace: Optional[str] = None,
+        container: Optional[str] = None,
         command: Union[str, Iterable[str]],
         stdin: Union[str, bytes, BinaryIO, None] = None,
         stdout: Union[BinaryIO, bool] = False,
@@ -759,6 +760,7 @@ class Client:
         Parameters:
             name: Name of the Pod.
             namespace: Name of the namespace containing the Pod.
+            container: Name of the container in the pod to execute the command in.
             command: Command to execute in the Pod.
             stdin: Data to send to stdin. This can be either a string, bytes or a binary stream.
               Strings will be encoded as utf-8 before sending.
@@ -776,7 +778,7 @@ class Client:
               or an error occurs.
         """
         commands = [command] if isinstance(command, str) else list(command)
-        params = {"command": commands, "stdout": stdout, "stderr": stderr, "stdin": stdin}
+        params = {"command": commands, "stdout": stdout, "stderr": stderr, "stdin": stdin, "container": container}
         return self._client.ws_request(
             "exec",
             name=name,
