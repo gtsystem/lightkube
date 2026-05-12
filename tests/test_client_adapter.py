@@ -128,6 +128,147 @@ def test_user_auth_bearer():
     assert m.headers["Authorization"] == "Bearer abcd"
 
 
+def test_user_auth_bearer_token_file(tmp_path):
+    """BearerTokenFileAuth is used when token_file is set"""
+    token_file = tmp_path / "token"
+    token_file.write_text("my-sa-token")
+    auth = client_adapter.user_auth(models.User(token_file=str(token_file)))
+    assert isinstance(auth, client_adapter.BearerTokenFileAuth)
+    m = Mock(headers={})
+    next(auth.auth_flow(m))
+    assert m.headers["Authorization"] == "Bearer my-sa-token"
+
+
+def test_user_auth_bearer_token_file_priority(tmp_path):
+    """token_file takes priority over static token"""
+    token_file = tmp_path / "token"
+    token_file.write_text("file-token")
+    auth = client_adapter.user_auth(models.User(token="static-token", token_file=str(token_file)))
+    assert isinstance(auth, client_adapter.BearerTokenFileAuth)
+    m = Mock(headers={})
+    next(auth.auth_flow(m))
+    assert m.headers["Authorization"] == "Bearer file-token"
+
+
+def test_bearer_token_file_auth_refresh(tmp_path):
+    """Token is re-read from file on 401"""
+    token_file = tmp_path / "token"
+    token_file.write_text("old-token")
+
+    auth = client_adapter.BearerTokenFileAuth(str(token_file))
+    m = Mock(headers={})
+
+    # First request uses the initial token
+    flow = auth.auth_flow(m)
+    next(flow)
+    assert m.headers["Authorization"] == "Bearer old-token"
+
+    # Simulate token rotation
+    token_file.write_text("new-token")
+
+    # Server returns 401
+    m.headers["Authorization"] = None
+    flow.send(httpx.Response(status_code=401, request=m))
+    assert m.headers["Authorization"] == "Bearer new-token"
+
+
+def test_bearer_token_file_auth_no_refresh_on_success(tmp_path):
+    """Token is NOT re-read on non-401 responses"""
+    token_file = tmp_path / "token"
+    token_file.write_text("my-token")
+
+    auth = client_adapter.BearerTokenFileAuth(str(token_file))
+    m = Mock(headers={})
+
+    flow = auth.auth_flow(m)
+    next(flow)
+    assert m.headers["Authorization"] == "Bearer my-token"
+
+    # Token changes on disk, but server returned 200
+    token_file.write_text("new-token")
+    with pytest.raises(StopIteration):
+        flow.send(httpx.Response(status_code=200, request=m))
+
+    # Cached token is still used on next request
+    m2 = Mock(headers={})
+    flow2 = auth.auth_flow(m2)
+    next(flow2)
+    assert m2.headers["Authorization"] == "Bearer my-token"
+
+
+def test_bearer_token_file_auth_caching(tmp_path):
+    """Token is cached between requests"""
+    token_file = tmp_path / "token"
+    token_file.write_text("cached-token")
+
+    auth = client_adapter.BearerTokenFileAuth(str(token_file))
+
+    # First request reads from file
+    m1 = Mock(headers={})
+    flow1 = auth.auth_flow(m1)
+    next(flow1)
+    assert m1.headers["Authorization"] == "Bearer cached-token"
+    with pytest.raises(StopIteration):
+        flow1.send(httpx.Response(status_code=200, request=m1))
+
+    # Token changes but cache is used
+    token_file.write_text("different-token")
+
+    m2 = Mock(headers={})
+    flow2 = auth.auth_flow(m2)
+    next(flow2)
+    assert m2.headers["Authorization"] == "Bearer cached-token"
+
+
+def test_bearer_token_file_auth_file_not_found(tmp_path):
+    """ConfigError raised if token file doesn't exist"""
+    auth = client_adapter.BearerTokenFileAuth(str(tmp_path / "nonexistent"))
+    with pytest.raises(ConfigError, match="not found"):
+        next(auth.auth_flow(Mock(headers={})))
+
+
+@pytest.mark.asyncio
+async def test_bearer_token_file_auth_async_refresh(tmp_path):
+    """Token refresh works through the inherited async_auth_flow delegation"""
+    token_file = tmp_path / "token"
+    token_file.write_text("old-token")
+
+    auth = client_adapter.BearerTokenFileAuth(str(token_file))
+    m = Mock(headers={})
+
+    flow = auth.async_auth_flow(m)
+    await flow.__anext__()
+    assert m.headers["Authorization"] == "Bearer old-token"
+
+    # Simulate token rotation
+    token_file.write_text("new-token")
+
+    # Server returns 401
+    m.headers["Authorization"] = None
+    await flow.asend(httpx.Response(status_code=401, request=m))
+    assert m.headers["Authorization"] == "Bearer new-token"
+
+    with pytest.raises(StopAsyncIteration):
+        await flow.__anext__()
+
+
+@pytest.mark.asyncio
+async def test_bearer_token_file_auth_async_no_refresh_on_success(tmp_path):
+    """No refresh on success through inherited async_auth_flow delegation"""
+    token_file = tmp_path / "token"
+    token_file.write_text("my-token")
+
+    auth = client_adapter.BearerTokenFileAuth(str(token_file))
+    m = Mock(headers={})
+
+    flow = auth.async_auth_flow(m)
+    await flow.__anext__()
+    assert m.headers["Authorization"] == "Bearer my-token"
+
+    with pytest.raises(StopAsyncIteration):
+        await flow.asend(httpx.Response(status_code=200, request=m))
+
+
 def test_user_auth_provider():
     """Auth provider not supported"""
     with pytest.raises(ConfigError):

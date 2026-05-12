@@ -98,6 +98,7 @@ def test_from_service_account(service_account):
     c = cfg.get()
     assert c.namespace == "my-namespace"
     assert c.user.token == "ABCD"
+    assert c.user.token_file == str(service_account.joinpath("token"))
     assert c.cluster.server == "https://k8s.local:9443"
 
 

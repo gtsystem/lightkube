@@ -62,6 +62,7 @@ class User(DataclassDictMixIn):
     username: Optional[str] = None
     password: Optional[str] = None
     token: Optional[str] = None
+    token_file: Optional[str] = field(metadata={"json": "tokenFile"}, default=None)
     auth_provider: Optional[Dict] = field(metadata={"json": "auth-provider"}, default=None)
     client_cert: Optional[str] = field(metadata={"json": "client-certificate"}, default=None)
     client_cert_data: Optional[str] = field(metadata={"json": "client-certificate-data"}, default=None)

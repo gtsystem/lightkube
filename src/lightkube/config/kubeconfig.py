@@ -215,8 +215,10 @@ class KubeConfig:
         """
         account_dir = Path(service_account)
 
+        token_file = str(account_dir.joinpath("token"))
+
         try:
-            token = account_dir.joinpath("token").read_text()
+            token = Path(token_file).read_text()
             namespace = account_dir.joinpath("namespace").read_text()
         except FileNotFoundError as e:
             raise exceptions.ConfigError(str(e)) from e
@@ -230,7 +232,7 @@ class KubeConfig:
                 server=f"https://{host}:{port}",
                 certificate_auth=str(account_dir.joinpath("ca.crt")),
             ),
-            user=User(token=token),
+            user=User(token=token, token_file=token_file),
             namespace=namespace,
         )
 

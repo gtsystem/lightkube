@@ -4,6 +4,7 @@ import os
 import ssl
 import subprocess
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import AsyncGenerator, Callable, Dict, Generator, List, Mapping, Optional, Sequence, Tuple, overload
 
 import httpx
@@ -45,6 +46,39 @@ class BearerAuth(httpx.Auth):
 
     def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
         request.headers["Authorization"] = self._bearer
+        yield request
+
+
+class BearerTokenFileAuth(httpx.Auth):
+    """Auth that reads a bearer token from a file, re-reading on 401.
+
+    Used for in-cluster service account tokens which are periodically
+    rotated by the kubelet. Similar to Go client-go's tokenFileAuth.
+    """
+
+    def __init__(self, token_file: str) -> None:
+        self._token_file = token_file
+        self._last_bearer: Optional[str] = None
+
+    def _read_token(self) -> str:
+        try:
+            token = Path(self._token_file).read_text().strip()
+        except FileNotFoundError as e:
+            raise ConfigError(f"Token file {self._token_file} not found") from e
+        return f"Bearer {token}"
+
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
+        if self._last_bearer is None:
+            self._last_bearer = self._read_token()
+
+        request.headers["Authorization"] = self._last_bearer
+        response = yield request
+        if response.status_code != 401:
+            return
+
+        # Token may have been rotated, re-read from file
+        self._last_bearer = self._read_token()
+        request.headers["Authorization"] = self._last_bearer
         yield request
 
 
@@ -124,6 +158,9 @@ def user_auth(user: None) -> None: ...
 def user_auth(user: Optional[User]) -> Optional[httpx.Auth]:
     if user is None:
         return None
+
+    if user.token_file is not None:
+        return BearerTokenFileAuth(user.token_file)
 
     if user.token is not None:
         return BearerAuth(user.token)
