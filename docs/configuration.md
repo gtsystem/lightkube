@@ -49,6 +49,11 @@ config = KubeConfig.from_service_account()
 client = Client(config=config)
 ```
 
+The in-cluster configuration automatically supports **token refresh**. Kubernetes rotates projected service account
+tokens before they expire, and lightkube will re-read the token from the mounted file whenever the API server returns a
+`401 Unauthorized` response. This ensures long-running controllers and operators continue to work without restarts, even
+with short-lived tokens.
+
 ## Auto-detect configuration from the environment
 
 By default lightkube will do his best to detect the configuration looking

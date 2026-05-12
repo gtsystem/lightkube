@@ -435,5 +435,5 @@ Execute a command inside a pod
 The following features are not supported at the moment:
 
 * Special subresources `attach`, `portforward` and `proxy`.
-* `auth-provider` authentication method is not supported. The supported authentication methods are `token`, `username` + `password` and `exec`.
+* `auth-provider` authentication method is not supported. The supported authentication methods are `token`, `tokenFile`, `username` + `password` and `exec`.
 
