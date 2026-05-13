@@ -1,4 +1,5 @@
 import io
+import re
 import unittest.mock
 import warnings
 
@@ -28,6 +29,11 @@ from .test_client import (
 )
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+try:
+    ExceptionGroupType = ExceptionGroup
+except NameError:
+    from exceptiongroup import ExceptionGroup as ExceptionGroupType
 
 KUBECONFIG = """
 apiVersion: v1
@@ -537,6 +543,38 @@ async def test_exec_stdin_variants(client: lightkube.AsyncClient, monkeypatch) -
     monkeypatch.setattr(websocket, "aconnect_ws", ws4.as_connect())
     await client.exec("pod-stdin", command=["/bin/cmd"], stdin=None)
     assert ws4.sent == []
+
+
+@pytest.mark.asyncio
+async def test_exec_unwraps_grouped_stdin_error(client: lightkube.AsyncClient, monkeypatch) -> None:
+    class GroupingWS:
+        subprotocol = "v4.channel.k8s.io"
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            if exc_type is not None:
+                raise ExceptionGroupType(
+                    "grouped",
+                    [
+                        lightkube.ApiError(
+                            status={
+                                "status": "Failure",
+                                "message": "Only subprotocol v5.channel.k8s.io supports writing to stdin",
+                            }
+                        )
+                    ],
+                )
+            return False
+
+    def connect(url, http_client, subprotocols, params):
+        return GroupingWS()
+
+    monkeypatch.setattr(websocket, "aconnect_ws", connect)
+
+    with pytest.raises(lightkube.ApiError, match=re.escape("Only subprotocol v5.channel.k8s.io")):
+        await client.exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
 
 
 @respx.mock

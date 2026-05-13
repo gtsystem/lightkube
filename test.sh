@@ -9,7 +9,7 @@ uv run ruff check src/ tests/
 uv run mypy --cache-fine-grained src/ tests/
 uv run pytest
 # check if kubernertes cluster is available for e2e tests
-kubectl version --short
+kubectl version
 if [ $? -ne 0 ]; then
     echo "Skipping e2e tests as kubectl is not configured"
     exit 0

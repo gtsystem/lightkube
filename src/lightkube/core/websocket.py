@@ -1,6 +1,7 @@
 import io
 import json
 import queue
+import sys
 from time import monotonic
 from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, List, Optional, TypeVar, Union, overload
 
@@ -9,6 +10,11 @@ from httpx_ws import aconnect_ws, connect_ws
 
 from ..types import ExecResponse
 from .exceptions import ApiError
+
+if sys.version_info >= (3, 11):
+    from builtins import BaseExceptionGroup
+else:
+    from exceptiongroup import BaseExceptionGroup  # pyright: ignore[reportMissingImports]
 
 if TYPE_CHECKING:
     from .generic_client import BasicRequest
@@ -147,11 +153,17 @@ class AsyncWebsocketDriver(BaseWebsocketDriver):
         decode: Optional[str] = None,
         raise_on_error: bool = False,
     ) -> ExecResponse:
-        async with self._ws as ws:
-            if stdin is not None:
-                await self.write_stdin(ws, stdin, close=True)
+        try:
+            async with self._ws as ws:
+                if stdin is not None:
+                    await self.write_stdin(ws, stdin, close=True)
 
-            return await self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
+                return await self.read_output(ws, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode)
+        except BaseException as exc:
+            unwrapped = unwrap_exception_group(exc)
+            if unwrapped is not exc:
+                raise unwrapped from None
+            raise
 
     async def read_output(
         self,
@@ -221,3 +233,9 @@ class ExecAccumulator:
             stderr_value = self._stderr.getvalue() if self._decode is None else self._stderr.getvalue().decode(self._decode)  # type: ignore # _stdout is always BytesIO when _capture_stderr is True, so it has getvalue() method
 
         return ExecResponse(stdout=stdout_value, stderr=stderr_value, exit_code=exit_code)
+
+
+def unwrap_exception_group(exc: BaseException) -> BaseException:
+    while BaseExceptionGroup is not None and isinstance(exc, BaseExceptionGroup) and len(exc.exceptions) == 1:
+        exc = exc.exceptions[0]
+    return exc
