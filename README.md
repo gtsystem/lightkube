@@ -39,9 +39,9 @@ Read a pod
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 
-client = Client()
-pod = client.get(Pod, name="my-pod", namespace="default")
-print(pod.namespace.uid)
+with Client() as client:
+    pod = client.get(Pod, name="my-pod", namespace="default")
+    print(pod.namespace.uid)
 ```
 
 List nodes
@@ -50,9 +50,9 @@ List nodes
 from lightkube import Client
 from lightkube.resources.core_v1 import Node
 
-client = Client()
-for node in client.list(Node):
-    print(node.metadata.name)
+with Client() as client:
+    for node in client.list(Node):
+        print(node.metadata.name)
 ```
 
 ### Create

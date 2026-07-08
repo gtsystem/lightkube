@@ -71,6 +71,16 @@ class Client:
             dry_run=dry_run,
         )
 
+    def close(self) -> None:
+        """Close the underlying httpx client and release the connection pool."""
+        self._client.close()
+
+    def __enter__(self) -> "Client":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
+
     @property
     def namespace(self):
         """Return the default namespace that will be used when a namespace has not been specified"""

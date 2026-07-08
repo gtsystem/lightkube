@@ -882,3 +882,18 @@ def test_apply_global(client: lightkube.Client) -> None:
     node = client.apply(Node(metadata=ObjectMeta(name="xz")), field_manager="test", dry_run=True)
     assert node.metadata.name == "xz"
     assert req.calls[0][0].url.params["dryRun"] == "All"
+
+
+def test_close(client: lightkube.Client) -> None:
+    httpx_client = client._client._client
+    assert not httpx_client.is_closed
+    client.close()
+    assert httpx_client.is_closed
+
+
+def test_context_manager(kubeconfig: Path) -> None:
+    config = KubeConfig.from_file(str(kubeconfig))
+    with lightkube.Client(config=config) as client:
+        httpx_client = client._client._client
+        assert not httpx_client.is_closed
+    assert httpx_client.is_closed

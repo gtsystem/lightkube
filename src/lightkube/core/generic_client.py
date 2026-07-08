@@ -382,6 +382,9 @@ class GenericSyncClient(GenericClient):
     def list(self, br: BasicRequest) -> ListIterable:
         return ListIterable(self.list_chunks(br))
 
+    def close(self):
+        self._client.close()
+
 
 class GenericAsyncClient(GenericClient):
     AdapterClient = staticmethod(client_adapter.AsyncClient)

@@ -629,3 +629,30 @@ async def test_apply_global(client: lightkube.AsyncClient):
     assert node.metadata.name == "xx"
     assert req.calls[0][0].headers["Content-Type"] == "application/apply-patch+yaml"
     await client.close()
+
+
+@pytest.mark.asyncio
+async def test_close(client: lightkube.AsyncClient) -> None:
+    httpx_client = client._client._client
+    assert not httpx_client.is_closed
+    await client.close()
+    assert httpx_client.is_closed
+
+
+@pytest.mark.asyncio
+async def test_aclose(kubeconfig) -> None:
+    config = KubeConfig.from_file(str(kubeconfig))
+    client = lightkube.AsyncClient(config=config)
+    httpx_client = client._client._client
+    assert not httpx_client.is_closed
+    await client.aclose()
+    assert httpx_client.is_closed
+
+
+@pytest.mark.asyncio
+async def test_async_context_manager(kubeconfig) -> None:
+    config = KubeConfig.from_file(str(kubeconfig))
+    async with lightkube.AsyncClient(config=config) as client:
+        httpx_client = client._client._client
+        assert not httpx_client.is_closed
+    assert httpx_client.is_closed

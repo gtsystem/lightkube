@@ -80,6 +80,45 @@ client = Client(config=config)
 * config file defined in `KUBECONFIG` environment variable.
 * configuration file present on the default location (`~/.kube/config`).
 
+## Closing the client
+
+Both `Client` and `AsyncClient` hold an underlying httpx connection pool that should be closed
+when the client is no longer needed, in order to release open file descriptors.
+
+The recommended approach is to use the client as a context manager:
+
+```python
+from lightkube import Client
+
+with Client() as client:
+    pod = client.get(Pod, name="my-pod")
+```
+
+```python
+from lightkube import AsyncClient
+
+async with AsyncClient() as client:
+    pod = await client.get(Pod, name="my-pod")
+```
+
+You can also close the client explicitly:
+
+```python
+client = Client()
+try:
+    pod = client.get(Pod, name="my-pod")
+finally:
+    client.close()
+```
+
+```python
+client = AsyncClient()
+try:
+    pod = await client.get(Pod, name="my-pod")
+finally:
+    await client.aclose()  # or await client.close()
+```
+
 ## Proxy configuration
 
 The constructor `KubeConfig.from_server()` will build a simple configuration useful to connect to a non protected

@@ -884,6 +884,19 @@ class AsyncClient:
             dry_run=dry_run,
         )
 
-    async def close(self):
-        """Close the underline httpx client"""
+    async def close(self) -> None:
+        """Close the underlying httpx client and release the connection pool."""
         await self._client.close()
+
+    async def aclose(self) -> None:
+        """Close the underlying httpx client and release the connection pool.
+
+        Alias for :meth:`close` following the httpx naming convention.
+        """
+        await self.close()
+
+    async def __aenter__(self) -> "AsyncClient":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.close()
