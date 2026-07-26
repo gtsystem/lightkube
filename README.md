@@ -14,7 +14,7 @@ Modern lightweight kubernetes module for python
 * Models and resources generated from the swagger specifications using standard dataclasses.
 * Load/Dump resource objects from YAML.
 * Support for async/await
-* Support for installing a specific version of the kubernetes models (1.20 to 1.35)
+* Support for installing a specific version of the kubernetes models (1.21 to 1.36)
 * Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
@@ -50,9 +50,9 @@ List nodes
 from lightkube import Client
 from lightkube.resources.core_v1 import Node
 
-with Client() as client:
-    for node in client.list(Node):
-        print(node.metadata.name)
+client = Client()
+for node in client.list(Node):
+    print(node.metadata.name)
 ```
 
 ### Create

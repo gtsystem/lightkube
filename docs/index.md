@@ -14,7 +14,7 @@ Modern lightweight kubernetes module for python
 * Models and resources generated from the swagger specifications using standard dataclasses.
 * Load/Dump resource objects from YAML.
 * Support for async/await
-* Support for installing a specific version of the kubernetes models (1.20 to 1.35)
+* Support for installing a specific version of the kubernetes models (1.21 to 1.36)
 * Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
@@ -46,9 +46,9 @@ Read a pod
     from lightkube import Client
     from lightkube.resources.core_v1 import Pod
 
-    client = Client()
-    pod = client.get(Pod, name="my-pod", namespace="default")
-    print(pod.namespace.uid)
+    with Client() as client:
+        pod = client.get(Pod, name="my-pod", namespace="default")
+        print(pod.namespace.uid)
     ```
 
 === "Async"
@@ -57,9 +57,9 @@ Read a pod
     from lightkube.resources.core_v1 import Pod
 
     async def example():
-        client = AsyncClient()
-        pod = await client.get(Pod, name="my-pod", namespace="default")
-        print(pod.namespace.uid)
+        async with AsyncClient() as client:
+            pod = await client.get(Pod, name="my-pod", namespace="default")
+            print(pod.namespace.uid)
     ```
 
 List nodes
