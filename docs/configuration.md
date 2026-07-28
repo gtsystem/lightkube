@@ -82,7 +82,7 @@ client = Client(config=config)
 
 ## Closing the client
 
-Both `Client` and `AsyncClient` hold an underlying httpx connection pool that should be closed
+Both `Client` and `AsyncClient` hold an underlying httpx2 connection pool that should be closed
 when the client is no longer needed, in order to release open file descriptors.
 
 The recommended approach is to use the client as a context manager:

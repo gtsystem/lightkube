@@ -19,7 +19,7 @@ Modern lightweight kubernetes module for python
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
 
-This module is powered by [httpx](https://github.com/encode/httpx/tree/master/httpx). 
+This module is powered by [httpx2](https://github.com/pydantic/httpx2). 
 
 ## Installation
 

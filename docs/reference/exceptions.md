@@ -1,8 +1,8 @@
 # Exceptions
 
-Lightkube uses httpx for handling http requests and responses. 
+Lightkube uses httpx2 for handling http requests and responses. 
 Because of that, connectivity or timeout issues may raise exceptions. 
-You can get familiar with the exceptions returned by httpx library [here](https://www.python-httpx.org/exceptions/).
+You can get familiar with the exceptions returned by httpx2 library [here](https://httpx2.pydantic.dev/exceptions/).
 
 There are few lightkube specific exceptions:
 
@@ -28,7 +28,7 @@ Configuration file ~/.kube/config not found
 
 ::: lightkube.ApiError
 
-This exception extends [`httpx.HTTPStatusError`](https://www.python-httpx.org/exceptions/) and is raised when an HTTP error is
+This exception extends [`httpx2.HTTPStatusError`](https://httpx2.pydantic.dev/exceptions/) and is raised when an HTTP error is
 returned from kubernetes API. An extra `status` attribute is available with details
 about the failure using the standard model [`meta_v1.Status`](https://gtsystem.github.io/lightkube-models/1.19/models/meta_v1/#status).
 

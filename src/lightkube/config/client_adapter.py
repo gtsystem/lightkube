@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import AsyncGenerator, Callable, Dict, Generator, List, Mapping, Optional, Sequence, Tuple, overload
 
-import httpx
+import httpx2 as httpx
 
 from ..core.exceptions import ConfigError
 from .kubeconfig import SingleConfig, StrOrPath

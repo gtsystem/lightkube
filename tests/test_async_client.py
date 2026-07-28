@@ -3,7 +3,7 @@ import re
 import unittest.mock
 import warnings
 
-import httpx
+import httpx2 as httpx
 import pytest
 import respx
 
@@ -80,7 +80,7 @@ def test_namespace(client: lightkube.Client, kubeconfig_ns):
     assert client.namespace == "ns1"
 
 
-@unittest.mock.patch("httpx.AsyncClient")
+@unittest.mock.patch("httpx2.AsyncClient")
 @unittest.mock.patch("lightkube.config.client_adapter.user_auth")
 @unittest.mock.patch("lightkube.config.client_adapter.verify_cluster")
 def test_client_httpx_attributes(verify_cluster, user_auth, httpx_async_client, kubeconfig):
@@ -100,28 +100,26 @@ def test_client_httpx_attributes(verify_cluster, user_auth, httpx_async_client, 
     )
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_get_namespaced(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={"metadata": {"name": "xx"}})
+async def test_get_namespaced(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/xx").respond(json={"metadata": {"name": "xx"}})
     pod = await client.get(Pod, name="xx")
     assert pod.metadata.name == "xx"
 
-    respx.get("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={"metadata": {"name": "xy"}})
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/other/pods/xx").respond(json={"metadata": {"name": "xy"}})
     pod = await client.get(Pod, name="xx", namespace="other")
     assert pod.metadata.name == "xy"
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_list_global(client: lightkube.AsyncClient):
+async def test_list_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}]}
-    respx.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes").respond(json=resp)
     nodes = client.list(Node)
     assert [node.metadata.name async for node in nodes] == ["xx", "yy"]
 
-    respx.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/pods?fieldSelector=k%3Dx").respond(json=resp)
     pods = client.list(Pod, namespace=lightkube.ALL_NS, fields={"k": "x"})
     assert [pod.metadata.name async for pod in pods] == ["xx", "yy"]
 
@@ -131,84 +129,78 @@ async def test_list_global(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_list_namespaced(client: lightkube.AsyncClient):
+async def test_list_namespaced(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}], "metadata": {"resourceVersion": "42"}}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods").respond(json=resp)
     poditer = client.list(Pod)
     with pytest.raises(lightkube.NotReadyError):
         _ = poditer.resourceVersion
     pods = [pod async for pod in poditer]
     assert poditer.resourceVersion == "42"
-    for pod, expected in zip(pods, resp["items"]):
+    for pod, expected in zip(pods, resp["items"], strict=False):
         assert pod.metadata is not None
         assert pod.metadata.name == expected["metadata"]["name"]
         assert pod.apiVersion is not None
         assert pod.kind is not None
 
-    respx.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/other/pods?labelSelector=k%3Dv").respond(json=resp)
     pods = client.list(Pod, namespace="other", labels={"k": "v"})
     assert [pod.metadata.name async for pod in pods] == ["xx", "yy"]
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_list_chunk_size(client: lightkube.AsyncClient):
+async def test_list_chunk_size(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     resp = {"items": [{"metadata": {"name": "xx"}}, {"metadata": {"name": "yy"}}], "metadata": {"continue": "yes"}}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3").respond(json=resp)
     resp = {"items": [{"metadata": {"name": "zz"}}]}
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods?limit=3&continue=yes").respond(json=resp)
     pods = client.list(Pod, chunk_size=3)
     assert [pod.metadata.name async for pod in pods] == ["xx", "yy", "zz"]
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_delete_global(client: lightkube.AsyncClient):
-    respx.delete("https://localhost:9443/api/v1/nodes/xx")
+async def test_delete_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.delete("https://localhost:9443/api/v1/nodes/xx")
     await client.delete(Node, name="xx")
 
     # with cascade and grace_period
-    respx.delete("https://localhost:9443/api/v1/nodes/params?propagationPolicy=Foreground&gracePeriodSeconds=0")
+    httpx2_mock.delete("https://localhost:9443/api/v1/nodes/params?propagationPolicy=Foreground&gracePeriodSeconds=0")
     await client.delete(Node, name="params", cascade=types.CascadeType.FOREGROUND, grace_period=0)
 
     # dry-run
-    req_dry = respx.delete("https://localhost:9443/api/v1/nodes/xz?dryRun=All").respond(text="deleted")
+    req_dry = httpx2_mock.delete("https://localhost:9443/api/v1/nodes/xz?dryRun=All").respond(text="deleted")
     await client.delete(Node, name="xz", dry_run=True)
     assert req_dry.calls[0][0].url.params["dryRun"] == "All"
 
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_deletecollection_global(client: lightkube.AsyncClient):
-    respx.delete("https://localhost:9443/api/v1/nodes")
-    await client.deletecollection(Node)
-
-    respx.delete("https://localhost:9443/api/v1/nodes?propagationPolicy=Foreground&gracePeriodSeconds=0")
+async def test_deletecollection_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.delete("https://localhost:9443/api/v1/nodes?propagationPolicy=Foreground&gracePeriodSeconds=0")
     await client.deletecollection(Node, cascade=types.CascadeType.FOREGROUND, grace_period=0)
+
+    httpx2_mock.delete("https://localhost:9443/api/v1/nodes")
+    await client.deletecollection(Node)
 
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_deletecollection_namespaced(client: lightkube.AsyncClient):
+async def test_deletecollection_namespaced(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     # dry-run
-    req_dry = respx.delete("https://localhost:9443/api/v1/namespaces/other/pods?dryRun=All")
+    req_dry = httpx2_mock.delete("https://localhost:9443/api/v1/namespaces/other/pods?dryRun=All")
     await client.deletecollection(Pod, namespace="other", dry_run=True)
     assert req_dry.calls[0][0].url.params["dryRun"] == "All"
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_watch(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
+async def test_watch(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(status_code=404)
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list())
 
     i = -1
     with pytest.raises(httpx.HTTPError) as exi:
@@ -222,10 +214,9 @@ async def test_watch(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_watch_error(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_error())
+async def test_watch_error(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_error())
 
     with pytest.raises(httpx.HTTPError):
         async for _op, _node in client.watch(Node):
@@ -238,11 +229,10 @@ async def test_watch_error(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_watch_version(client: lightkube.AsyncClient):
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
-    respx.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
+async def test_watch_version(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
+    httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())
 
     # testing starting from specific resource version
     i = -1
@@ -256,13 +246,11 @@ async def test_watch_version(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_wait_success(client: lightkube.AsyncClient):
+async def test_wait_success(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
-    respx.get(base_url).respond(content=make_wait_success())
-    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_success())
+    httpx2_mock.get(base_url).respond(content=make_wait_success())
 
     node = await client.wait(Node, "test-node", for_conditions=["TestCondition"])
 
@@ -271,13 +259,11 @@ async def test_wait_success(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_wait_deleted(client: lightkube.AsyncClient):
+async def test_wait_deleted(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
-    respx.get(base_url).respond(content=make_wait_deleted())
-    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_deleted())
+    httpx2_mock.get(base_url).respond(content=make_wait_deleted())
 
     message = "nodes/test-node was unexpectedly deleted"
     with pytest.raises(lightkube.core.exceptions.ObjectDeleted, match=message):
@@ -286,13 +272,11 @@ async def test_wait_deleted(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_wait_failed(client: lightkube.AsyncClient):
+async def test_wait_failed(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     base_url = "https://localhost:9443/api/v1/nodes?fieldSelector=metadata.name%3Dtest-node&watch=true"
 
-    respx.get(base_url).respond(content=make_wait_failed())
-    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_failed())
+    httpx2_mock.get(base_url).respond(content=make_wait_failed())
 
     message = r"nodes/test-node has failure condition\(s\): TestCondition"
     with pytest.raises(lightkube.core.exceptions.ConditionError, match=message):
@@ -301,24 +285,21 @@ async def test_wait_failed(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_wait_custom(client: lightkube.AsyncClient):
+async def test_wait_custom(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     base_url = "https://localhost:9443/apis/custom.org/v1/customs?fieldSelector=metadata.name%3Dcustom-resource&watch=true"
 
     Custom = create_global_resource(group="custom.org", version="v1", kind="Custom", plural="customs")
-    respx.get(base_url).respond(content=make_wait_custom())
-    respx.get(base_url + "&resourceVersion=1").respond(content=make_wait_custom())
+    httpx2_mock.get(base_url).respond(content=make_wait_custom())
 
     await client.wait(Custom, "custom-resource", for_conditions=["TestCondition"])
 
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_patch_global(client: lightkube.AsyncClient):
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
+async def test_patch_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     pod = await client.patch(
         Node, "xx", [{"op": "add", "path": "/metadata/labels/x", "value": "y"}], patch_type=types.PatchType.JSON
     )
@@ -326,7 +307,7 @@ async def test_patch_global(client: lightkube.AsyncClient):
     assert req.calls[0][0].headers["Content-Type"] == "application/json-patch+json"
 
     # PatchType.APPLY + force
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&force=true").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&force=true").respond(
         json={"metadata": {"name": "xy"}}
     )
     node = await client.patch(
@@ -341,7 +322,7 @@ async def test_patch_global(client: lightkube.AsyncClient):
     assert req.calls[0][0].headers["Content-Type"] == "application/apply-patch+yaml"
 
     # dry-run
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xz?fieldManager=test&dryRun=All").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xz?fieldManager=test&dryRun=All").respond(
         json={"metadata": {"name": "xz"}}
     )
     node = await client.patch(
@@ -358,10 +339,9 @@ async def test_patch_global(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_set_namespaced(client: lightkube.AsyncClient):
-    req = respx.patch(
+async def test_set_namespaced(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.patch(
         "https://localhost:9443/api/v1/namespaces/other/pods/xx", json={"metadata": {"labels": {"env": "prod"}}}
     ).respond(json={"metadata": {"name": "xx", "labels": {"env": "prod"}}})
     pod = await client.set(Pod, "xx", namespace="other", labels={"env": "prod"})
@@ -369,70 +349,62 @@ async def test_set_namespaced(client: lightkube.AsyncClient):
     assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_set_global(client: lightkube.AsyncClient):
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xz", json={"metadata": {"annotations": {"env": "prod"}}}).respond(
-        json={"metadata": {"name": "xz", "annotations": {"env": "prod"}}}
-    )
+async def test_set_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.patch(
+        "https://localhost:9443/api/v1/nodes/xz", json={"metadata": {"annotations": {"env": "prod"}}}
+    ).respond(json={"metadata": {"name": "xz", "annotations": {"env": "prod"}}})
     pod = await client.set(Node, "xz", annotations={"env": "prod"})
     assert pod.metadata.name == "xz"
     assert req.calls[0][0].headers["Content-Type"] == "application/merge-patch+json"
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_create_global(client: lightkube.AsyncClient):
-    req = respx.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
+async def test_create_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
     pod = await client.create(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
     assert pod.metadata.name == "xx"
 
     # dry-run
-    req_dry = respx.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
+    req_dry = httpx2_mock.post("https://localhost:9443/api/v1/nodes").respond(json={"metadata": {"name": "xx"}})
     await client.create(Node(metadata=ObjectMeta(name="xx")), dry_run=True)
     assert req_dry.calls[1][0].url.params["dryRun"] == "All"
 
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_replace_global(client: lightkube.AsyncClient):
-    req = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
+async def test_replace_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))
     json_contains(req.calls[0][0].read(), {"metadata": {"name": "xx"}})
     assert pod.metadata.name == "xx"
 
     # dry-run
-    req_dry = respx.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
+    req_dry = httpx2_mock.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")), dry_run=True)
     assert req_dry.calls[1][0].url.params["dryRun"] == "All"
 
     await client.close()
 
 
-async def alist(aiter):
-    return [item async for item in aiter]
+async def alist(aiter_):
+    return [item async for item in aiter_]
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_pod_log(client: lightkube.AsyncClient):
+async def test_pod_log(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     result = ["line1\n", "line2\n", "line3\n"]
     content = "".join(result)
 
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
+
     lines = await alist(client.log("test"))
     assert lines == result
 
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?since=30&timestamps=true").respond(
-        content=content
-    )
     lines = await alist(client.log("test", since=30, timestamps=True))
     assert lines == result
-
-    respx.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log?container=bla").respond(content=content)
 
     lines = await alist(client.log("test", container="bla", newlines=False))
     assert lines == [_.strip() for _ in result]
@@ -577,10 +549,9 @@ async def test_exec_unwraps_grouped_stdin_error(client: lightkube.AsyncClient, m
         await client.exec("pod-stdin", command=["/bin/cmd"], stdin="text-input")
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_apply_namespaced(client: lightkube.AsyncClient):
-    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=test").respond(
+async def test_apply_namespaced(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/namespaces/default/pods/xy?fieldManager=test").respond(
         json={"metadata": {"name": "xy"}}
     )
     pod = await client.apply(Pod(metadata=ObjectMeta(name="xy")), field_manager="test")
@@ -588,7 +559,7 @@ async def test_apply_namespaced(client: lightkube.AsyncClient):
     assert req.calls[0][0].headers["Content-Type"] == "application/apply-patch+yaml"
 
     # custom namespace, force
-    req = respx.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=a&force=true").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/namespaces/other/pods/xz?fieldManager=a&force=true").respond(
         json={"metadata": {"name": "xz"}}
     )
     pod = await client.apply(Pod(metadata=ObjectMeta(name="xz", namespace="other")), field_manager="a", force=True)
@@ -596,7 +567,7 @@ async def test_apply_namespaced(client: lightkube.AsyncClient):
     assert req.calls[0][0].headers["Content-Type"] == "application/apply-patch+yaml"
 
     # sub-resource
-    req = respx.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx/status?fieldManager=a").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/namespaces/default/pods/xx/status?fieldManager=a").respond(
         json={"metadata": {"name": "xx"}}
     )
     pod = await client.apply(Pod.Status(), name="xx", field_manager="a")
@@ -605,16 +576,17 @@ async def test_apply_namespaced(client: lightkube.AsyncClient):
     await client.close()
 
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_apply_global(client: lightkube.AsyncClient):
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test").respond(json={"metadata": {"name": "xy"}})
+async def test_apply_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test").respond(
+        json={"metadata": {"name": "xy"}}
+    )
     node = await client.apply(Node(metadata=ObjectMeta(name="xy")), field_manager="test")
     assert node.metadata.name == "xy"
     assert req.calls[0][0].headers["Content-Type"] == "application/apply-patch+yaml"
 
     # dry-run
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&dryRun=All").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xy?fieldManager=test&dryRun=All").respond(
         json={"metadata": {"name": "xy"}}
     )
     node = await client.apply(Node(metadata=ObjectMeta(name="xy")), field_manager="test", dry_run=True)
@@ -622,7 +594,7 @@ async def test_apply_global(client: lightkube.AsyncClient):
     assert req.calls[0][0].url.params["dryRun"] == "All"
 
     # sub-resource + force
-    req = respx.patch("https://localhost:9443/api/v1/nodes/xx/status?fieldManager=a&force=true").respond(
+    req = httpx2_mock.patch("https://localhost:9443/api/v1/nodes/xx/status?fieldManager=a&force=true").respond(
         json={"metadata": {"name": "xx"}}
     )
     node = await client.apply(Node.Status(), name="xx", field_manager="a", force=True)

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from lightkube import ConfigError

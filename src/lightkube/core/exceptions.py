@@ -4,7 +4,7 @@ Exceptions.
 
 from typing import Optional
 
-import httpx
+import httpx2 as httpx
 
 from .internal_models import meta_v1
 

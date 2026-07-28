@@ -5,8 +5,7 @@ import sys
 from time import monotonic
 from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, List, Optional, TypeVar, Union, overload
 
-import httpx
-from httpx_ws import aconnect_ws, connect_ws
+import httpx2 as httpx
 
 from ..types import ExecResponse
 from .exceptions import ApiError
@@ -18,6 +17,17 @@ else:
 
 if TYPE_CHECKING:
     from .generic_client import BasicRequest
+
+
+def connect_ws(url: str, client: httpx.Client, subprotocols: List[str], params: dict):
+    """Thin wrapper so tests can monkeypatch this function."""
+    return client.websocket(url, subprotocols=subprotocols, params=params)
+
+
+def aconnect_ws(url: str, client: httpx.AsyncClient, subprotocols: List[str], params: dict):
+    """Thin wrapper so tests can monkeypatch this function."""
+    return client.websocket(url, subprotocols=subprotocols, params=params)
+
 
 STDIN_CHANNEL: int = 0
 STDOUT_CHANNEL: int = 1
@@ -63,13 +73,10 @@ class BaseWebsocketDriver:
 
     def __init__(self, client: Union[httpx.Client, httpx.AsyncClient], br: "BasicRequest", timeout: Optional[float] = None):
         self._timeout = timeout
-        ws_func = connect_ws if isinstance(client, httpx.Client) else aconnect_ws
-        self._ws = ws_func(
-            br.url,
-            client,  # type: ignore # this is either httpx.Client or httpx.AsyncClient, both of which are accepted by the respective connect_ws function
-            subprotocols=self.PROTOCOLS,
-            params=br.params,
-        )
+        if isinstance(client, httpx.Client):
+            self._ws = connect_ws(br.url, client, subprotocols=self.PROTOCOLS, params=br.params)
+        else:
+            self._ws = aconnect_ws(br.url, client, subprotocols=self.PROTOCOLS, params=br.params)
 
     def ensure_stdin_supported(self, ws):
         if ws.subprotocol != self.PROTOCOLS[0]:

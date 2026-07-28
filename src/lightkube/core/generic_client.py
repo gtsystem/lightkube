@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterable, AsyncIterator, Dict, Iterable, Iterator, Optional, Tuple, Type, TypeVar, Union
 
-import httpx
+import httpx2 as httpx
 
 from ..config import client_adapter
 from ..config.kubeconfig import DEFAULT_KUBECONFIG, KubeConfig, SingleConfig

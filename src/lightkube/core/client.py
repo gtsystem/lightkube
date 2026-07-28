@@ -1,6 +1,6 @@
 from typing import BinaryIO, Dict, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, overload
 
-import httpx
+import httpx2 as httpx
 
 from lightkube.config.client_adapter import ConnectionParams
 
