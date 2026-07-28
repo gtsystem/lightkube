@@ -683,6 +683,18 @@ def test_pod_log(client: lightkube.Client, httpx2_mock: respx.Router) -> None:
     result = ["line1\n", "line2\n", "line3\n"]
     content = "".join(result)
 
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log", params={"follow": True}).respond(
+        content=content
+    )
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log", params={"tailLines": 3}).respond(
+        content=content
+    )
+    httpx2_mock.get(
+        "https://localhost:9443/api/v1/namespaces/default/pods/test/log", params={"sinceSeconds": 30, "timestamps": True}
+    ).respond(content=content)
+    httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log", params={"container": "bla"}).respond(
+        content=content
+    )
     httpx2_mock.get("https://localhost:9443/api/v1/namespaces/default/pods/test/log").respond(content=content)
 
     lines = list(client.log("test"))

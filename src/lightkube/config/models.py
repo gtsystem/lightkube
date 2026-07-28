@@ -1,9 +1,8 @@
 import base64
 import tempfile
-from dataclasses import dataclass, field
 from typing import IO, Dict, List, Optional, overload
 
-from ..core.dataclasses_dict import DataclassDictMixIn
+import msgspec
 
 
 class FileStr(str):
@@ -34,50 +33,45 @@ class FileStr(str):
             self.handler = None
 
 
-@dataclass
-class Context(DataclassDictMixIn):
+class Context(msgspec.Struct, omit_defaults=True):
     cluster: str
     user: Optional[str] = None
     namespace: Optional[str] = None
 
 
-@dataclass
-class NameValue(DataclassDictMixIn):
+class NameValue(msgspec.Struct, omit_defaults=True):
     name: str
     value: str
 
 
-@dataclass
-class UserExec(DataclassDictMixIn):
+class UserExec(msgspec.Struct, omit_defaults=True):
     apiVersion: str
     command: str
-    env: List[NameValue] = field(default_factory=list)
-    args: List[str] = field(default_factory=list)
+    env: Optional[List[NameValue]] = None
+    args: Optional[List[str]] = None
     installHint: Optional[str] = None
 
 
-@dataclass
-class User(DataclassDictMixIn):
+class User(msgspec.Struct, omit_defaults=True):
     exec: Optional[UserExec] = None
     username: Optional[str] = None
     password: Optional[str] = None
     token: Optional[str] = None
-    token_file: Optional[str] = field(metadata={"json": "tokenFile"}, default=None)
-    auth_provider: Optional[Dict] = field(metadata={"json": "auth-provider"}, default=None)
-    client_cert: Optional[str] = field(metadata={"json": "client-certificate"}, default=None)
-    client_cert_data: Optional[str] = field(metadata={"json": "client-certificate-data"}, default=None)
-    client_key: Optional[str] = field(metadata={"json": "client-key"}, default=None)
-    client_key_data: Optional[str] = field(metadata={"json": "client-key-data"}, default=None)
+    token_file: Optional[str] = msgspec.field(name="tokenFile", default=None)
+    auth_provider: Optional[Dict] = msgspec.field(name="auth-provider", default=None)
+    client_cert: Optional[str] = msgspec.field(name="client-certificate", default=None)
+    client_cert_data: Optional[str] = msgspec.field(name="client-certificate-data", default=None)
+    client_key: Optional[str] = msgspec.field(name="client-key", default=None)
+    client_key_data: Optional[str] = msgspec.field(name="client-key-data", default=None)
 
 
-@dataclass
-class Cluster(DataclassDictMixIn):
+class Cluster(msgspec.Struct, omit_defaults=True):
     """
     Attributes:
       server: the server name
     """
 
     server: str = "http://localhost:8080"
-    certificate_auth: Optional[str] = field(metadata={"json": "certificate-authority"}, default=None)
-    certificate_auth_data: Optional[str] = field(metadata={"json": "certificate-authority-data"}, default=None)
-    insecure: bool = field(metadata={"json": "insecure-skip-tls-verify"}, default=False)
+    certificate_auth: Optional[str] = msgspec.field(name="certificate-authority", default=None)
+    certificate_auth_data: Optional[str] = msgspec.field(name="certificate-authority-data", default=None)
+    insecure: bool = msgspec.field(name="insecure-skip-tls-verify", default=False)

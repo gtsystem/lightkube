@@ -1,5 +1,4 @@
 import io
-import json
 import queue
 import sys
 from time import monotonic
@@ -8,7 +7,9 @@ from typing import TYPE_CHECKING, Any, BinaryIO, ClassVar, Iterable, List, Optio
 import httpx2 as httpx
 
 from ..types import ExecResponse
+from .decoders import decode_status
 from .exceptions import ApiError
+from .internal_models import meta_v1
 
 if sys.version_info >= (3, 11):
     from builtins import BaseExceptionGroup
@@ -81,10 +82,10 @@ class BaseWebsocketDriver:
     def ensure_stdin_supported(self, ws):
         if ws.subprotocol != self.PROTOCOLS[0]:
             raise ApiError(
-                status={
-                    "status": "Failure",
-                    "message": f"Only subprotocol {self.PROTOCOLS[0]} supports writing to stdin",
-                }
+                status=meta_v1.Status(
+                    status="Failure",
+                    message=f"Only subprotocol {self.PROTOCOLS[0]} supports writing to stdin",
+                )
             )
 
     def chunk_stdin(self, msg: Union[str, bytes, BinaryIO], chunk_size: int = 128 * 1024) -> Iterable[bytes]:
@@ -223,7 +224,7 @@ class ExecAccumulator:
             return None
 
         exit_code = 0
-        error = ApiError(status=json.loads(message))
+        error = ApiError(status=decode_status(message))
         if error.status.status == "Failure":
             if error.status.reason != "NonZeroExitCode" or self._raise_on_error:
                 raise error

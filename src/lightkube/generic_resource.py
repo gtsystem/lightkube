@@ -52,9 +52,17 @@ class Generic(dict):
     def apiVersion(self) -> str:
         return self.get("apiVersion")
 
+    @apiVersion.setter
+    def apiVersion(self, version: str):
+        self["apiVersion"] = version
+
     @property
     def kind(self) -> str:
         return self.get("kind")
+
+    @kind.setter
+    def kind(self, name: str):
+        self["kind"] = name
 
     @property
     def status(self) -> str:

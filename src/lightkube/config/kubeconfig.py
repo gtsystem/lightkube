@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NamedTuple, Optional, Protocol, Union
+from typing import Any, Dict, Iterable, NamedTuple, Optional, Type, Union
 
+import msgspec
 import yaml
 
 from ..core import exceptions
@@ -9,9 +10,6 @@ from .models import Cluster, Context, User
 
 StrOrPath = Union[str, "os.PathLike[str]"]
 
-
-if TYPE_CHECKING:
-    from typing_extensions import Self
 
 """
 | behavior                  | kubectl                   | lightkube             |
@@ -25,14 +23,9 @@ if TYPE_CHECKING:
 """
 
 
-class FromDict(Protocol):
-    @classmethod
-    def from_dict(cls, obj: dict, lazy: bool = True) -> "Self": ...
-
-
 # TODO: Make typehints more concrete
-def to_mapping(obj_list: Iterable[Any], key: str, factory: FromDict) -> Dict[Any, Any]:
-    return {obj["name"]: factory.from_dict(obj[key], lazy=False) for obj in obj_list}
+def to_mapping(obj_list: Iterable[Any], key: str, factory: Type) -> Dict[Any, Any]:
+    return {obj["name"]: msgspec.convert(obj[key], factory) for obj in obj_list}
 
 
 DEFAULT_NAMESPACE = "default"
