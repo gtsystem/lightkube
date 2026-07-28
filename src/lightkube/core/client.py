@@ -1,6 +1,6 @@
 from typing import BinaryIO, Dict, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, overload
 
-import httpx2 as httpx
+import httpx2
 
 from lightkube.config.client_adapter import ConnectionParams
 
@@ -33,35 +33,35 @@ class Client:
         using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
       namespace: Default namespace to use. This attribute is used in case namespaced resources are called without
         defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
-      timeout: Instance of `httpx.Timeout`. By default, all timeouts are set to 10 seconds. Notice that read timeout
+      timeout: Instance of `httpx2.Timeout`. By default, all timeouts are set to 10 seconds. Notice that read timeout
         is ignored when watching changes.
       lazy: When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
         accessed.
       field_manager: Name associated with the actor or entity that is making these changes.
-      trust_env: Ignore environment variables, also passed through to httpx.Client trust_env.  See its
+      trust_env: Ignore environment variables, also passed through to httpx2.Client trust_env.  See its
         docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
       dry_run: Apply server-side dry-run and guarantee that modifications will not
         be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
         to `kubectl` commands.
-      transport: Custom httpx transport.
-      proxy: HTTP proxy for the httpx client.
+      transport: Custom httpx2 transport.
+      proxy: HTTP proxy for the httpx2 client.
     """
 
     def __init__(
         self,
         config: Union[SingleConfig, KubeConfig, None] = None,
         namespace: Optional[str] = None,
-        timeout: Optional[httpx.Timeout] = None,
+        timeout: Optional[httpx2.Timeout] = None,
         lazy: bool = True,
         field_manager: Optional[str] = None,
         trust_env: bool = True,
         dry_run: bool = False,
-        transport: Optional[httpx.BaseTransport] = None,
+        transport: Optional[httpx2.BaseTransport] = None,
         proxy: Optional[str] = None,
         http2: bool = False,
     ):
         if timeout is None:
-            timeout = httpx.Timeout(10.0)
+            timeout = httpx2.Timeout(10.0)
         self._client = GenericSyncClient(
             ConnectionParams(timeout=timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2),
             config,
@@ -72,7 +72,7 @@ class Client:
         )
 
     def close(self) -> None:
-        """Close the underlying httpx client and release the connection pool."""
+        """Close the underlying httpx2 client and release the connection pool."""
         self._client.close()
 
     def __enter__(self) -> "Client":

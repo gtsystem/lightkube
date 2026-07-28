@@ -1,6 +1,6 @@
 from typing import AsyncIterable, AsyncIterator, BinaryIO, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
-import httpx2 as httpx
+import httpx2
 
 from lightkube.config.client_adapter import ConnectionParams
 
@@ -30,35 +30,35 @@ class AsyncClient:
         using the following order: in-cluster config, `KUBECONFIG` environment variable, `~/.kube/config` file.
       namespace: Default namespace to use. This attribute is used in case namespaced resources are called without
         defining a namespace. If not specified, the default namespace set in your kube configuration will be used.
-      timeout: Instance of `httpx.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
+      timeout: Instance of `httpx2.Timeout`. By default all timeouts are set to 10 seconds. Notice that read timeout
         is ignored when watching changes.
       lazy: When set, the returned objects will be decoded from the JSON payload in a lazy way, i.e. only when
         accessed.
       field_manager: Name associated with the actor or entity that is making these changes.
-      trust_env: Ignore environment variables, also passed through to httpx.AsyncClient trust_env.  See its
+      trust_env: Ignore environment variables, also passed through to httpx2.AsyncClient trust_env.  See its
         docs for further description. If False, empty config will be derived from_file(DEFAULT_KUBECONFIG)
       dry_run: Apply server-side dry-run and guarantee that modifications will not
           be persisted in storage. Setting this field to `True` is equivalent of passing `--dry-run=server`
           to `kubectl` commands.
-      transport: Custom httpx transport.
-      proxy: HTTP proxy for the httpx client.
+      transport: Custom httpx2 transport.
+      proxy: HTTP proxy for the httpx2 client.
     """
 
     def __init__(
         self,
         config: Union[SingleConfig, KubeConfig, None] = None,
         namespace: Optional[str] = None,
-        timeout: Optional[httpx.Timeout] = None,
+        timeout: Optional[httpx2.Timeout] = None,
         lazy: bool = True,
         field_manager: Optional[str] = None,
         trust_env: bool = True,
         dry_run: bool = False,
-        transport: Optional[httpx.AsyncBaseTransport] = None,
+        transport: Optional[httpx2.AsyncBaseTransport] = None,
         proxy: Optional[str] = None,
         http2: bool = False,
     ):
         if timeout is None:
-            timeout = httpx.Timeout(10.0)
+            timeout = httpx2.Timeout(10.0)
         self._client = GenericAsyncClient(
             ConnectionParams(timeout=timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2),
             config,
@@ -885,13 +885,13 @@ class AsyncClient:
         )
 
     async def close(self) -> None:
-        """Close the underlying httpx client and release the connection pool."""
+        """Close the underlying httpx2 client and release the connection pool."""
         await self._client.close()
 
     async def aclose(self) -> None:
-        """Close the underlying httpx client and release the connection pool.
+        """Close the underlying httpx2 client and release the connection pool.
 
-        Alias for :meth:`close` following the httpx naming convention.
+        Alias for :meth:`close` following the httpx2 naming convention.
         """
         await self.close()
 
