@@ -1,19 +1,24 @@
 import asyncio
 import dataclasses
-import json
 import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterable, AsyncIterator, Dict, Iterable, Iterator, Optional, Tuple, Type, TypeVar, Union
 
 import httpx2 as httpx
+import msgspec
 
 from ..config import client_adapter
 from ..config.kubeconfig import DEFAULT_KUBECONFIG, KubeConfig, SingleConfig
 from ..types import ExecResponse, OnErrorAction, OnErrorHandler, PatchType, on_error_raise
+from . import decoders
 from . import resource as r
+from .dictmixin import DictMixin
 from .exceptions import ApiError, NotReadyError
 from .internal_models import core_v1_res
 from .websocket import AsyncWebsocketDriver, WebsocketDriver
+
+# Local alias avoids repeated attribute lookups on the encode path.
+json_encode = msgspec.json.encode
 
 ALL_NS = "*"
 
@@ -43,19 +48,18 @@ METHOD_MAPPING = {
 class BasicRequest:
     method: str
     url: str
-    response_type: Any
+    response_type: Optional[Type[DictMixin]] = None
     params: Dict[str, str] = dataclasses.field(default_factory=dict)
     data: Any = None
     headers: Dict[str, str] = None
 
 
 class WatchDriver:
-    def __init__(self, br: BasicRequest, build_request, lazy):
+    def __init__(self, br: BasicRequest, build_request, lazy=None):
         self._version = br.params.get("resourceVersion")
-        self._convert = br.response_type.from_dict
+        self._res = br.response_type
         self._br = br
         self._build_request = build_request
-        self._lazy = lazy
 
     def get_request(self, timeout):
         br = self._br
@@ -64,13 +68,12 @@ class WatchDriver:
         return self._build_request(br.method, br.url, params=br.params, timeout=timeout)
 
     def process_one_line(self, line):
-        line = json.loads(line)
-        tp = line["type"]
-        obj = line["object"]
-        if tp == "ERROR":
-            raise ApiError(status=obj)
-        self._version = obj["metadata"]["resourceVersion"]
-        return tp, self._convert(obj, lazy=self._lazy)
+        event = decoders.decode_watch_event(line)
+        if event.type == "ERROR":
+            raise ApiError(status=decoders.decode_status(event.object))
+        obj = decoders.decode_object(event.object, self._res)
+        self._version = obj.metadata.resourceVersion
+        return event.type, obj
 
 
 T = TypeVar("T")
@@ -127,13 +130,12 @@ class GenericClient:
         conn_params: client_adapter.ConnectionParams,
         config: Union[SingleConfig, KubeConfig] = None,
         namespace: Optional[str] = None,
-        lazy=True,
+        lazy=None,
         field_manager: Optional[str] = None,
         dry_run: bool = False,
     ):
         self._watch_timeout = httpx.Timeout(conn_params.timeout)
         self._watch_timeout.read = None
-        self._lazy = lazy
         if config is None and conn_params.trust_env:
             config = KubeConfig.from_env().get()
         elif config is None and not conn_params.trust_env:
@@ -227,13 +229,12 @@ class GenericClient:
             if method == "patch" and not isinstance(obj, r.Resource):
                 data = obj
             else:
-                data = obj.to_dict()
-                # The following block, ensures that apiVersion and kind are always set.
-                # this is needed as k8s fails if this data are not provided for objects derived by CRDs (Issue #27)
-                if "apiVersion" not in data:
-                    data["apiVersion"] = api_info.resource.api_version
-                if "kind" not in data:
-                    data["kind"] = api_info.resource.kind
+                data = obj
+                if isinstance(obj, r.Resource):
+                    if not data.apiVersion:
+                        data.apiVersion = api_info.resource.api_version
+                    if not data.kind:
+                        data.kind = api_info.resource.kind
 
         path.append(api_info.plural)
         if method in ("delete", "get", "patch", "put", "exec") or api_info.action:
@@ -269,13 +270,15 @@ class GenericClient:
             raise transform_exception(e) from e
 
     def build_adapter_request(self, br: BasicRequest) -> httpx.Request:
-        return self._client.build_request(br.method, br.url, params=br.params, json=br.data, headers=br.headers)
-
-    def convert_to_resource(self, res: Type[r.Resource], item: dict) -> r.Resource:
-        resource_def = r.api_info(res).resource
-        item.setdefault("apiVersion", resource_def.api_version)
-        item.setdefault("kind", resource_def.kind)
-        return res.from_dict(item, lazy=self._lazy)
+        if br.data is not None:
+            body = json_encode(br.data)
+            if br.headers is None:
+                br.headers = {"Content-Type": "application/json"}
+            elif "Content-Type" not in br.headers:
+                br.headers["Content-Type"] = "application/json"
+        else:
+            body = None
+        return self._client.build_request(br.method, br.url, params=br.params, content=body, headers=br.headers)
 
     def handle_response(self, method, resp, br):
         self.raise_for_status(resp)
@@ -283,25 +286,14 @@ class GenericClient:
         if res is None:
             # TODO: delete/deletecollection actions normally return a Status object, we may want to return it as well
             return
-        data = resp.json()
+        data = resp.content
         if method == "list":
-            if "metadata" in data and data["metadata"].get("continue"):
-                cont = True
-                br.params["continue"] = data["metadata"]["continue"]
-            else:
-                cont = False
-            try:
-                rv = data["metadata"]["resourceVersion"]
-            except KeyError:
-                rv = None
-            return (
-                cont,
-                rv,
-                (self.convert_to_resource(res, obj) for obj in data["items"]),
-            )
+            cont, rv, items = decoders.decode_list(data, res)
+            if cont:
+                br.params["continue"] = cont
+            return bool(cont), rv, items
         else:
-            if res is not None:
-                return self.convert_to_resource(res, data)
+            return decoders.decode_object(data, res)
 
 
 class GenericSyncClient(GenericClient):
@@ -309,7 +301,7 @@ class GenericSyncClient(GenericClient):
         return self._client.send(req, stream=stream)
 
     def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
-        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        wd = WatchDriver(br, self._client.build_request)
         err_count = 0
         while True:
             req = wd.get_request(timeout=self._watch_timeout)
@@ -393,7 +385,7 @@ class GenericAsyncClient(GenericClient):
         return await self._client.send(req, stream=stream)
 
     async def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):
-        wd = WatchDriver(br, self._client.build_request, self._lazy)
+        wd = WatchDriver(br, self._client.build_request)
         err_count = 0
         while True:
             req = wd.get_request(timeout=self._watch_timeout)

@@ -4,7 +4,9 @@ PY_VERSION=${1:-"3.14"}
 export UV_PROJECT_ENVIRONMENT=.venv-test
 export UV_PYTHON=$PY_VERSION
 
+set -x
 uv run ruff format src/ tests/
+uv run ruff check --fix src/ tests/
 uv run ruff check src/ tests/ 
 uv run mypy --cache-fine-grained src/ tests/
 uv run pytest

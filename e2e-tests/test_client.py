@@ -435,7 +435,7 @@ def sample_crd() -> Iterator[Union[GenericNamespacedResource, GenericGlobalResou
     crd.spec.names.plural = f"{prefix}{crd.spec.names.plural}"
     crd.spec.names.singular = f"{prefix}{crd.spec.names.singular}"
     crd.spec.names.kind = f"{prefix}{crd.spec.names.kind}"
-    crd.spec.names.shortnames = [f"{prefix}{shortname}" for shortname in crd.spec.names.shortNames]
+    crd.spec.names.shortNames = [f"{prefix}{shortname}" for shortname in crd.spec.names.shortNames]
     crd.metadata.name = f"{crd.spec.names.plural}.{crd.spec.group}"
 
     client.create(crd)

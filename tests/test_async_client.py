@@ -13,7 +13,7 @@ from lightkube.config.kubeconfig import KubeConfig
 from lightkube.core import websocket
 from lightkube.core.websocket import STDERR_CHANNEL, STDOUT_CHANNEL
 from lightkube.generic_resource import create_global_resource
-from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.models.meta_v1 import ObjectMeta, Status
 from lightkube.resources.core_v1 import Binding, Node, Pod
 from lightkube.types import ExecResponse
 
@@ -537,10 +537,10 @@ async def test_exec_unwraps_grouped_stdin_error(client: lightkube.AsyncClient, m
                     "grouped",
                     [
                         lightkube.ApiError(
-                            status={
-                                "status": "Failure",
-                                "message": "Only subprotocol v5.channel.k8s.io supports writing to stdin",
-                            }
+                            status=Status(
+                                status="Failure",
+                                message="Only subprotocol v5.channel.k8s.io supports writing to stdin",
+                            )
                         )
                     ],
                 )

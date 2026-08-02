@@ -11,11 +11,10 @@ Modern lightweight kubernetes module for python
 
 * *Simple* interface shared across all kubernetes APIs.
 * Extensive *type hints* to avoid common mistakes and to support autocompletion.
-* Models and resources generated from the swagger specifications using standard dataclasses.
+* Models and resources generated from the swagger specifications using [msgspec](https://msgspec.dev/) Structs for fast, allocation-efficient serialisation.
 * Load/Dump resource objects from YAML.
 * Support for async/await
 * Support for installing a specific version of the kubernetes models (1.21 to 1.36)
-* Lazy instantiation of inner models.
 * Fast startup and small memory footprint as only needed models and resources can be imported.
 * Automatic handling of pagination when listing resources.
 
@@ -23,7 +22,7 @@ This module is powered by [httpx2](https://github.com/pydantic/httpx2).
 
 ## Installation
 
-This module requires python >= 3.8 
+This module requires python >= 3.10
 
 === "pip"
     ```sh
