@@ -51,7 +51,8 @@ class BasicRequest:
     response_type: Optional[Type[DictMixin]] = None
     params: Dict[str, str] = dataclasses.field(default_factory=dict)
     data: Any = None
-    headers: Dict[str, str] = None
+    headers: Optional[Dict[str, str]] = None
+    timeout: Optional[httpx.Timeout] = None
 
 
 class WatchDriver:
@@ -128,7 +129,7 @@ class GenericClient:
     def __init__(
         self,
         conn_params: client_adapter.ConnectionParams,
-        config: Union[SingleConfig, KubeConfig] = None,
+        config: Union[SingleConfig, KubeConfig, None] = None,
         namespace: Optional[str] = None,
         lazy=None,
         field_manager: Optional[str] = None,
@@ -278,7 +279,15 @@ class GenericClient:
                 br.headers["Content-Type"] = "application/json"
         else:
             body = None
-        return self._client.build_request(br.method, br.url, params=br.params, content=body, headers=br.headers)
+        timeout = br.timeout if br.timeout is not None else httpx.USE_CLIENT_DEFAULT
+        return self._client.build_request(
+            br.method,
+            br.url,
+            params=br.params,
+            content=body,
+            headers=br.headers,
+            timeout=timeout,
+        )
 
     def handle_response(self, method, resp, br):
         self.raise_for_status(resp)
@@ -297,7 +306,7 @@ class GenericClient:
 
 
 class GenericSyncClient(GenericClient):
-    def send(self, req, stream=False):
+    def send(self, req: httpx.Request, stream=False):
         return self._client.send(req, stream=stream)
 
     def watch(self, br: BasicRequest, on_error: OnErrorHandler = on_error_raise):

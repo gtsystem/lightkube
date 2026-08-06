@@ -59,6 +59,7 @@ class AsyncClient:
     ):
         if timeout is None:
             timeout = httpx2.Timeout(10.0)
+        self._timeout = timeout
         self._client = GenericAsyncClient(
             ConnectionParams(timeout=timeout, trust_env=trust_env, transport=transport, proxy=proxy, http2=http2),
             config,
@@ -723,7 +724,7 @@ class AsyncClient:
           name: Name of the Pod.
           namespace: Name of the namespace containing the Pod.
           container: The container for which to stream logs. Defaults to only container if there is one container in the pod.
-          follow: If `True`, follow the log stream of the pod.
+          follow: If `True`, follow the log stream of the pod. Note that read timeout is disabled when following logs.
           since: If set, a relative time in seconds before the current time from which to fetch logs.
           tail_lines: If set, the number of lines from the end of the logs to fetch.
           timestamps: If `True`, add an RFC3339 or RFC3339Nano timestamp at the beginning of every line of log output.
@@ -742,6 +743,9 @@ class AsyncClient:
                 "follow": follow,
             },
         )
+        if follow:
+            br.timeout = httpx2.Timeout(self._timeout)
+            br.timeout.read = None
         req = self._client.build_adapter_request(br)
 
         async def stream_log() -> AsyncIterator[str]:
