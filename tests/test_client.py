@@ -324,6 +324,21 @@ def test_watch_error(client: lightkube.Client, httpx2_mock: respx.Router) -> Non
     assert exc.value.status.code == 410
 
 
+def test_watch_error_restarts_from_scratch(client: lightkube.Client, httpx2_mock: respx.Router) -> None:
+    stale_request = httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(
+        content=make_watch_error()
+    )
+    initial_request = httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list(1))
+
+    watch = client.watch(Node, on_error=types.on_error_retry)
+    next(watch)
+    next(watch)
+
+    assert len(initial_request.calls) == 2
+    assert len(stale_request.calls) == 1
+    assert "resourceVersion" not in initial_request.calls[1][0].url.params
+
+
 def test_watch_version(client: lightkube.Client, httpx2_mock: respx.Router) -> None:
     httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
     httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())

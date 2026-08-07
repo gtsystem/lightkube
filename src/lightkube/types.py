@@ -65,7 +65,12 @@ def on_error_stop(e: Exception, count: int) -> OnErrorResult:
 
 
 def on_error_retry(e: Exception, count: int) -> OnErrorResult:
-    """Retry to perform the API call again from the last version"""
+    """Immediately retries the API call using the last known resource version.
+    If the retry fails with an unrecoverable error (such as
+    "too old resource version"), it restarts without specifying a resource
+    version. The watch then delivers the current state and continues streaming
+    updates from that point onward.
+    """
     return OnErrorResult(OnErrorAction.RETRY)
 
 

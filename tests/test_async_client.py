@@ -230,6 +230,23 @@ async def test_watch_error(client: lightkube.AsyncClient, httpx2_mock: respx.Rou
 
 
 @pytest.mark.asyncio
+async def test_watch_error_restarts_from_scratch(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
+    stale_request = httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true&resourceVersion=1").respond(
+        content=make_watch_error()
+    )
+    initial_request = httpx2_mock.get("https://localhost:9443/api/v1/nodes?watch=true").respond(content=make_watch_list(1))
+
+    watch = client.watch(Node, on_error=types.on_error_retry)
+    await anext(watch)
+    await anext(watch)
+
+    assert len(initial_request.calls) == 2
+    assert len(stale_request.calls) == 1
+    assert "resourceVersion" not in initial_request.calls[1][0].url.params
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_watch_version(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=1&watch=true").respond(status_code=404)
     httpx2_mock.get("https://localhost:9443/api/v1/nodes?resourceVersion=2&watch=true").respond(content=make_watch_list())

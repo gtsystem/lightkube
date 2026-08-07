@@ -66,7 +66,12 @@ class WatchDriver:
         br = self._br
         if self._version is not None:
             br.params["resourceVersion"] = self._version
+        else:
+            br.params.pop("resourceVersion", None)
         return self._build_request(br.method, br.url, params=br.params, timeout=timeout)
+
+    def reset_version(self):
+        self._version = None
 
     def process_one_line(self, line):
         event = decoders.decode_watch_event(line)
@@ -327,6 +332,9 @@ class GenericSyncClient(GenericClient):
                     raise
                 if handle_error.action is OnErrorAction.STOP:
                     break
+                if isinstance(e, ApiError) and e.status.code == 410:
+                    # 410 Gone means the resourceVersion is too old, we need to restart the watch from scratch
+                    wd.reset_version()
                 if handle_error.sleep > 0:
                     time.sleep(handle_error.sleep)
                 continue
@@ -411,6 +419,9 @@ class GenericAsyncClient(GenericClient):
                     raise
                 if handle_error.action is OnErrorAction.STOP:
                     break
+                if isinstance(e, ApiError) and e.status.code == 410:
+                    # 410 Gone means the resourceVersion is too old, we need to restart the watch from scratch
+                    wd.reset_version()
                 if handle_error.sleep > 0:
                     await asyncio.sleep(handle_error.sleep)
                 continue
