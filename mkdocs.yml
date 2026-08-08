@@ -14,6 +14,7 @@ edit_uri: ""
 
 nav:
   - QuickStart: index.md
+  - "Migration Guide: v0.x to v1.x": migration-to-v1.md
   - Configuration: configuration.md
   - Reference:
       - Client: reference/client.md
