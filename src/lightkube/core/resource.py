@@ -18,10 +18,12 @@ class ApiInfo:
     plural: str
     verbs: List[str]
     parent: Optional[ResourceDef] = None
-    action: str = None
+    action: Optional[str] = None
 
 
 class Resource:
+    apiVersion: Optional[str]
+    kind: Optional[str]
     _api_info: ApiInfo
 
 

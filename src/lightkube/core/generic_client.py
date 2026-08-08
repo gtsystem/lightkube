@@ -2,7 +2,7 @@ import asyncio
 import dataclasses
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncIterable, AsyncIterator, Dict, Iterable, Iterator, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, Iterator, Literal, Optional, Type, TypeVar, Union, overload
 
 import httpx2 as httpx
 import msgspec
@@ -49,9 +49,9 @@ class BasicRequest:
     method: str
     url: str
     response_type: Optional[Type[DictMixin]] = None
-    params: Dict[str, str] = dataclasses.field(default_factory=dict)
+    params: dict[str, str] = dataclasses.field(default_factory=dict)
     data: Any = None
-    headers: Optional[Dict[str, str]] = None
+    headers: Optional[dict[str, str]] = None
     timeout: Optional[httpx.Timeout] = None
 
 
@@ -97,7 +97,7 @@ class ListIterable(Iterable[T]):
             return self._resourceVersion
         raise NotReadyError("resourceVersion", "only available after the iteration started")
 
-    def __init__(self, inner_iter: Iterator[Tuple[str, Iterator[T]]]) -> None:
+    def __init__(self, inner_iter: Iterator[tuple[Optional[str], list[T]]]) -> None:
         self._inner_iter = inner_iter
 
     def __iter__(self) -> Iterator[T]:
@@ -118,7 +118,7 @@ class ListAsyncIterable(AsyncIterable[T]):
             return self._resourceVersion
         raise NotReadyError("resourceVersion", "only available after the iteration started")
 
-    def __init__(self, inner_iter: AsyncIterator[Tuple[str, Iterator[T]]]) -> None:
+    def __init__(self, inner_iter: AsyncIterator[tuple[Optional[str], list[T]]]) -> None:
         self._inner_iter = inner_iter
 
     async def __aiter__(self) -> AsyncIterator[T]:
@@ -236,7 +236,7 @@ class GenericClient:
                 data = obj
             else:
                 data = obj
-                if isinstance(obj, r.Resource):
+                if isinstance(data, r.Resource):
                     if not data.apiVersion:
                         data.apiVersion = api_info.resource.api_version
                     if not data.kind:
@@ -245,7 +245,7 @@ class GenericClient:
         path.append(api_info.plural)
         if method in ("delete", "get", "patch", "put", "exec") or api_info.action:
             if name is None and method == "put":
-                name = obj.metadata.name
+                name = obj.metadata.name  # type: ignore
             if name is None:
                 raise ValueError("resource name not defined")
             path.append(name)
@@ -294,7 +294,15 @@ class GenericClient:
             timeout=timeout,
         )
 
-    def handle_response(self, method, resp, br):
+    @overload
+    def handle_response(
+        self, method: Literal["list"], resp: httpx.Response, br: BasicRequest
+    ) -> tuple[bool, Optional[str], list]: ...
+
+    @overload
+    def handle_response(self, method: str, resp: httpx.Response, br: BasicRequest) -> Any: ...
+
+    def handle_response(self, method: str, resp: httpx.Response, br: BasicRequest) -> Any:
         self.raise_for_status(resp)
         res = br.response_type
         if res is None:
@@ -357,10 +365,10 @@ class GenericSyncClient(GenericClient):
 
     def ws_request(
         self,
-        method,
-        name=None,
-        namespace=None,
-        params: Optional[dict] = None,
+        method: str,
+        name: str,
+        namespace: str,
+        params: dict,
         raise_on_error: bool = False,
         decode: Optional[str] = None,
         timeout: Optional[float] = None,
@@ -380,7 +388,7 @@ class GenericSyncClient(GenericClient):
             stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
-    def list_chunks(self, br: BasicRequest) -> Iterator[Tuple[str, Iterator]]:
+    def list_chunks(self, br: BasicRequest) -> Iterator[tuple[Optional[str], list[Any]]]:
         cont = True
         while cont:
             req = self.build_adapter_request(br)
@@ -396,6 +404,7 @@ class GenericSyncClient(GenericClient):
 
 
 class GenericAsyncClient(GenericClient):
+    _client: httpx.AsyncClient
     AdapterClient = staticmethod(client_adapter.AsyncClient)
 
     async def send(self, req, stream=False):
@@ -446,10 +455,10 @@ class GenericAsyncClient(GenericClient):
 
     async def ws_request(
         self,
-        method,
-        name=None,
-        namespace=None,
-        params: Optional[dict] = None,
+        method: str,
+        name: str,
+        namespace: str,
+        params: dict,
         raise_on_error: bool = False,
         decode: Optional[str] = None,
         timeout: Optional[float] = None,
@@ -469,7 +478,7 @@ class GenericAsyncClient(GenericClient):
             stdin=stdin, stdout=stdout, stderr=stderr, raise_on_error=raise_on_error, decode=decode
         )
 
-    async def list_chunks(self, br: BasicRequest) -> AsyncIterator[Tuple[str, Iterator]]:
+    async def list_chunks(self, br: BasicRequest) -> AsyncIterator[tuple[Optional[str], list[Any]]]:
         cont = True
         while cont:
             req = self.build_adapter_request(br)
