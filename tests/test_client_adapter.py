@@ -86,6 +86,15 @@ def test_user_cert_data():
     assert Path(certs[1]).read_text() == "key"
 
 
+def test_connection_params_preserves_transport():
+    cfg = single_conf(cluster=models.Cluster(server="https://localhost"), user=models.User(token="token"))
+    transport = httpx.AsyncHTTPTransport(http2=True)
+
+    params = client_adapter.ConnectionParams(transport=transport).httpx_params(cfg)
+
+    assert params["transport"] is transport
+
+
 @unittest.mock.patch("ssl.create_default_context")
 def test_verify_cluster_ca_and_cert(create_default_context):
     data_dir = Path(__file__).parent.joinpath("data")

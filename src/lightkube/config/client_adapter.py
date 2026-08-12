@@ -3,7 +3,7 @@ import json
 import os
 import ssl
 import subprocess
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import AsyncGenerator, Callable, Dict, Generator, List, Mapping, Optional, Sequence, Tuple, overload
 
@@ -12,6 +12,11 @@ import httpx2 as httpx
 from ..core.exceptions import ConfigError
 from .kubeconfig import SingleConfig, StrOrPath
 from .models import Cluster, FileStr, User, UserExec
+
+
+def _shallow_asdict(instance) -> dict:
+    """Return a dataclass's fields without copying their values."""
+    return {data_field.name: getattr(instance, data_field.name) for data_field in fields(instance)}
 
 
 @dataclass
@@ -29,7 +34,7 @@ class ConnectionParams:
         assert config.user, "Missing user"
         verify = verify_cluster(config.cluster, config.user, config.abs_file, trust_env=self.trust_env)
         auth = user_auth(config.user)
-        return dict(base_url=base_url, verify=verify, auth=auth, **asdict(self))
+        return dict(base_url=base_url, verify=verify, auth=auth, **_shallow_asdict(self))
 
 
 def Client(config: SingleConfig, conn_parameters: ConnectionParams) -> httpx.Client:
