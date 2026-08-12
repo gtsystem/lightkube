@@ -1,6 +1,6 @@
 [project]
 name = "lightkube"
-version = "1.0.0"
+version = "1.0.1"
 description = "Lightweight kubernetes client library"
 readme = "README.md"
 authors = [
