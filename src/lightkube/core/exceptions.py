@@ -37,7 +37,12 @@ class ApiError(httpx.HTTPStatusError):
     def __init__(
         self, request: httpx.Request = None, response: httpx.Response = None, status: "Optional[meta_v1.Status]" = None
     ) -> None:
-        self.status = meta_v1.Status.from_dict(response.json()) if response else status
+        if status is None and response is not None:
+            try:
+                status = meta_v1.Status.from_dict(response.json())
+            except (TypeError, ValueError):
+                status = meta_v1.Status(code=response.status_code, message=response.text)
+        self.status = status
         super().__init__(self.status.message, request=request, response=response)
 
 

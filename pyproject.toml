@@ -1,6 +1,6 @@
 [project]
 name = "lightkube"
-version = "1.0.1"
+version = "1.0.2"
 description = "Lightweight kubernetes client library"
 readme = "README.md"
 authors = [
@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
     "lightkube-models >= 1.15.12.0",

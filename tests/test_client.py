@@ -276,6 +276,19 @@ def test_errors(client: lightkube.Client, httpx2_mock: respx.Router) -> None:
     assert exc.value.status.message == "got problems"
 
 
+@pytest.mark.parametrize("headers", [{"Content-Type": "text/plain; charset=utf-8"}, {}])
+def test_non_json_error_is_api_error(client: lightkube.Client, httpx2_mock: respx.Router, headers: dict[str, str]) -> None:
+    httpx2_mock.get("https://localhost:9443/api/v1/pods").respond(
+        content="404 page not found", status_code=404, headers=headers
+    )
+
+    with pytest.raises(lightkube.ApiError) as exc:
+        list(client.list(Pod, namespace="*"))
+
+    assert exc.value.status.code == 404
+    assert exc.value.status.message == "404 page not found"
+
+
 def make_watch_list(count: int = 10) -> str:
     resp = "\n".join(
         json.dumps({"type": "ADDED", "object": {"metadata": {"name": f"p{i}", "resourceVersion": "1"}}}) for i in range(count)
