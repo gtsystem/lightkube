@@ -392,6 +392,22 @@ async def test_create_global(client: lightkube.AsyncClient, httpx2_mock: respx.R
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("headers", [{"Content-Type": "text/plain; charset=utf-8"}, {}])
+async def test_non_json_error_is_api_error(client: lightkube.AsyncClient, httpx2_mock: respx.Router, headers):
+    httpx2_mock.get("https://localhost:9443/api/v1/pods").respond(
+        content="404 page not found", status_code=404, headers=headers
+    )
+
+    with pytest.raises(lightkube.ApiError) as exc:
+        async for _pod in client.list(Pod, namespace="*"):
+            pass
+
+    assert exc.value.status.code == 404
+    assert exc.value.status.message == "404 page not found"
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_replace_global(client: lightkube.AsyncClient, httpx2_mock: respx.Router):
     req = httpx2_mock.put("https://localhost:9443/api/v1/nodes/xx").respond(json={"metadata": {"name": "xx"}})
     pod = await client.replace(Node(metadata=ObjectMeta(name="xx")))

@@ -31,6 +31,7 @@ Configuration file ~/.kube/config not found
 This exception extends [`httpx2.HTTPStatusError`](https://httpx2.pydantic.dev/exceptions/) and is raised when an HTTP error is
 returned from kubernetes API. An extra `status` attribute is available with details
 about the failure using the standard model [`meta_v1.Status`](https://gtsystem.github.io/lightkube-models/1.19/models/meta_v1/#status).
+If the response body is not JSON, `status.code` is set from the HTTP response and `status.message` contains its text body.
 
 ```python
 from lightkube import Client, ApiError

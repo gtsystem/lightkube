@@ -138,6 +138,17 @@ def test_pod_not_exist() -> None:
     assert status.status == "Failure"
 
 
+def test_missing_api_group_raises_api_error() -> None:
+    client = Client()
+    missing_resource = create_namespaced_resource("lightkube-issue-166.invalid", "v1", "MissingResource", "missingresources")
+
+    with pytest.raises(ApiError) as exc_info:
+        list(client.list(missing_resource, namespace="default"))
+
+    assert exc_info.value.status.code == 404
+    assert exc_info.value.status.message
+
+
 def test_pod_already_exist(obj_name):
     client = Client()
     client.create(create_pod(obj_name, "sleep 5"))

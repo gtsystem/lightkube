@@ -24,7 +24,7 @@ ALL_NS = "*"
 
 
 def transform_exception(e: httpx.HTTPError):
-    if isinstance(e, httpx.HTTPStatusError) and e.response.headers["Content-Type"] == "application/json":
+    if isinstance(e, httpx.HTTPStatusError):
         return ApiError(request=e.request, response=e.response)
     return e
 
